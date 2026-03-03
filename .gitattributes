@@ -1,0 +1,6 @@
+# Normalize line endings to LF in the repository; let Git convert on checkout.
+* text=auto eol=lf
+
+# Force shell scripts to always use LF — CRLF breaks sh/bash on Linux/macOS.
+*.sh text eol=lf
+.husky/* text eol=lf

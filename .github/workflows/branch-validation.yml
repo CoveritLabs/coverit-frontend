@@ -1,0 +1,52 @@
+name: Branch validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate branch name and target
+        run: |
+          BRANCH="${GITHUB_HEAD_REF}"
+          BASE="${GITHUB_BASE_REF}"
+
+          # 1. Validate source branch name
+
+          # Long-lived branches are allowed as source (e.g. back-merges).
+          if [[ "$BRANCH" == "main" || "$BRANCH" == "develop" ]]; then
+            echo "Source branch '$BRANCH' is a long-lived branch — skipping prefix check."
+            exit 0
+          fi
+
+          if [[ ! "$BRANCH" =~ ^(feat|fix|hotfix|chore|docs|release)/[a-z0-9._-]+$ ]]; then
+            echo "::error::Invalid branch name: '$BRANCH'"
+            echo "Expected format: <type>/<slug>"
+            echo "Allowed types:   feat, fix, hotfix, chore, docs, release"
+            echo "Slug rules:      lowercase letters, digits, hyphens, dots, underscores"
+            exit 1
+          fi
+
+          # 2. Validate target branch matches the documented merge rules
+
+          PREFIX="${BRANCH%%/*}"
+
+          case "$PREFIX" in
+            feat|fix|chore|docs)
+              if [[ "$BASE" != "develop" ]]; then
+                echo "::error::Branch '$BRANCH' (type: $PREFIX) must target 'develop', not '$BASE'."
+                exit 1
+              fi
+              ;;
+            hotfix|release)
+              if [[ "$BASE" != "main" && "$BASE" != "develop" ]]; then
+                echo "::error::Branch '$BRANCH' (type: $PREFIX) must target 'main' or 'develop', not '$BASE'."
+                exit 1
+              fi
+              ;;
+          esac
+
+          echo "Branch '$BRANCH' → '$BASE' is valid."
