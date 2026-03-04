@@ -1,0 +1,63 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+.dark {
+    /* Background & Surfaces */
+    --background: #0F1419;
+    --foreground: #E6EDF3;
+    --card: #1C2128;
+    --card-foreground: #E6EDF3;
+    --popover: #1C2128;
+    --popover-foreground: #E6EDF3;
+
+    /* Primary Brand */
+    --primary: #4FC3C6;
+    --primary-hover: #5ED6D8;
+    --primary-foreground: #0F1419;
+
+    /* Secondary & Accent */
+    --secondary: #2D3748;
+    --secondary-foreground: #E6EDF3;
+    --accent: #7EDFE1;
+    --accent-foreground: #0F1419;
+
+    /* Text */
+    --text-primary: #E6EDF3;
+    --text-secondary: #8B949E;
+    --text-disabled: #6E7681;
+
+    /* Muted */
+    --muted: #22272E;
+    --muted-foreground: #8B949E;
+
+    /* UI Elements */
+    --border: #2D333B;
+    --input: #22272E;
+    --input-background: #1C2128;
+    --switch-background: #2D333B;
+    --ring: #4FC3C6;
+
+    /* Status */
+    --success: #3FB950;
+    --warning: #D29922;
+    --destructive: #F85149;
+    --destructive-foreground: #E6EDF3;
+
+    /* Charts */
+    --chart-1: #4FC3C6;
+    --chart-2: #7EDFE1;
+    --chart-3: #2D5B7B;
+    --chart-4: #3FB950;
+    --chart-5: #D29922;
+
+    /* Sidebar */
+    --sidebar: #1C2128;
+    --sidebar-foreground: #E6EDF3;
+    --sidebar-primary: #4FC3C6;
+    --sidebar-primary-foreground: #0F1419;
+    --sidebar-accent: #22272E;
+    --sidebar-accent-foreground: #E6EDF3;
+    --sidebar-border: #2D333B;
+    --sidebar-ring: #4FC3C6;
+}

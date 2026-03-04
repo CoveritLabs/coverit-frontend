@@ -1,0 +1,168 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+@use '@styles/tokens' as *;
+@use '@styles/mixins' as *;
+
+// Sidebar
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: $sidebar-width;
+    height: 100vh;
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    overflow: hidden;
+}
+
+// Header
+.brand {
+    @include flex-start;
+    gap: $space-3;
+    padding: $space-6;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.brandMark {
+    @include flex-center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    background: linear-gradient(135deg, #2F6F8E 0%, #4FC3C6 100%);
+    color: var(--sidebar);
+    font-size: $font-size-sm;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.03em;
+}
+
+.brandName {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: var(--sidebar-foreground);
+    line-height: 1.4;
+}
+
+.brandSub {
+    font-size: $font-size-sm;
+    color: var(--muted-foreground);
+    line-height: 1.4;
+}
+
+// Navigation
+.nav {
+    @include flex-column;
+    @include custom-scrollbar;
+    flex: 1;
+    gap: $space-2;
+    padding: $space-4;
+    overflow-y: auto;
+}
+
+.navItem {
+    position: relative;
+    @include flex-center;
+    justify-content: flex-start;
+    gap: $space-3;
+    padding: $space-2 $space-3;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-normal;
+    color: var(--muted-foreground);
+    transition: background-color $transition-fast, color $transition-fast;
+
+    &:hover {
+        background-color: color-mix(in oklab, var(--sidebar-accent) 50%, transparent);
+        color: var(--sidebar-foreground);
+    }
+}
+
+.navItemActive {
+    background-color: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+
+    &:hover {
+        background-color: var(--sidebar-accent);
+        color: var(--sidebar-accent-foreground);
+    }
+}
+
+// Footer
+.footer {
+    @include flex-column;
+    gap: $space-3;
+    padding: $space-4;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.themeToggle {
+    @include flex-center;
+    justify-content: flex-start;
+    gap: $space-3;
+    width: 100%;
+    padding: $space-2 $space-3;
+    border-radius: $radius-md;
+    border: 1px solid var(--border);
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: var(--muted-foreground);
+    background: transparent;
+    transition: background-color $transition-fast, color $transition-fast, border-color $transition-fast;
+
+    &:hover {
+        background-color: color-mix(in oklab, var(--sidebar-accent) 50%, transparent);
+        color: var(--sidebar-foreground);
+        border-color: var(--ring);
+    }
+
+    &:focus-visible {
+        @include focus-ring(var(--ring));
+    }
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-2 $space-3;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+        background-color: var(--sidebar-accent);
+    }
+}
+
+.avatar {
+    @include flex-center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: $radius-full;
+    background-color: var(--sidebar-primary);
+    color: var(--sidebar-primary-foreground);
+    font-size: $font-size-xs;
+    font-weight: $font-weight-bold;
+    letter-spacing: 0.04em;
+}
+
+.profileInfo {
+    @include flex-column;
+    min-width: 0;
+}
+
+.profileName {
+    @include truncate;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: var(--sidebar-foreground);
+    line-height: 1.2;
+}
+
+.profileRole {
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+    line-height: 1.2;
+}
