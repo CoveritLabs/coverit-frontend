@@ -1,0 +1,201 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+@use "@styles/tokens" as *;
+@use "@styles/mixins" as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background-color: var(--background);
+  padding: $space-4;
+}
+
+.card {
+  max-width: 56rem;
+  width: 100%;
+  display: grid;
+  gap: $space-8;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+}
+
+.relative {
+  position: relative;
+}
+
+.iconCircle {
+  width: 8rem;
+  height: 8rem;
+  border-radius: $radius-full;
+  background-color: rgba(var(--destructive-rgb, 231, 111, 81), 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(var(--destructive-rgb, 231, 111, 81), 0.12);
+}
+
+.icon {
+  width: 4rem;
+  height: 4rem;
+  color: var(--destructive);
+}
+
+.accentTopRight {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: $radius-full;
+  background-color: rgba(var(--destructive-rgb, 231, 111, 81), 0.28);
+  animation: pulse 2s infinite;
+}
+
+.accentBottomLeft {
+  position: absolute;
+  bottom: -0.25rem;
+  left: -0.25rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: $radius-full;
+  background-color: rgba(var(--warning-rgb, 244, 162, 97), 0.36);
+  animation: pulse 2s infinite 0.075s;
+}
+
+.header {
+  @include flex-column;
+  align-items: center;
+  text-align: center;
+}
+
+.title {
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-semibold;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.desc {
+  color: var(--muted-foreground);
+  max-width: 40rem;
+}
+
+.details {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  overflow: hidden;
+}
+
+.summary {
+  padding: $space-3 $space-4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.summaryLabel {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+.summaryNote {
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+}
+
+.summaryBody {
+  padding: $space-3 $space-4;
+  border-top: 1px solid var(--border);
+  background-color: rgba(var(--muted-rgb, 234, 246, 247), 0.12);
+}
+
+.codeTitle {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  color: var(--muted-foreground);
+  margin-bottom: $space-2;
+}
+
+.codeBlock {
+  font-size: $font-size-sm;
+  color: var(--destructive);
+  background-color: rgba(var(--destructive-rgb, 231, 111, 81), 0.06);
+  padding: $space-2;
+  border-radius: $radius-sm;
+  display: block;
+  overflow-x: auto;
+}
+
+.pre {
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+  background-color: var(--muted);
+  padding: $space-3;
+  border-radius: $radius-sm;
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.actions {
+  display: flex;
+  gap: $space-3;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  @media (min-width: $bp-sm) {
+    flex-direction: row;
+  }
+}
+
+.btnGap {
+  display: inline-flex;
+  gap: $space-2;
+}
+
+.help {
+  @include flex-column;
+  align-items: center;
+  padding-top: $space-6;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.helpList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-6;
+  justify-content: center;
+}
+
+.helpBtn {
+  color: var(--primary);
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

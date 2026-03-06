@@ -4,14 +4,9 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-
-// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
-// Proprietary and confidential. Unauthorized use is strictly prohibited.
-// See LICENSE file in the project root for full license information.
-
-// Pre-commit hook: prepends the CoverIt proprietary license header to staged
-// source files that are missing it (.ts .tsx .js .jsx .mts .mjs .css).
-// Called by .husky/pre-commit — can also be run directly: node scripts/add-license-header.mjs
+// Pre-commit hook that prepends the CoverIt proprietary license header
+// to staged source files missing it.
+// Called by .husky/pre-commit — also runnable via: node scripts/add-license-header.mjs
 
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
@@ -23,26 +18,32 @@ const JS_HEADER = `\
 // See LICENSE file in the project root for full license information.
 `;
 
-const CSS_HEADER = `\
-/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
- * Proprietary and confidential. Unauthorized use is strictly prohibited.
- * See LICENSE file in the project root for full license information.
- */
-`;
+const ALLOWED_EXTENSIONS = new Set(['.ts', '.tsx', '.ts', '.js', '.jsx', '.mts', '.mjs', '.css', '.scss']);
 
 /** Returns the correct header for the given file extension. */
-function headerFor(ext) {
-  return ext === '.css' ? CSS_HEADER : JS_HEADER;
+function headerFor() {
+  return JS_HEADER;
 }
 
-/** Returns true when the file already starts with the copyright marker. */
-function hasHeader(content, ext) {
-  const marker = ext === '.css' ? '/* Copyright (c)' : '// Copyright (c)';
-  return content.trimStart().startsWith(marker);
+/** Returns `true` when the content already starts with the copyright marker. */
+function hasHeader(content) {
+  const marker = '// Copyright (c)';
+  const checkContent = content.startsWith('#!')
+    ? content.slice(content.indexOf('\n') + 1)
+    : content;
+  return checkContent.trimStart().startsWith(marker);
 }
 
-const ALLOWED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs', '.css']);
+/** Prepends the header to content, preserving any shebang on line 1. */
+function prependHeader(content, header) {
+  if (content.startsWith('#!')) {
+    const newline = content.indexOf('\n');
+    return `${content.slice(0, newline + 1)}\n${header}\n${content.slice(newline + 1)}`;
+  }
+  return `${header}\n${content}`;
+}
 
+// Retrieve staged files from the git index.
 let stagedFiles;
 try {
   stagedFiles = execSync('git diff --cached --name-only --diff-filter=ACM', {
@@ -52,7 +53,6 @@ try {
     .map((f) => f.trim())
     .filter((f) => f.length > 0 && ALLOWED_EXTENSIONS.has(extname(f)));
 } catch {
-  // Not inside a git repo or no staged files, aka nothing to do.
   process.exit(0);
 }
 
@@ -63,31 +63,40 @@ if (stagedFiles.length === 0) {
 let modified = 0;
 
 for (const file of stagedFiles) {
-  let content;
+  let stagedContent;
   try {
-    content = readFileSync(file, 'utf8');
+    stagedContent = execSync(`git show ":${file}"`, { encoding: 'utf8' });
   } catch {
-    // File may have been deleted between the diff and now — skip.
     continue;
   }
 
-  const ext = extname(file);
-  if (hasHeader(content, ext)) continue;
+  if (hasHeader(stagedContent)) continue;
 
-  const header = headerFor(ext);
+  const header = headerFor();
+  const newStagedContent = prependHeader(stagedContent, header);
 
-  // Preserve shebangs on the very first line.
-  if (content.startsWith('#!')) {
-    const newline = content.indexOf('\n');
-    const shebang = content.slice(0, newline + 1);
-    const rest = content.slice(newline + 1);
-    writeFileSync(file, `${shebang}\n${header}\n${rest}`, 'utf8');
-  } else {
-    writeFileSync(file, `${header}\n${content}`, 'utf8');
+  // Write header into the index directly to preserve partial staging.
+  const hash = execSync('git hash-object -w --stdin', {
+    input: newStagedContent,
+    encoding: 'utf8',
+  }).trim();
+
+  const mode = execSync(`git ls-files --stage "${file}"`, { encoding: 'utf8' })
+    .trim()
+    .split(' ')[0];
+
+  execSync(`git update-index --cacheinfo ${mode},${hash},${file}`);
+
+  // Patch the working-tree copy so the diff stays consistent.
+  try {
+    const workingContent = readFileSync(file, 'utf8');
+    if (!hasHeader(workingContent)) {
+      writeFileSync(file, prependHeader(workingContent, header), 'utf8');
+    }
+  } catch {
+    // Working-tree file unreadable — skipping.
   }
 
-  // Re-stage so the header is included in the commit.
-  execSync(`git add "${file}"`);
   console.log(`[license] Header added → ${file}`);
   modified++;
 }

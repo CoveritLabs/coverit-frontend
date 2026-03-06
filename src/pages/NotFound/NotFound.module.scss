@@ -1,0 +1,131 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+@use "@styles/tokens" as *;
+@use "@styles/mixins" as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background-color: var(--background);
+  padding: $space-4;
+}
+
+.card {
+  max-width: 40rem;
+  width: 100%;
+  text-align: center;
+  display: grid;
+  gap: $space-8;
+  margin: 0 auto;
+}
+
+.iconWrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.iconCircle {
+  position: relative;
+  width: 8rem;
+  height: 8rem;
+  border-radius: $radius-full;
+  background-color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  width: 4rem;
+  height: 4rem;
+  color: var(--muted-foreground);
+  opacity: 0.85;
+}
+
+.accentTopRight {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: $radius-full;
+  background-color: var(--primary);
+  opacity: 0.15;
+}
+
+.accentBottomLeft {
+  position: absolute;
+  bottom: -0.25rem;
+  left: -0.25rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: $radius-full;
+  background-color: var(--accent);
+  opacity: 0.2;
+}
+
+.title {
+  font-size: $font-size-4xl;
+  font-weight: $font-weight-semibold;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-medium;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.description {
+  color: var(--muted-foreground);
+  max-width: 36rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.actions {
+  display: flex;
+  gap: $space-3;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  @media (min-width: $bp-sm) {
+    flex-direction: row;
+  }
+}
+
+.btnGap {
+  display: inline-flex;
+  gap: $space-2;
+}
+
+.help {
+  padding-top: $space-6;
+  border-top: 1px solid var(--border);
+}
+
+.helpList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-10;
+  justify-content: center;
+}
+
+.helpBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--primary);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}

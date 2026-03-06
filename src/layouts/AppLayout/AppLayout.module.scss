@@ -1,0 +1,24 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+@use "@styles/tokens" as *;
+@use "@styles/mixins" as *;
+
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--background);
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: $space-6 $space-8;
+  @include custom-scrollbar;
+
+  @include respond-to("lg") {
+    padding: $space-8 $space-10;
+  }
+}
