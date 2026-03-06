@@ -5,7 +5,7 @@
 import { useUIStore } from '@/store'
 import type { Theme } from '@app-types/common'
 
-/** Reads and sets the application theme. Applies data-theme to the <html> element on change. */
+/** Reads and sets the application theme. DOM application is handled by ThemeProvider. */
 export function useTheme(): { theme: Theme; setTheme: (t: Theme) => void } {
     return {
         theme: useUIStore((s) => s.theme),

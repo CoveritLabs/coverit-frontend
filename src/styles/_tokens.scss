@@ -28,8 +28,13 @@ $space-20: 5rem;
 $space-24: 6rem;
 
 // Typography
-$font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-$font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+$font-sans:
+  "Inter",
+  "Segoe UI",
+  system-ui,
+  -apple-system,
+  sans-serif;
+$font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
 $font-size-xs: 0.75rem;
 $font-size-sm: 0.875rem;
@@ -74,7 +79,7 @@ $bp-xl: 1280px;
 $bp-2xl: 1536px;
 
 // Layout
-$sidebar-width: calc(#{$space-1}*64);
-$sidebar-collapsed-width: calc(#{$space-1}*16);
+$sidebar-width: calc(#{$space-1}* 64);
+$sidebar-collapsed-width: calc(#{$space-1}* 16);
 $header-height: 64px;
 $content-max-width: 1200px;

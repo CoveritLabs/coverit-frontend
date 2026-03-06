@@ -10,18 +10,18 @@ export const LazyDashboard = lazy(() => import("@pages/Dashboard/Dashboard"));
 export const LazyNotFound = lazy(() => import("@pages/NotFound/NotFound"));
 
 interface WithSuspenseProps {
-    fallback?: ReactNode;
+  fallback?: ReactNode;
 }
 
 export function withSuspense<P extends object>(
-    Component: ComponentType<P>,
-    { fallback = <PageLoader /> }: WithSuspenseProps = {},
+  Component: ComponentType<P>,
+  { fallback = <PageLoader /> }: WithSuspenseProps = {},
 ) {
-    return function SuspenseWrapper(props: P) {
-        return (
-            <Suspense fallback={fallback}>
-                <Component {...props} />
-            </Suspense>
-        );
-    };
+  return function SuspenseWrapper(props: P) {
+    return (
+      <Suspense fallback={fallback}>
+        <Component {...props} />
+      </Suspense>
+    );
+  };
 }

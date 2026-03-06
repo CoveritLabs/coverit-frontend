@@ -2,39 +2,41 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-@use 'themes/light';
-@use 'themes/dark';
-@use 'reset';
-@use 'typography';
-@use 'animations';
-@use 'tokens' as *;
+@use "themes/light";
+@use "themes/dark";
+@use "reset";
+@use "typography";
+@use "animations";
+@use "tokens" as *;
 
 // Global design tokens
 :root {
-    --radius: #{$radius};
-    --radius-sm: #{$radius-sm};
-    --radius-md: #{$radius-md};
-    --radius-lg: #{$radius-lg};
-    --radius-xl: #{$radius-xl};
+  --radius: #{$radius};
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
 }
 
 // Base styles
 html {
-    font-size: var(--font-size);
-    font-family: #{$font-sans};
+  font-size: var(--font-size);
+  font-family: #{$font-sans};
 }
 
 body {
-    background-color: var(--background);
-    color: var(--foreground);
-    line-height: #{$line-height-normal};
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    transition: background-color #{$transition-normal}, color #{$transition-normal};
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: #{$line-height-normal};
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color #{$transition-normal},
+    color #{$transition-normal};
 }
 
 *,
 *::before,
 *::after {
-    border-color: var(--border);
+  border-color: var(--border);
 }

@@ -2,15 +2,15 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-@use 'tokens' as *;
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@use "tokens" as *;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 body {
-    font-family: $font-sans;
-    font-size: $font-size-base;
-    font-weight: $font-weight-normal;
-    line-height: $line-height-normal;
-    color: var(--text-primary);
+  font-family: $font-sans;
+  font-size: $font-size-base;
+  font-weight: $font-weight-normal;
+  line-height: $line-height-normal;
+  color: var(--text-primary);
 }
 
 h1,
@@ -19,46 +19,46 @@ h3,
 h4,
 h5,
 h6 {
-    font-weight: $font-weight-semibold;
-    line-height: $line-height-tight;
-    color: var(--text-primary);
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-tight;
+  color: var(--text-primary);
 }
 
 h1 {
-    font-size: $font-size-4xl;
+  font-size: $font-size-4xl;
 }
 
 h2 {
-    font-size: $font-size-3xl;
+  font-size: $font-size-3xl;
 }
 
 h3 {
-    font-size: $font-size-2xl;
+  font-size: $font-size-2xl;
 }
 
 h4 {
-    font-size: $font-size-xl;
+  font-size: $font-size-xl;
 }
 
 h5 {
-    font-size: $font-size-lg;
+  font-size: $font-size-lg;
 }
 
 h6 {
-    font-size: $font-size-base;
+  font-size: $font-size-base;
 }
 
 p {
-    line-height: $line-height-relaxed;
+  line-height: $line-height-relaxed;
 }
 
 small {
-    font-size: $font-size-sm;
+  font-size: $font-size-sm;
 }
 
 code,
 kbd,
 pre {
-    font-family: $font-mono;
-    font-size: 0.9em;
+  font-family: $font-mono;
+  font-size: 0.9em;
 }

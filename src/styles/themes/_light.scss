@@ -3,64 +3,63 @@
 // See LICENSE file in the project root for full license information.
 
 :root {
-    --font-size: 14px;
+  --font-size: 14px;
 
-    /* Background & Surfaces */
-    --background: #F4FAFB;
-    --foreground: #0F2E45;
-    --card: #FFFFFF;
-    --card-foreground: #0F2E45;
-    --popover: #FFFFFF;
-    --popover-foreground: #0F2E45;
+  /* Background & Surfaces */
+  --background: #f4fafb;
+  --foreground: #0f2e45;
+  --card: #ffffff;
+  --card-foreground: #0f2e45;
+  --popover: #ffffff;
+  --popover-foreground: #0f2e45;
 
-    /* Primary Brand */
-    --primary: #1E4A6A;
-    --primary-hover: #2F6F8E;
-    --primary-foreground: #FFFFFF;
+  /* Primary Brand */
+  --primary: #1e4a6a;
+  --primary-hover: #2f6f8e;
+  --primary-foreground: #ffffff;
 
-    /* Secondary & Accent */
-    --secondary: #4FC3C6;
-    --secondary-foreground: #FFFFFF;
-    --accent: #7EDFE1;
-    --accent-foreground: #0F2E45;
+  /* Secondary & Accent */
+  --secondary: #4fc3c6;
+  --secondary-foreground: #ffffff;
+  --accent: #7edfe1;
+  --accent-foreground: #0f2e45;
 
-    /* Text */
-    --text-primary: #0F2E45;
-    --text-secondary: #4C6A7C;
-    --text-disabled: #9AAEB9;
+  /* Text */
+  --text-primary: #0f2e45;
+  --text-secondary: #4c6a7c;
+  --text-disabled: #9aaeb9;
 
-    /* Muted */
-    --muted: #EAF6F7;
-    --muted-foreground: #4C6A7C;
+  /* Muted */
+  --muted: #eaf6f7;
+  --muted-foreground: #4c6a7c;
 
-    /* UI Elements */
-    --border: #D4E6EA;
-    --input: transparent;
-    --input-background: #FFFFFF;
-    --switch-background: #D4E6EA;
-    --ring: #4FC3C6;
+  /* UI Elements */
+  --border: #d4e6ea;
+  --input: transparent;
+  --input-background: #ffffff;
+  --switch-background: #d4e6ea;
+  --ring: #4fc3c6;
 
-    /* Status */
-    --success: #35B38A;
-    --warning: #F4A261;
-    --destructive: #E76F51;
-    --destructive-foreground: #FFFFFF;
+  /* Status */
+  --success: #35b38a;
+  --warning: #f4a261;
+  --destructive: #e76f51;
+  --destructive-foreground: #ffffff;
 
-    /* Charts */
-    --chart-1: #1E4A6A;
-    --chart-2: #4FC3C6;
-    --chart-3: #7EDFE1;
-    --chart-4: #35B38A;
-    --chart-5: #F4A261;
+  /* Charts */
+  --chart-1: #1e4a6a;
+  --chart-2: #4fc3c6;
+  --chart-3: #7edfe1;
+  --chart-4: #35b38a;
+  --chart-5: #f4a261;
 
-    /* Sidebar */
-    --sidebar: #FFFFFF;
-    --sidebar-foreground: #0F2E45;
-    --sidebar-primary: #1E4A6A;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #EAF6F7;
-    --sidebar-accent-foreground: #0F2E45;
-    --sidebar-border: #D4E6EA;
-    --sidebar-ring: #4FC3C6;
-
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f2e45;
+  --sidebar-primary: #1e4a6a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eaf6f7;
+  --sidebar-accent-foreground: #0f2e45;
+  --sidebar-border: #d4e6ea;
+  --sidebar-ring: #4fc3c6;
 }

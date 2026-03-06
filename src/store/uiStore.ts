@@ -11,6 +11,12 @@ interface UIState {
     setTheme: (theme: Theme) => void
 }
 
+function applyThemeToDOM(theme: Theme) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isDark = theme === 'dark' || (theme === 'system' && prefersDark)
+    document.documentElement.classList.toggle('dark', isDark)
+}
+
 /** UI Store for managing global UI state */
 export const useUIStore = create<UIState>()(
     devtools(
@@ -19,10 +25,6 @@ export const useUIStore = create<UIState>()(
                 theme: 'system',
                 setTheme: (theme) => {
                     set({ theme }, false, 'ui/setTheme')
-                    const root = document.documentElement
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-                    const isDark = theme === 'dark' || (theme === 'system' && prefersDark)
-                    root.classList.toggle('dark', isDark)
                 },
             }),
             {
@@ -32,3 +34,13 @@ export const useUIStore = create<UIState>()(
         { name: 'UIStore' },
     ),
 )
+
+useUIStore.subscribe(
+    (state, prev) => {
+        if (state.theme !== prev.theme) applyThemeToDOM(state.theme)
+    },
+)
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (useUIStore.getState().theme === 'system') applyThemeToDOM('system')
+})
