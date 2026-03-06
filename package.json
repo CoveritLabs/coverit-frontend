@@ -37,6 +37,7 @@
     "husky": "^9.1.7",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "@coveritlabs/git-hooks": "github:CoveritLabs/.github"
   }
 }

@@ -1,26 +1,7 @@
 #!/bin/sh
 
-# 1. License header
-node scripts/add-license-header.mjs
+# license header injection
+npx coverit-add-license-header
 
-# 2. Branch name guard — skip on the very first commit (no HEAD yet)
-if ! git rev-parse --verify HEAD > /dev/null 2>&1; then
-  exit 0
-fi
-
-branch=$(git rev-parse --abbrev-ref HEAD)
-
-if [ "$branch" = "main" ] || [ "$branch" = "develop" ]; then
-  exit 0
-fi
-
-regex="^(feat|fix|hotfix|chore|docs|release)/[a-z0-9._-]+$"
-
-if echo "$branch" | grep -Eq "$regex"; then
-  exit 0
-else
-  echo "Invalid branch name: $branch"
-  echo "Expected format: <type>/<slug>"
-  echo "Allowed types:   feat, fix, hotfix, chore, docs, release"
-  exit 1
-fi
+# branch name validation
+npx coverit-validate-branch
