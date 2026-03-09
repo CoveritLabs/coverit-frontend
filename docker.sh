@@ -5,6 +5,11 @@
 # See LICENSE file in the project root for full license information.
 
 
+# Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+# Proprietary and confidential. Unauthorized use is strictly prohibited.
+# See LICENSE file in the project root for full license information.
+
+
 # Usage:
 #   ./docker.sh up                   -> start frontend & backend with remote images
 #   ./docker.sh up --tag latest      -> start all with tag latest
@@ -57,7 +62,11 @@ done
 
 # API owns its services (db, redis). Start from the API base compose, then
 # layer API overrides, then the frontend compose, then frontend overrides.
-EXEC_CMD="docker compose -f $API_DIR/docker-compose.yml"
+ENV_FILE_ARG=""
+if [ -f "$API_DIR/.env" ]; then
+  ENV_FILE_ARG="--env-file $API_DIR/.env"
+fi
+EXEC_CMD="docker compose $ENV_FILE_ARG -f $API_DIR/docker-compose.yml"
 
 if [ "$LOCAL" = true ]; then
   # local dev: hot-reload builds for both
