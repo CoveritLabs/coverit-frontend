@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "check:license": "node scripts/add-license-header.mjs",
     "commit": "cz",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docker": "sh docker.sh"
   },
   "config": {
     "commitizen": {
