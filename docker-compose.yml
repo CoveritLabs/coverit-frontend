@@ -7,6 +7,7 @@ name: coverit
 services:
   frontend:
     image: ghcr.io/coveritlabs/coverit-frontend:${FRONTEND_TAG:-dev}
+    pull_policy: always
     container_name: coverit-frontend
     ports:
       - "80:80"
