@@ -5,7 +5,10 @@ WORKDIR /app
 
 # Install all dependencies (need devDeps for Vite build)
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN --mount=type=secret,id=npm_token \
+  printf "@coveritlabs:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=$(cat /run/secrets/npm_token)\n" > .npmrc \
+  && npm ci --ignore-scripts \
+  && rm -f .npmrc
 
 # Copy source and build
 COPY . .
