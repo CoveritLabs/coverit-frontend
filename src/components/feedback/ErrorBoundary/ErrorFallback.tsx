@@ -50,7 +50,7 @@ export const ErrorFallback = ({
         </div>
 
         {/* Error Details */}
-        {error && (
+        {!!error && (
           <details className={styles.details}>
             <summary className={styles.summary}>
               <span className={styles.summaryLabel}>
@@ -63,7 +63,7 @@ export const ErrorFallback = ({
               <div>
                 <p className={styles.codeTitle}>Error Message:</p>
                 <code className={styles.codeBlock}>{errorMessage}</code>
-                {(errorStack || errorInfo) && (
+                {!!(errorStack || errorInfo) && (
                   <div style={{ marginTop: "0.5rem" }}>
                     <p className={styles.codeTitle}>Stack Trace:</p>
                     <pre className={styles.pre}>
