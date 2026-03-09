@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
+import { devtools, persist } from 'zustand/middleware'
 import type { UserInfo, LoginRequest, SignupRequest } from '@coveritlabs/contracts'
 import { authService } from '@services/auth/authService'
 
@@ -19,26 +19,35 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
     devtools(
-        (set) => ({
-            user: null,
+        persist(
+            (set) => ({
+                user: null,
 
-            login: async (data) => {
-                const response = await authService.login(data)
-                set({ user: response.user ?? null }, false, 'auth/login')
+                login: async (data) => {
+                    const response = await authService.login(data)
+                    set({ user: response.user ?? null }, false, 'auth/login')
+                },
+
+                signup: async (data) => {
+                    const response = await authService.signup(data)
+                    set({ user: response.user ?? null }, false, 'auth/signup')
+                },
+
+                logout: async () => {
+                    try {
+                        await authService.logout()
+                    } finally {
+                        set({ user: null }, false, 'auth/logout')
+                    }
+                },
+
+                clearUser: () => set({ user: null }, false, 'auth/clearUser'),
+            }),
+            {
+                name: 'coverit-auth',
+                partialize: (state) => ({ user: state.user }),
             },
-
-            signup: async (data) => {
-                const response = await authService.signup(data)
-                set({ user: response.user ?? null }, false, 'auth/signup')
-            },
-
-            logout: async () => {
-                await authService.logout()
-                set({ user: null }, false, 'auth/logout')
-            },
-
-            clearUser: () => set({ user: null }, false, 'auth/clearUser'),
-        }),
+        ),
         { name: 'AuthStore' },
     ),
 )

@@ -2,28 +2,41 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import logoImage from "@/assets/logo.png";
 import { Input, Label, Button, Field, Divider } from "@components/ui";
 import { ErrorBanner } from "@components/feedback/ErrorBanner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@utils/cn";
 import styles from "./LoginPage.module.scss";
 import { ROUTES } from "@/config/routes";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleIcon, GitHubIcon } from "@components/icons";
 import { useAuthStore } from "@store/authStore";
+import { authService } from "@services/auth/authService";
 import type { AxiosError } from "axios";
 import type { ErrorResponse } from "@coveritlabs/contracts";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) {
+      setError(oauthError);
+    }
+  }, [searchParams]);
+
+  const handleOAuth = (provider: "google" | "github") => {
+    window.location.href = authService.getOAuthUrl(provider);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,11 +123,11 @@ const LoginPage = () => {
 
       {/* Social buttons */}
       <div className={styles.socialButtons}>
-        <Button variant="outline" className={styles.socialButton} onClick={() => {}}>
+        <Button type="button" variant="outline" className={styles.socialButton} onClick={() => handleOAuth("google")}>
           <GoogleIcon />
           <span className={styles.socialText}>Continue with Google</span>
         </Button>
-        <Button variant="outline" className={styles.socialButton} onClick={() => {}}>
+        <Button type="button" variant="outline" className={styles.socialButton} onClick={() => handleOAuth("github")}>
           <GitHubIcon />
           <span className={styles.socialText}>Continue with GitHub</span>
         </Button>

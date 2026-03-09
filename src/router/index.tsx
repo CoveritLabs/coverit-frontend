@@ -11,6 +11,7 @@ import {
   LazyForgotPasswordPage,
   LazyLoginPage,
   LazyNotFound,
+  LazyOAuthCallbackPage,
   LazyResetPasswordPage,
   LazySignupPage,
   withSuspense,
@@ -22,6 +23,7 @@ const LoginPage = withSuspense(LazyLoginPage);
 const SignupPage = withSuspense(LazySignupPage);
 const ForgotPasswordPage = withSuspense(LazyForgotPasswordPage);
 const ResetPasswordPage = withSuspense(LazyResetPasswordPage);
+const OAuthCallbackPage = withSuspense(LazyOAuthCallbackPage);
 
 const Dashboard = withSuspense(LazyDashboard);
 const NotFound = withSuspense(LazyNotFound);
@@ -51,6 +53,11 @@ const router = createBrowserRouter([
       { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPasswordPage /> },
       { path: ROUTES.RESET_PASSWORD, element: <ResetPasswordPage /> },
     ],
+  },
+  {
+    path: ROUTES.OAUTH_CALLBACK,
+    element: <OAuthCallbackPage />,
+    errorElement: <RouterErrorFallback />,
   },
   {
     path: ROUTES.NOT_FOUND,

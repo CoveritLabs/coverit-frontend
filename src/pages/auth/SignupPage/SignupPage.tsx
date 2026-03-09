@@ -14,6 +14,7 @@ import { Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react";
 import { GoogleIcon, GitHubIcon } from "@components/icons";
 import { ROUTES } from "@/config/routes";
 import { useAuthStore } from "@store/authStore";
+import { authService } from "@services/auth/authService";
 import type { AxiosError } from "axios";
 import type { ErrorResponse } from "@coveritlabs/contracts";
 
@@ -28,6 +29,10 @@ const SignupPage = () => {
   const [error, setError] = useState("");
 
   const reqs = [{ label: "At least 8 characters", ok: password.length >= 8 }];
+
+  const handleOAuth = (provider: "google" | "github") => {
+    window.location.href = authService.getOAuthUrl(provider);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,11 +142,11 @@ const SignupPage = () => {
 
       {/* Social buttons */}
       <div className={styles.socialButtons}>
-        <Button variant="outline" className={styles.socialButton} onClick={() => {}}>
+        <Button type="button" variant="outline" className={styles.socialButton} onClick={() => handleOAuth("google")}>
           <GoogleIcon />
           <span className={styles.socialText}>Continue with Google</span>
         </Button>
-        <Button variant="outline" className={styles.socialButton} onClick={() => {}}>
+        <Button type="button" variant="outline" className={styles.socialButton} onClick={() => handleOAuth("github")}>
           <GitHubIcon />
           <span className={styles.socialText}>Continue with GitHub</span>
         </Button>

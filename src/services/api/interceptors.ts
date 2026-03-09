@@ -26,7 +26,7 @@ export function attachAuthInterceptors(client: AxiosInstance): void {
             const status = error.response?.status
             const url = error.config?.url ?? ''
 
-            const isPublicAuthEndpoint = url.includes('auth/login') || url.includes('auth/signup')
+            const isPublicAuthEndpoint = url.includes('auth/login') || url.includes('auth/signup') || url.includes('auth/oauth')
             if (status === 401 && !url.includes('auth/refresh') && !isPublicAuthEndpoint) {
                 const refreshToken = tokenService.getRefreshToken()
 

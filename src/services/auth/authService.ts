@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { apiClient } from '@services/api/client'
+import { env } from '@config/env'
 import { tokenService } from '@services/auth/tokenService'
 import type {
     LoginRequest,
@@ -58,5 +59,9 @@ export const authService = {
     async resetPassword(data: Payload<ResetPasswordRequest>): Promise<MessageResponse> {
         const res = await apiClient.post<MessageResponse>('auth/reset-password', data)
         return res.data
+    },
+
+    getOAuthUrl(provider: 'google' | 'github'): string {
+        return `${env.apiUrl}auth/oauth/${provider}`
     },
 }
