@@ -5,8 +5,23 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { ROUTES } from "@config/routes";
 import { AppLayout } from "@layouts/AppLayout/AppLayout";
-import { LazyDashboard, LazyNotFound, withSuspense } from "./LazyRouter";
+import { AuthLayout } from "@layouts/AuthLayout/AuthLayout";
+import {
+  LazyDashboard,
+  LazyForgotPasswordPage,
+  LazyLoginPage,
+  LazyNotFound,
+  LazyResetPasswordPage,
+  LazySignupPage,
+  withSuspense,
+} from "./LazyRouter";
 import { RouterErrorFallback } from "@components/feedback/ErrorBoundary/ErrorFallback";
+import { PrivateRoute } from "./guards/PrivateRoute";
+
+const LoginPage = withSuspense(LazyLoginPage);
+const SignupPage = withSuspense(LazySignupPage);
+const ForgotPasswordPage = withSuspense(LazyForgotPasswordPage);
+const ResetPasswordPage = withSuspense(LazyResetPasswordPage);
 
 const Dashboard = withSuspense(LazyDashboard);
 const NotFound = withSuspense(LazyNotFound);
@@ -14,11 +29,27 @@ const NotFound = withSuspense(LazyNotFound);
 /** Main application router */
 const router = createBrowserRouter([
   {
-    element: <AppLayout />,
+    element: <PrivateRoute />,
     errorElement: <RouterErrorFallback />,
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: ROUTES.DASHBOARD, element: <Dashboard /> },
+      {
+        element: <AppLayout />,
+        errorElement: <RouterErrorFallback />,
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: ROUTES.DASHBOARD, element: <Dashboard /> },
+        ],
+      },
+    ],
+  },
+  {
+    element: <AuthLayout />,
+    errorElement: <RouterErrorFallback />,
+    children: [
+      { path: ROUTES.REGISTER, element: <SignupPage /> },
+      { path: ROUTES.LOGIN, element: <LoginPage /> },
+      { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPasswordPage /> },
+      { path: ROUTES.RESET_PASSWORD, element: <ResetPasswordPage /> },
     ],
   },
   {
