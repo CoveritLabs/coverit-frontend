@@ -9,7 +9,7 @@ import { PasswordStrength } from "@components/forms";
 import { ErrorBanner } from "@components/feedback/ErrorBanner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./ResetPasswordPage.module.scss";
-import { cn } from "@/utils";
+import { cn } from "@utils/cn";
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, CheckCircle2, Loader2 } from "lucide-react";
 import { ROUTES } from "@/config/routes";
 import { motion, AnimatePresence } from "motion/react";
