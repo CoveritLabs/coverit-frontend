@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
 // Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
@@ -39,11 +44,13 @@
   --input-background: #ffffff;
   --switch-background: #d4e6ea;
   --ring: #4fc3c6;
+  --ring-rgb: 79, 195, 198;
 
   /* Status */
   --success: #35b38a;
   --warning: #f4a261;
   --destructive: #e76f51;
+  --destructive-rgb: 231, 111, 81;
   --destructive-foreground: #ffffff;
 
   /* Charts */
