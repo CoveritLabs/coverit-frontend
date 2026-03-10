@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "check:license": "node scripts/add-license-header.mjs",
     "commit": "cz",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docker": "sh docker.sh"
   },
   "config": {
     "commitizen": {
@@ -18,10 +19,12 @@
     }
   },
   "dependencies": {
+    "@coveritlabs/contracts": "^1.1.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.6",
     "clsx": "^2.1.1",
     "lucide-react": "^0.576.0",
+    "motion": "^12.35.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.71.2",
@@ -33,6 +36,7 @@
     "@commitlint/cli": "^20.4.3",
     "@commitlint/config-conventional": "^20.4.3",
     "@commitlint/cz-commitlint": "^20.4.3",
+    "@coveritlabs/git-hooks": "github:CoveritLabs/.github",
     "@eslint/js": "^9.21.0",
     "@faker-js/faker": "^10.3.0",
     "@tanstack/react-query-devtools": "^5.91.3",
@@ -52,7 +56,6 @@
     "sass": "^1.97.3",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "^6.4.1",
-    "@coveritlabs/git-hooks": "github:CoveritLabs/.github"
+    "vite": "^6.4.1"
   }
 }

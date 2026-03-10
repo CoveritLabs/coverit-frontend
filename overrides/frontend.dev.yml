@@ -1,0 +1,33 @@
+# Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+# Proprietary and confidential. Unauthorized use is strictly prohibited.
+# See LICENSE file in the project root for full license information.
+
+# Modular override for frontend development with hot-reload
+
+services:
+  frontend:
+    image: coverit-frontend-dev-local
+    build:
+      context: ${FRONTEND_DIR}
+      dockerfile: Dockerfile.dev
+      secrets:
+        - npm_token
+    ports:
+      - "5173:5173"
+    volumes:
+      - ${FRONTEND_DIR}/src:/app/src
+      - ${FRONTEND_DIR}/public:/app/public
+      - ${FRONTEND_DIR}/index.html:/app/index.html
+      - ${FRONTEND_DIR}/vite.config.ts:/app/vite.config.ts
+      - ${FRONTEND_DIR}/tsconfig.json:/app/tsconfig.json
+      - ${FRONTEND_DIR}/tsconfig.app.json:/app/tsconfig.app.json
+      - ${FRONTEND_DIR}/tsconfig.node.json:/app/tsconfig.node.json
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000/api/v1
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=100
+
+secrets:
+  npm_token:
+    environment: GITHUB_TOKEN

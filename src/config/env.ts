@@ -4,7 +4,7 @@
 
 /** Centralized access to environment variables. */
 export const env = {
-    apiUrl: import.meta.env.VITE_API_URL as string,
+    apiUrl: (import.meta.env.VITE_API_URL as string)?.replace(/\/?$/, '/'),
     appEnv: (import.meta.env.VITE_APP_ENV ?? 'development') as 'development' | 'staging' | 'production',
     isProd: import.meta.env.VITE_APP_ENV === 'production',
     isDev: import.meta.env.VITE_APP_ENV === 'development',

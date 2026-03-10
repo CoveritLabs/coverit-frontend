@@ -3,3 +3,4 @@
 // See LICENSE file in the project root for full license information.
 
 export { useUIStore } from './uiStore'
+export { useAuthStore } from './authStore'
