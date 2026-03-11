@@ -11,6 +11,9 @@ services:
     container_name: coverit-frontend
     ports:
       - "80:80"
+    environment:
+      - VITE_APP_ENV=${VITE_APP_ENV:-development}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3000/api/v1}
     restart: unless-stopped
     depends_on:
       - api
