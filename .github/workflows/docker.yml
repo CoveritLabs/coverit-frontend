@@ -29,4 +29,7 @@ jobs:
     uses: CoveritLabs/.github/.github/workflows/docker-build.yml@main
     with:
       image-name: coveritlabs/coverit-frontend
+      build-args: |
+        VITE_API_URL=${{ vars.VITE_API_URL }}
+        VITE_APP_ENV=${{ vars.VITE_APP_ENV }}
     secrets: inherit
