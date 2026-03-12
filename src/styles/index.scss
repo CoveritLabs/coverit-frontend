@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
 // Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
@@ -39,4 +44,11 @@ body {
 *::before,
 *::after {
   border-color: var(--border);
+}
+
+input[type="password"]::-webkit-password-toggle-button {
+  display: none;
+}
+input[type="password"]::-ms-reveal {
+  display: none;
 }
