@@ -9,6 +9,8 @@ import { AppRouter } from "@/router";
 import { ErrorBoundary } from "@components/feedback/ErrorBoundary/ErrorBoundary";
 import { env } from "@config/env";
 
+console.log(env)
+
 export default function App() {
   return (
     <ErrorBoundary>
