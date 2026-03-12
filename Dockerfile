@@ -10,11 +10,6 @@ RUN --mount=type=secret,id=npm_token \
   && npm ci --ignore-scripts \
   && rm -f .npmrc
 
-ARG VITE_API_URL
-ARG VITE_APP_ENV
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_APP_ENV=$VITE_APP_ENV
-
 # Copy source and build
 COPY . .
 RUN npm run build

@@ -23,8 +23,6 @@ services:
       - ${FRONTEND_DIR}/tsconfig.app.json:/app/tsconfig.app.json
       - ${FRONTEND_DIR}/tsconfig.node.json:/app/tsconfig.node.json
     environment:
-      - NODE_ENV=development
-      - VITE_API_URL=http://localhost:3000/api/v1
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=100
 
