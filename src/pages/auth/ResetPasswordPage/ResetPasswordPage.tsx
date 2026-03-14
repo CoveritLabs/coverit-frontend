@@ -58,7 +58,7 @@ const ResetPasswordPage = () => {
       setDone(true);
     } catch (err) {
       const axiosErr = err as AxiosError<ErrorResponse>;
-      setError(axiosErr.response?.data?.message ?? "Could not reset password. The code may have expired.");
+      setError(axiosErr.response?.data?.message ?? "Could not reset password. The link may have expired.");
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,6 @@ const ResetPasswordPage = () => {
             className={styles.formContent}
           >
             {error && <ErrorBanner message={error} />}
-
 
             <Field label="New password">
               <div className={styles.passwordInputWrapper}>
