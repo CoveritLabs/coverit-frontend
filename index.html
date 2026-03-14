@@ -7,6 +7,17 @@
     <title>CoverIt</title>
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          var stored = JSON.parse(localStorage.getItem('coverit-ui') || '{}');
+          var theme = (stored.state && stored.state.theme) || 'system';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

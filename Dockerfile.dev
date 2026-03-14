@@ -1,0 +1,18 @@
+# Dev stage
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN --mount=type=secret,id=npm_token \
+  printf "@coveritlabs:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=$(cat /run/secrets/npm_token)\n" > .npmrc \
+  && npm ci --ignore-scripts \
+  && rm -f .npmrc
+
+# Source code will be mounted at runtime.
+# Expose Vite default port
+EXPOSE 5173
+
+# Run vite with host to expose it outside the container
+CMD ["npx", "vite", "--host", "0.0.0.0"]

@@ -1,0 +1,99 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@styles/tokens" as *;
+@use "../auth-shared" as shared;
+
+.form {
+  @include shared.form;
+}
+
+.brandSection {
+  @include shared.brand-section;
+}
+
+.logo {
+  @include shared.logo;
+}
+
+.title {
+  @include shared.title;
+}
+
+.input {
+  @include shared.input;
+}
+
+.passwordSection {
+  @include shared.password-section;
+}
+
+.passwordHeader {
+  @include shared.password-header;
+}
+
+.passwordLabel {
+  @include shared.password-label;
+}
+
+.forgotPasswordButton {
+  @include shared.link-button;
+  font-size: $font-size-xs;
+}
+
+.passwordInputWrapper {
+  @include shared.password-input-wrapper;
+}
+
+.passwordInput {
+  @include shared.password-input;
+}
+
+.passwordToggle {
+  @include shared.password-toggle;
+}
+
+.passwordToggleIcon {
+  @include shared.password-toggle-icon;
+}
+
+.socialButtons {
+  @include shared.social-buttons;
+}
+
+.socialButton {
+  @include shared.social-button;
+}
+
+.socialText {
+  @include shared.social-text;
+}
+
+.footerSection {
+  @include shared.footer-section;
+}
+
+.footerText {
+  @include shared.footer-text;
+}
+
+.createAccountButton {
+  @include shared.link-button;
+  font-weight: $font-weight-medium;
+}
+
+.submitButton {
+  @include shared.submit-button;
+}
+
+.spinner {
+  @include shared.spinner;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

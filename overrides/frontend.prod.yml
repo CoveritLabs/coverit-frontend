@@ -1,0 +1,14 @@
+# Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+# Proprietary and confidential. Unauthorized use is strictly prohibited.
+# See LICENSE file in the project root for full license information.
+
+# Modular override for testing the production frontend build locally
+
+services:
+  frontend:
+    image: coverit-frontend-test-local
+    build:
+      context: ${FRONTEND_DIR}
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"

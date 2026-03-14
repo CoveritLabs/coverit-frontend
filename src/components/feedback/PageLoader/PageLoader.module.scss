@@ -1,0 +1,29 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+@use '@styles/tokens' as *;
+
+.overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 100dvh;
+}
+
+.spinner {
+    display: block;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: $radius-full;
+    border: 3px solid var(--muted);
+    border-top-color: var(--primary);
+    animation: spin 600ms linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

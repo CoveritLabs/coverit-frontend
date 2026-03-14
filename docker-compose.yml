@@ -1,0 +1,19 @@
+# Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+# Proprietary and confidential. Unauthorized use is strictly prohibited.
+# See LICENSE file in the project root for full license information.
+
+name: coverit
+
+services:
+  frontend:
+    image: ghcr.io/coveritlabs/coverit-frontend:${FRONTEND_TAG:-dev}
+    pull_policy: always
+    container_name: coverit-frontend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_APP_ENV=${VITE_APP_ENV:-development}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3000/api/v1}
+    restart: unless-stopped
+    depends_on:
+      - api
