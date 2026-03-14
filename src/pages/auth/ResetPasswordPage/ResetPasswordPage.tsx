@@ -7,7 +7,7 @@ import logoImage from "@/assets/logo.png";
 import { Input, Button, Field } from "@components/ui";
 import { PasswordStrength } from "@components/forms";
 import { ErrorBanner } from "@components/feedback/ErrorBanner";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import styles from "./ResetPasswordPage.module.scss";
 import { cn } from "@utils/cn";
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, CheckCircle2, Loader2 } from "lucide-react";
@@ -18,8 +18,7 @@ import type { AxiosError } from "axios";
 import type { ErrorResponse } from "@coveritlabs/contracts";
 
 const ResetPasswordPage = () => {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const [reset_code, setResetCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -47,18 +46,19 @@ const ResetPasswordPage = () => {
       setError("Password must be at least 8 characters.");
       return;
     }
-    if (!token) {
-      setError("Reset token is missing. Please use the link from your email.");
+    if (!reset_code) {
+      setError("Reset code is missing. Please use the code from your email.");
       return;
     }
     setError("");
     setLoading(true);
+    const token = reset_code
     try {
       await authService.resetPassword({ token, newPassword: password });
       setDone(true);
     } catch (err) {
       const axiosErr = err as AxiosError<ErrorResponse>;
-      setError(axiosErr.response?.data?.message ?? "Could not reset password. The link may have expired.");
+      setError(axiosErr.response?.data?.message ?? "Could not reset password. The code may have expired.");
     } finally {
       setLoading(false);
     }
@@ -84,6 +84,17 @@ const ResetPasswordPage = () => {
             className={styles.formContent}
           >
             {error && <ErrorBanner message={error} />}
+
+            <Field label="Reset code">
+              <Input
+                type="text"
+                value={reset_code}
+                onChange={(e) => setResetCode(e.target.value)}
+                placeholder="Enter the code from your email"
+                className={styles.input}
+                autoComplete="off"
+              />
+            </Field>
 
             <Field label="New password">
               <div className={styles.passwordInputWrapper}>

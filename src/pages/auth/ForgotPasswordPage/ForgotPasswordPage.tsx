@@ -111,8 +111,8 @@ const ForgotPasswordPage = () => {
               </div>
             </div>
 
-            <Button variant="default" className={styles.submitButton} disabled>
-              Email sent
+            <Button variant="default" className={styles.submitButton} onClick={() => navigate(ROUTES.RESET_PASSWORD)}>
+              I have a reset code
             </Button>
 
             <Button variant="link" className={styles.backTosubmitButton} onClick={() => navigate(ROUTES.LOGIN)}>
