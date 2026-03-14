@@ -69,7 +69,7 @@ const ResetPasswordPage = () => {
       <div className={styles.brandSection}>
         <img src={logoImage} alt="cover it" className={styles.logo} />
         <h1 className={styles.title}>Reset your password</h1>
-        <p className={styles.subtitle}>Enter the code and create a new password</p>
+        <p className={styles.subtitle}>Create a new password for your account</p>
       </div>
 
       <AnimatePresence mode="wait">

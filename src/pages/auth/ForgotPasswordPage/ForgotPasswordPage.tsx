@@ -105,15 +105,12 @@ const ForgotPasswordPage = () => {
                 <div>
                   <p className={styles.successTitle}>Check your email</p>
                   <p className={styles.successBody}>
-                    We sent a password reset link to <span className={styles.successEmail}>{email}</span>
+                    We sent a password reset link to <span className={styles.successEmail}>{email}</span> if it exists
+                    in our system.
                   </p>
                 </div>
               </div>
             </div>
-
-            <Button variant="default" className={styles.submitButton} disabled>
-              Email sent
-            </Button>
 
             <Button variant="link" className={styles.backTosubmitButton} onClick={() => navigate(ROUTES.LOGIN)}>
               <ArrowLeft className={styles.icon} />
