@@ -2,7 +2,6 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import React from "react";
 import { toast as sonnerToast } from "sonner";
 import { AlertTriangle, CheckCircle2, X, XCircle } from "lucide-react";
 import { cn } from "@utils/cn";
