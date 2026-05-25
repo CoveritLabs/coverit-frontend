@@ -69,15 +69,15 @@
 }
 
 .destructive {
-  background-color: var(--destructive);
+  background-color: color-mix(in oklab, var(--destructive) 70%, transparent);
   color: var(--destructive-foreground);
 
   &:hover:not(:disabled) {
-    background-color: color-mix(in oklab, var(--destructive) 90%, transparent);
+    background-color: color-mix(in oklab, var(--destructive) 95%, transparent);
   }
 
   &:active:not(:disabled) {
-    background-color: color-mix(in oklab, var(--destructive) 95%, transparent);
+    background-color: var(--destructive);
   }
 
   &:focus-visible {

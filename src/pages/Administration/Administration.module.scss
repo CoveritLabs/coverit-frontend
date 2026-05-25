@@ -1,0 +1,617 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@styles/tokens" as *;
+@use "@styles/mixins" as *;
+
+.container {
+  display: flex;
+  height: 100vh;
+  background: var(--background);
+  overflow: hidden;
+  color: var(--foreground);
+}
+
+.sidebar {
+  width: 24rem;
+  height: 100vh;
+  border-right: 1px solid var(--sidebar-border);
+  background: var(--sidebar);
+  overflow-y: auto;
+  flex-shrink: 0;
+  @include custom-scrollbar;
+}
+
+.sidebarHeader {
+  padding: $space-6;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebarTitleRow {
+  @include flex-between;
+  margin-bottom: $space-1;
+  gap: $space-3;
+}
+
+.sidebarTitle {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.sidebarHeading {
+  margin: 0;
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-base;
+  color: var(--sidebar-foreground);
+}
+
+.sidebarSubtitle {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: var(--muted-foreground);
+}
+
+.projectSection {
+  padding: $space-4;
+}
+
+.projectSectionTitle {
+  margin: 0 0 $space-3 $space-2;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+}
+
+.projectList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.projectItem {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3;
+  border-radius: $radius-md;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  color: var(--sidebar-foreground);
+  transition:
+    background-color $transition-fast,
+    border-color $transition-fast,
+    color $transition-fast;
+}
+
+.projectItem:hover {
+  background: color-mix(in oklab, var(--sidebar-accent) 50%, transparent);
+}
+
+.projectItemActive {
+  background: var(--sidebar-accent);
+  border-color: color-mix(in oklab, var(--sidebar-accent) 40%, transparent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.projectItemActive .projectName,
+.projectItemActive .projectMetaRow,
+.projectItemActive .projectMetaDivider {
+  color: var(--sidebar-accent-foreground);
+}
+
+.projectItemActive .iconTinyMuted {
+  color: var(--sidebar-accent-foreground);
+}
+
+.projectIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.projectInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.projectName {
+  margin: 0;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: inherit;
+  @include truncate;
+}
+
+.projectMetaRow {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  margin-top: $space-1;
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+}
+
+.projectDescription {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted-foreground);
+  @include truncate;
+}
+
+.projectMetaGroup {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.projectMetaDivider {
+  color: var(--muted-foreground);
+}
+
+.projectChevron {
+  color: var(--sidebar-accent-foreground);
+}
+
+.projectMeta {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: var(--muted-foreground);
+  padding-left: $space-2;
+}
+
+.projectError {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: var(--destructive);
+  padding-left: $space-2;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.header {
+  padding: $space-6;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+  margin-bottom: $space-4;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  flex-wrap: wrap;
+}
+
+.headerInfo {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.headerIcon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+}
+
+.headerSubtitle {
+  margin: $space-1 0 0;
+  font-size: $font-size-sm;
+  color: var(--muted-foreground);
+}
+
+.actionIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $space-9;
+  height: $space-9;
+  padding: 0;
+  border-radius: $radius-md;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  transition:
+    background-color $transition-fast,
+    border-color $transition-fast,
+    color $transition-fast;
+
+  &:hover {
+    background-color: color-mix(in oklab, var(--sidebar-accent) 55%, transparent);
+    border-color: color-mix(in oklab, var(--sidebar-border) 70%, transparent);
+    color: var(--sidebar-foreground);
+  }
+
+  &:focus-visible {
+    @include focus-ring(var(--ring));
+  }
+}
+
+.searchWrapper {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: $space-3;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+}
+
+.searchInput {
+  padding-left: calc(#{$space-3} * 2 + 1rem);
+}
+
+.tableSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: $space-6;
+}
+
+.tableCard {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 70%;
+  height: 70%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tableWrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  @include custom-scrollbar;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableHeaderCellCenter {
+  text-align: center;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.memberAvatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.memberInfo {
+  min-width: 0;
+}
+
+.memberName {
+  margin: 0;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--foreground);
+  @include truncate;
+}
+
+.memberEmail {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  margin-top: $space-1;
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-1;
+  padding: $space-1 $space-2;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  border: 1px solid var(--border);
+  text-transform: capitalize;
+}
+
+.roleAdmin {
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--border));
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
+.roleMember {
+  color: var(--secondary);
+  border-color: color-mix(in oklab, var(--secondary) 40%, var(--border));
+  background: color-mix(in oklab, var(--secondary) 14%, transparent);
+}
+
+.roleViewer {
+  color: var(--muted-foreground);
+  border-color: var(--border);
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+}
+
+.roleAvatarAdmin {
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 15%, transparent);
+}
+
+.roleAvatarMember {
+  color: var(--secondary);
+  background: color-mix(in oklab, var(--secondary) 15%, transparent);
+}
+
+.roleAvatarViewer {
+  color: var(--muted-foreground);
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+}
+
+.roleEditRow {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.roleSelect {
+  min-width: 8.5rem;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: $font-size-sm;
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-4;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.paginationInfo {
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.paginationButton {
+  min-width: 2.75rem;
+}
+
+.paginationPage {
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.tableCellCenter {
+  text-align: center;
+}
+
+.mutedText {
+  color: var(--muted-foreground);
+  font-size: $font-size-sm;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-12;
+}
+
+.emptyCard {
+  text-align: center;
+  max-width: 320px;
+}
+
+.emptyIcon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: $radius-full;
+  background: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto $space-3;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-weight: $font-weight-medium;
+  color: var(--foreground);
+}
+
+.emptyText {
+  margin: $space-2 0 0;
+  font-size: $font-size-sm;
+  color: var(--muted-foreground);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-modal;
+}
+
+.modal {
+  width: 100%;
+  max-width: 28rem;
+  padding: $space-6;
+  border-radius: $radius-lg;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.2);
+}
+
+.modalHeader {
+  @include flex-between;
+  margin-bottom: $space-4;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-2;
+}
+
+.iconPrimary {
+  color: var(--sidebar-primary);
+}
+
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}
+
+.iconMedium {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.iconLarge {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.iconMediumMuted {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.iconTinyMuted {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.iconButton {
+  width: $space-9;
+  height: $space-9;
+  padding: 0;
+  border-radius: $radius-md;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  transition:
+    background-color $transition-fast,
+    border-color $transition-fast,
+    color $transition-fast;
+
+  &[disabled] {
+    cursor: not-allowed;
+    opacity: 0.6;
+    color: var(--muted-foreground);
+  }
+
+  &:hover {
+    background-color: color-mix(in oklab, var(--muted) 55%, transparent);
+    border-color: color-mix(in oklab, var(--border) 70%, transparent);
+    color: var(--foreground);
+  }
+
+  &:focus-visible {
+    @include focus-ring(var(--ring));
+  }
+}
+
+.dangerButton {
+  color: var(--destructive);
+
+  &:hover {
+    color: var(--destructive) !important;
+    background-color: color-mix(in oklab, var(--destructive) 12%, transparent) !important;
+    border-color: color-mix(in oklab, var(--destructive) 35%, transparent) !important;
+  }
+}
