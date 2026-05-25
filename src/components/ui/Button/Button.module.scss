@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
 // Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
@@ -76,16 +81,14 @@
   }
 
   &:focus-visible {
-    box-shadow: 0 0 0 3px
-      color-mix(in oklab, var(--destructive) 20%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
   }
 
   :global(.dark) & {
     background-color: color-mix(in oklab, var(--destructive) 60%, transparent);
 
     &:focus-visible {
-      box-shadow: 0 0 0 3px
-        color-mix(in oklab, var(--destructive) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 40%, transparent);
     }
   }
 }
@@ -139,13 +142,13 @@
   color: inherit;
 
   &:hover:not(:disabled) {
-    color: var(--accent-foreground);
-    background-color: color-mix(in oklab, var(--accent) 90%, transparent);
+    color: var(--muted-foreground);
+    background-color: color-mix(in oklab, var(--muted) 90%, transparent);
   }
 
   &:active:not(:disabled) {
-    color: var(--accent-foreground);
-    background-color: var(--accent);
+    color: var(--muted-foreground);
+    background-color: var(--muted);
   }
 
   &:focus-visible {
@@ -154,11 +157,11 @@
 
   :global(.dark) & {
     &:hover:not(:disabled) {
-      background-color: color-mix(in oklab, var(--accent) 50%, transparent);
+      background-color: color-mix(in oklab, var(--muted) 50%, transparent);
     }
 
     &:active:not(:disabled) {
-      background-color: color-mix(in oklab, var(--accent) 60%, transparent);
+      background-color: color-mix(in oklab, var(--muted) 60%, transparent);
     }
   }
 }

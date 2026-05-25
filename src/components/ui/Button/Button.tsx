@@ -5,13 +5,7 @@
 import React, { forwardRef } from "react";
 import styles from "./Button.module.scss";
 
-type Variant =
-  | "primary"
-  | "secondary"
-  | "outline"
-  | "ghost"
-  | "link"
-  | "default";
+type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive" | "link" | "default";
 type Size = "sm" | "md" | "lg" | "icon";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -20,16 +14,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { children, className, variant = "default", size = "md", ...props },
-    ref,
-  ) => {
-    const classes = [
-      styles.button,
-      styles[variant] || styles.default,
-      styles[size] || styles.md,
-      className,
-    ]
+  ({ children, className, variant = "default", size = "md", ...props }, ref) => {
+    const classes = [styles.button, styles[variant] || styles.default, styles[size] || styles.md, className]
       .filter(Boolean)
       .join(" ");
 
