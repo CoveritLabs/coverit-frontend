@@ -4,7 +4,7 @@
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import type { ProjectRole } from "@constants/projectRoles";
+import type { ProjectRole } from "@/types/project";
 import type { Theme } from "@app-types/common";
 
 interface SelectedProject {

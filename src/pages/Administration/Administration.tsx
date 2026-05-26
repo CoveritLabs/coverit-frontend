@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Button, Input } from "@components/ui";
 import { cn } from "@utils/cn";
-import { getProjectUserRole } from "@utils/projects";
 import { useProjects } from "@hooks/projects/useProjects";
 import {
   useAddProjectMembers,
@@ -28,8 +27,10 @@ import {
   useUpdateProject,
   useUpdateProjectMember,
 } from "@hooks/projects/useProjectMutations";
-import { DEFAULT_PROJECT_ROLE, normalizeProjectRole, type ProjectRole } from "@constants/projectRoles";
-import { PROJECT_GRADIENTS } from "@constants/projectGradients";
+import type { ProjectRole } from "@/types/project";
+import { DEFAULT_PROJECT_ROLE } from "@constants/project";
+import { getProjectUserRole, normalizeProjectRole } from "@utils/project";
+import { GRADIENTS } from "@constants/gradients";
 import styles from "./Administration.module.scss";
 import { AdministrationMembersTable } from "./AdministrationMembersTable";
 import {
@@ -76,7 +77,7 @@ const Administration = () => {
     () =>
       projects.map((project, index) => ({
         project,
-        gradient: PROJECT_GRADIENTS[index % PROJECT_GRADIENTS.length],
+        gradient: GRADIENTS[index % GRADIENTS.length],
         memberCount: project.members?.length ?? 0,
         description: project.description?.trim() || "No description",
       })),
@@ -253,7 +254,7 @@ const Administration = () => {
                 <div className={styles.headerInfo}>
                   <div
                     className={styles.headerIcon}
-                    style={{ background: selectedProjectCard?.gradient ?? PROJECT_GRADIENTS[0] }}
+                    style={{ background: selectedProjectCard?.gradient ?? GRADIENTS[0] }}
                   >
                     <FolderKanban className={styles.iconMedium} />
                   </div>

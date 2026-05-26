@@ -7,7 +7,9 @@ import { Mail, Edit2, Trash2, X } from "lucide-react";
 import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@components/ui";
 import { cn } from "@utils/cn";
 import { getInitials } from "@utils/text";
-import { formatProjectRole, normalizeProjectRole, PROJECT_ROLES, type ProjectRole } from "@constants/projectRoles";
+import type { ProjectRole } from "@/types/project";
+import { PROJECT_ROLES } from "@constants/project";
+import { formatProjectRole, normalizeProjectRole } from "@utils/project";
 import type { Member } from "@coveritlabs/contracts";
 import styles from "./Administration.module.scss";
 

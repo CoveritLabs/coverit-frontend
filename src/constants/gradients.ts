@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-export const PROJECT_GRADIENTS = [
+export const GRADIENTS = [
   "linear-gradient(135deg, #4fc3c6 0%, #2f6f8e 100%)",
   "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
   "linear-gradient(135deg, #22c55e 0%, #10b981 100%)",

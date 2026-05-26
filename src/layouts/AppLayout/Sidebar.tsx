@@ -9,7 +9,7 @@ import { useProjects } from "@hooks/projects/useProjects";
 import { ROUTES } from "@config/routes";
 import styles from "./Sidebar.module.scss";
 import { getInitials } from "@utils/text";
-import { getProjectUserRole } from "@utils/projects";
+import { getProjectUserRole } from "@utils/project";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore, useUIStore } from "@/store";
 import { Select } from "@components/ui";
