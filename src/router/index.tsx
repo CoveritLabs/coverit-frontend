@@ -8,6 +8,7 @@ import { AppLayout } from "@layouts/AppLayout/AppLayout";
 import { AuthLayout } from "@layouts/AuthLayout/AuthLayout";
 import {
   LazyDashboard,
+  LazyAdministration,
   LazyForgotPasswordPage,
   LazyLoginPage,
   LazyNotFound,
@@ -26,6 +27,7 @@ const ResetPasswordPage = withSuspense(LazyResetPasswordPage);
 const OAuthCallbackPage = withSuspense(LazyOAuthCallbackPage);
 
 const Dashboard = withSuspense(LazyDashboard);
+const Administration = withSuspense(LazyAdministration);
 const NotFound = withSuspense(LazyNotFound);
 
 /** Main application router */
@@ -40,6 +42,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Dashboard /> },
           { path: ROUTES.DASHBOARD, element: <Dashboard /> },
+          { path: ROUTES.ADMINISTRATE, element: <Administration /> },
         ],
       },
     ],

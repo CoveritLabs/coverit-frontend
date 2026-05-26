@@ -30,6 +30,45 @@
   border-bottom: 1px solid var(--sidebar-border);
 }
 
+.projectSelect {
+  padding: $space-3 $space-4;
+  border-bottom: 1px solid var(--sidebar-border);
+  color: var(--sidebar-foreground);
+  font-size: $font-size-sm;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: $space-2;
+}
+
+.createProject {
+  @include flex-center;
+  justify-content: center;
+  gap: $space-2;
+  width: 100%;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  border: 1px dashed var(--border);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--muted-foreground);
+  background: transparent;
+  transition:
+    border-color $transition-fast,
+    color $transition-fast,
+    background-color $transition-fast;
+
+  &:hover {
+    border-color: var(--ring);
+    color: var(--sidebar-foreground);
+    background-color: color-mix(in oklab, var(--sidebar-accent) 40%, transparent);
+  }
+
+  &:focus-visible {
+    @include focus-ring(var(--ring));
+  }
+}
+
 .brandMark {
   @include flex-center;
   flex-shrink: 0;
