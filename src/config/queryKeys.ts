@@ -9,6 +9,14 @@ const projectKeys = {
   detail: (projectId: string) => [...projectKeys.all, "detail", projectId] as const,
 };
 
+const targetApplicationKeys = {
+  all: ["target-applications"] as const,
+  lists: (projectId: string) => [...targetApplicationKeys.all, "list", projectId] as const,
+  detail: (projectId: string, applicationId: string) =>
+    [...targetApplicationKeys.all, "detail", projectId, applicationId] as const,
+};
+
 export const queryKeys = {
   projects: projectKeys,
+  targetApplications: targetApplicationKeys,
 };
