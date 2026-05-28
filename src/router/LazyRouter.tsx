@@ -13,6 +13,7 @@ export const LazyResetPasswordPage = lazy(() => import("@pages/auth/ResetPasswor
 export const LazyOAuthCallbackPage = lazy(() => import("@pages/auth/OAuthCallbackPage/OAuthCallbackPage"));
 
 export const LazyDashboard = lazy(() => import("@pages/Dashboard/Dashboard"));
+export const LazyApplications = lazy(() => import("@pages/Applications/Applications"));
 export const LazyAdministration = lazy(() => import("@pages/Administration/Administration"));
 export const LazyNotFound = lazy(() => import("@pages/NotFound/NotFound"));
 

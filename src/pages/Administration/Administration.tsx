@@ -40,7 +40,7 @@ import {
   AddMemberModal,
   LeaveProjectModal,
 } from "./AdministrationModals";
-import { useAuthStore } from "@/store";
+import { useAuthStore, useUIStore } from "@/store";
 
 type ModalState =
   | { type: "none" }
@@ -66,6 +66,8 @@ const Administration = () => {
   const removeMembers = useRemoveProjectMembers();
   const user = useAuthStore((state) => state.user);
 
+  const storeSelectedProject = useUIStore((s) => s.selectedProject);
+  const setUserRole = useUIStore((s) => s.setUserRole);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,7 +133,15 @@ const Administration = () => {
   };
 
   const handleAddProject = (name: string, description: string) => {
-    createProject.mutate({ name, ...(description && { description }) }, { onSuccess: closeModal });
+    createProject.mutate(
+      { name, ...(description && { description }) },
+      {
+        onSuccess: (data) => {
+          closeModal();
+          setSelectedProjectId(data.id);
+        },
+      },
+    );
   };
 
   const handleUpdateProject = (name: string, description: string) => {
@@ -165,7 +175,14 @@ const Administration = () => {
     if (isOnlyAdmin && memberId === user?.id) return;
     updateMember.mutate(
       { projectId: selectedProjectId, data: { id: memberId, role: newRole } },
-      { onSuccess: () => setEditingMemberId(null) },
+      {
+        onSuccess: () => {
+          setEditingMemberId(null);
+          if (memberId === user?.id && storeSelectedProject?.id === selectedProjectId) {
+            setUserRole(newRole);
+          }
+        },
+      },
     );
   };
 

@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Sun, Moon, User, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, AppWindow, Sun, Moon, User, ShieldCheck, LogOut } from "lucide-react";
 import { useTheme } from "@hooks/useTheme";
 import { useProjects } from "@hooks/projects/useProjects";
 import { ROUTES } from "@config/routes";
@@ -15,7 +15,10 @@ import { useAuthStore, useUIStore } from "@/store";
 import { Select } from "@components/ui";
 import { AnimatePresence, motion } from "framer-motion";
 
-const NAV_ITEMS = [{ label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard }];
+const NAV_ITEMS = [
+  { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard },
+  { label: "Applications", to: ROUTES.APPLICATIONS, icon: AppWindow },
+];
 
 const PROFILE_ITEMS = [
   { label: "Profile", to: ROUTES.PROFILE, icon: User, description: "View and edit your profile" },

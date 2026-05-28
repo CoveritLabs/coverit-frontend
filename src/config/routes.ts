@@ -4,19 +4,20 @@
 
 /** Route path constants — use these in Link, navigate(), and router config. */
 export const ROUTES = {
-    HOME: '/',
-    LOGIN: '/login',
-    REGISTER: '/register',
-    FORGOT_PASSWORD: '/forgot-password',
-    RESET_PASSWORD: '/reset-password',
-    OAUTH_CALLBACK: '/oauth/callback',
+  HOME: "/",
+  LOGIN: "/login",
+  REGISTER: "/register",
+  FORGOT_PASSWORD: "/forgot-password",
+  RESET_PASSWORD: "/reset-password",
+  OAUTH_CALLBACK: "/oauth/callback",
 
-    PROFILE : '/profile',
-    ADMINISTRATE: '/administrate',
+  PROFILE: "/profile",
+  ADMINISTRATE: "/administrate",
 
-    DASHBOARD: '/dashboard',
+  DASHBOARD: "/dashboard",
+  APPLICATIONS: "/applications",
 
-    NOT_FOUND: '*',
-} as const
+  NOT_FOUND: "*",
+} as const;
 
-export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES]
+export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
