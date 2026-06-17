@@ -3,20 +3,8 @@
 // See LICENSE file in the project root for full license information.
 
 import { useEffect, useMemo, useReducer, useState } from "react";
-import {
-  Package,
-  Plus,
-  Settings,
-  ChevronRight,
-  UserPlus,
-  FolderKanban,
-  Search,
-  Edit2,
-  Trash2,
-  LogOut,
-  Globe,
-} from "lucide-react";
-import { Button, Input } from "@components/ui";
+import { Package, Plus, ChevronRight, FolderKanban, Edit2, Trash2, Globe, KeyRound, X } from "lucide-react";
+import { Button } from "@components/ui";
 import { cn } from "@utils/cn";
 import { useTargetApplications } from "@hooks/targetApplication/useTargetApplication";
 import {
@@ -25,6 +13,7 @@ import {
   useDeleteTargetApplication,
   useCreateTargetApplicationVersion,
   useDeleteTargetApplicationVersion,
+  useRotateTargetApplicationApiKey,
 } from "@hooks/targetApplication/useTargetApplicationMutations";
 import { getProjectUserRole } from "@utils/project";
 import { GRADIENTS } from "@constants/gradients";
@@ -34,8 +23,10 @@ import { ProjectResponse } from "@coveritlabs/contracts";
 import {
   AddApplicationModal,
   AddVersionModal,
+  DeleteVersionModal,
   DeleteApplicationModal,
   EditApplicationModal,
+  RotateApiKeyModal,
 } from "./ApplicationsModals";
 
 type ModalState =
@@ -44,7 +35,8 @@ type ModalState =
   | { type: "editApplication" }
   | { type: "deleteApplication" }
   | { type: "addVersion" }
-  | { type: "editVersion" };
+  | { type: "deleteVersion" }
+  | { type: "rotateApiKey" };
 
 type ModalAction = { type: ModalState["type"] };
 
@@ -59,11 +51,12 @@ const Applications = () => {
   const deleteTargetApplication = useDeleteTargetApplication();
   const createTargetApplicationVersion = useCreateTargetApplicationVersion();
   const deleteTargetApplicationVersion = useDeleteTargetApplicationVersion();
+  const rotateTargetApplicationApiKey = useRotateTargetApplicationApiKey();
   const user = useAuthStore((state) => state.user);
 
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [rotatedApiKey, setRotatedApiKey] = useState<string | null>(null);
   const [modal, dispatchModal] = useReducer(modalReducer, { type: "none" });
 
   const closeModal = () => dispatchModal({ type: "none" });
@@ -85,9 +78,10 @@ const Applications = () => {
   );
   const selectedApplication = selectedApplicationCard?.application ?? null;
   const currentVersions = selectedApplication?.versions ?? [];
+  const selectedVersion = currentVersions.find((version) => version.id === selectedVersionId) ?? null;
   const userRole = useMemo(
     () => getProjectUserRole(selectedProject as ProjectResponse | null, user?.id),
-    [selectedApplication, user?.id],
+    [selectedProject, user?.id],
   );
   const isAdmin = userRole === "ADMIN";
 
@@ -100,6 +94,17 @@ const Applications = () => {
       setSelectedApplicationId(applicationCards[0].application.id);
     }
   }, [applicationCards, selectedApplicationId]);
+
+  useEffect(() => {
+    if (!currentVersions.length) {
+      setSelectedVersionId(null);
+      return;
+    }
+
+    if (!selectedVersionId || !currentVersions.some((version) => version.id === selectedVersionId)) {
+      setSelectedVersionId(currentVersions[0].id);
+    }
+  }, [currentVersions, selectedVersionId]);
 
   const isApplicationNameDuplicate = (name: string, ignoreId?: string) => {
     const normalized = name.trim().toLowerCase();
@@ -118,8 +123,8 @@ const Applications = () => {
       { projectId: selectedProject!.id, data: { name, baseUrl } },
       {
         onSuccess: (data) => {
-          closeModal();
           setSelectedApplicationId(data.id);
+          setRotatedApiKey(data.apiKey || null);
         },
       },
     );
@@ -168,6 +173,7 @@ const Applications = () => {
 
   const handleDeleteVersion = (versionId: string) => {
     if (!selectedApplication) return;
+    const remainingVersions = currentVersions.filter((version) => version.id !== versionId);
     deleteTargetApplicationVersion.mutate(
       {
         projectId: selectedProject!.id,
@@ -177,12 +183,23 @@ const Applications = () => {
       {
         onSuccess: () => {
           closeModal();
+          setSelectedVersionId(remainingVersions[0]?.id ?? null);
         },
       },
     );
   };
 
-  console.log({ modal, selectedApplication, isAdmin });
+  const handleRotateApiKey = () => {
+    if (!selectedApplication) return;
+    rotateTargetApplicationApiKey.mutate(
+      { projectId: selectedProject!.id, applicationId: selectedApplication.id },
+      {
+        onSuccess: (data) => {
+          setRotatedApiKey(data.apiKey);
+        },
+      },
+    );
+  };
 
   return (
     <div className={styles.container}>
@@ -269,6 +286,16 @@ const Applications = () => {
                       size="sm"
                       variant="ghost"
                       className={styles.actionIconButton}
+                      onClick={() => dispatchModal({ type: "rotateApiKey" })}
+                      aria-label="Rotate API key"
+                      title="Rotate API key"
+                    >
+                      <KeyRound className={styles.iconLarge} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={styles.actionIconButton}
                       onClick={() => dispatchModal({ type: "editApplication" })}
                       aria-label="Edit application"
                       title="Edit application"
@@ -308,18 +335,42 @@ const Applications = () => {
 
                     <div className={styles.versionList}>
                       {currentVersions.map((version) => {
-                        const isSelected = false;
+                        const isSelected = selectedVersionId === version.id;
 
                         return (
                           <button
                             key={version.id}
                             onClick={() => {
-                              /* set version */
+                              setSelectedVersionId(version.id);
                             }}
                             className={cn(styles.versionChip, isSelected && styles.versionChipActive)}
                           >
-                            <Package className={styles.versionChipIcon} />
-                            <span>{version.version}</span>
+                            <span className={styles.versionChipMain}>
+                              <Package className={styles.versionChipIcon} />
+                              <span>{version.version}</span>
+                            </span>
+                            {isSelected && isAdmin && (
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                className={styles.versionChipDelete}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  dispatchModal({ type: "deleteVersion" });
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    dispatchModal({ type: "deleteVersion" });
+                                  }
+                                }}
+                                aria-label={`Delete version ${version.version}`}
+                                title="Delete version"
+                              >
+                                <X className={styles.versionChipDeleteIcon} />
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -327,7 +378,7 @@ const Applications = () => {
                       <button
                         className={styles.versionAddButton}
                         onClick={() => {
-                          /* add version modal */
+                          dispatchModal({ type: "addVersion" });
                         }}
                       >
                         <Plus className={styles.versionChipIcon} />
@@ -353,7 +404,7 @@ const Applications = () => {
                   <Button
                     size="sm"
                     onClick={() => {
-                      /* add version modal */
+                      dispatchModal({ type: "addVersion" });
                     }}
                   >
                     <Plus className={styles.iconSmall} />
@@ -383,8 +434,12 @@ const Applications = () => {
       {modal.type === "addApplication" && isAdmin && (
         <AddApplicationModal
           isNameDuplicate={isApplicationNameDuplicate}
+          apiKey={rotatedApiKey}
           onConfirm={handleAddApplication}
-          onClose={closeModal}
+          onClose={() => {
+            setRotatedApiKey(null);
+            closeModal();
+          }}
         />
       )}
 
@@ -408,6 +463,27 @@ const Applications = () => {
 
       {modal.type === "addVersion" && selectedApplication && isAdmin && (
         <AddVersionModal isNameDuplicate={isVersionNameDuplicate} onConfirm={handleAddVersion} onClose={closeModal} />
+      )}
+
+      {modal.type === "deleteVersion" && selectedApplication && selectedVersion && isAdmin && (
+        <DeleteVersionModal
+          versionName={selectedVersion.version}
+          onConfirm={() => handleDeleteVersion(selectedVersion.id)}
+          onClose={closeModal}
+        />
+      )}
+
+      {modal.type === "rotateApiKey" && selectedApplication && isAdmin && (
+        <RotateApiKeyModal
+          applicationName={selectedApplication.name}
+          apiKey={rotatedApiKey}
+          isRotating={rotateTargetApplicationApiKey.isPending}
+          onConfirm={handleRotateApiKey}
+          onClose={() => {
+            setRotatedApiKey(null);
+            closeModal();
+          }}
+        />
       )}
     </div>
   );

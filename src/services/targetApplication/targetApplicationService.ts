@@ -10,6 +10,7 @@ import type {
   TargetApplicationResponse,
   CreateTargetApplicationVersionRequest,
   MessageResponse,
+  RotateTargetApplicationApiKeyResponse,
 } from "@coveritlabs/contracts";
 import { Payload } from "@/types/common";
 
@@ -69,6 +70,13 @@ export const targetApplicationService = {
   async deleteVersion(projectId: string, applicationId: string, versionId: string): Promise<MessageResponse> {
     const res = await apiClient.delete<MessageResponse>(
       `projects/${projectId}/target-applications/${applicationId}/versions/${versionId}`,
+    );
+    return res.data;
+  },
+
+  async rotateApiKey(projectId: string, applicationId: string): Promise<RotateTargetApplicationApiKeyResponse> {
+    const res = await apiClient.post<RotateTargetApplicationApiKeyResponse>(
+      `projects/${projectId}/target-applications/${applicationId}/api-key/rotate`,
     );
     return res.data;
   },

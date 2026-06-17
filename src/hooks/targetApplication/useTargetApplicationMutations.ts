@@ -11,6 +11,7 @@ import type {
   CreateTargetApplicationResponse,
   CreateTargetApplicationVersionRequest,
   MessageResponse,
+  RotateTargetApplicationApiKeyResponse,
   UpdateTargetApplicationRequest,
 } from "@coveritlabs/contracts";
 import type { Payload } from "@/types/common";
@@ -114,6 +115,24 @@ export function useDeleteTargetApplicationVersion() {
     },
     onError: (error) => {
       toast.error("Failed to delete version", error.message);
+    },
+  });
+}
+
+export function useRotateTargetApplicationApiKey() {
+  const queryClient = useQueryClient();
+
+  return useMutation<RotateTargetApplicationApiKeyResponse, Error, { projectId: string; applicationId: string }>({
+    mutationFn: ({ projectId, applicationId }) => targetApplicationService.rotateApiKey(projectId, applicationId),
+    onSuccess: (_data, variables) => {
+      toast.success("API key rotated");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.targetApplications.detail(variables.projectId, variables.applicationId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.targetApplications.lists(variables.projectId) });
+    },
+    onError: (error) => {
+      toast.error("Failed to rotate API key", error.message);
     },
   });
 }
