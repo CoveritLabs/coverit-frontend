@@ -4,9 +4,9 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Package, Plus, ChevronRight, FolderKanban, Edit2, Trash2, Globe, KeyRound, X } from "lucide-react";
-import { Button } from "@components/ui";
-import { cn } from "@utils/cn";
-import { useTargetApplications } from "@hooks/targetApplication/useTargetApplication";
+import { Button } from "@shared/ui";
+import { cn } from "@shared/utils/cn";
+import { useTargetApplications } from "@features/target-applications";
 import {
   useCreateTargetApplication,
   useUpdateTargetApplication,
@@ -14,11 +14,11 @@ import {
   useCreateTargetApplicationVersion,
   useDeleteTargetApplicationVersion,
   useRotateTargetApplicationApiKey,
-} from "@hooks/targetApplication/useTargetApplicationMutations";
-import { getProjectUserRole } from "@utils/project";
-import { GRADIENTS } from "@constants/gradients";
+} from "@features/target-applications";
+import { getProjectUserRole } from "@features/projects";
+import { GRADIENTS } from "@shared/constants/gradients";
 import styles from "./Applications.module.scss";
-import { useAuthStore, useUIStore } from "@/store";
+import { useAuthStore, useUIStore } from "@app/store";
 import { ProjectResponse } from "@coveritlabs/contracts";
 import {
   AddApplicationModal,

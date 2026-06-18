@@ -1,0 +1,26 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
+}
+
+.text {
+  user-select: none;
+  text-transform: uppercase;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}

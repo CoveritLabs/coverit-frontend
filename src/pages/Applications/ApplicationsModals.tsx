@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { Check, Copy, X } from "lucide-react";
-import { Button, Input, Label } from "@components/ui";
+import { Button, Input, Label } from "@shared/ui";
 import styles from "./Applications.module.scss";
 
 interface AddApplicationModalProps {

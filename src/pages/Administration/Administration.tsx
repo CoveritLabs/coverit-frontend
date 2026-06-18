@@ -15,9 +15,9 @@ import {
   Trash2,
   LogOut,
 } from "lucide-react";
-import { Button, Input } from "@components/ui";
-import { cn } from "@utils/cn";
-import { useProjects } from "@hooks/projects/useProjects";
+import { Button, Input } from "@shared/ui";
+import { cn } from "@shared/utils/cn";
+import { useProjects } from "@features/projects";
 import {
   useAddProjectMembers,
   useCreateProject,
@@ -26,11 +26,11 @@ import {
   useRemoveProjectMembers,
   useUpdateProject,
   useUpdateProjectMember,
-} from "@hooks/projects/useProjectMutations";
-import type { ProjectRole } from "@/types/project";
-import { DEFAULT_PROJECT_ROLE } from "@constants/project";
-import { getProjectUserRole, normalizeProjectRole } from "@utils/project";
-import { GRADIENTS } from "@constants/gradients";
+} from "@features/projects";
+import type { ProjectRole } from "@features/projects";
+import { DEFAULT_PROJECT_ROLE } from "@features/projects";
+import { getProjectUserRole, normalizeProjectRole } from "@features/projects";
+import { GRADIENTS } from "@shared/constants/gradients";
 import styles from "./Administration.module.scss";
 import { AdministrationMembersTable } from "./AdministrationMembersTable";
 import {
@@ -40,7 +40,7 @@ import {
   AddMemberModal,
   LeaveProjectModal,
 } from "./AdministrationModals";
-import { useAuthStore, useUIStore } from "@/store";
+import { useAuthStore, useUIStore } from "@app/store";
 
 type ModalState =
   | { type: "none" }

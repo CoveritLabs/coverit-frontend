@@ -4,10 +4,10 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { Button, Input, Label } from "@components/ui";
-import type { ProjectRole } from "@/types/project";
-import { PROJECT_ROLES } from "@constants/project";
-import { formatProjectRole } from "@utils/project";
+import { Button, Input, Label } from "@shared/ui";
+import type { ProjectRole } from "@features/projects";
+import { PROJECT_ROLES } from "@features/projects";
+import { formatProjectRole } from "@features/projects";
 import styles from "./Administration.module.scss";
 
 interface AddProjectModalProps {
