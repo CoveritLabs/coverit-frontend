@@ -3,8 +3,8 @@
 // See LICENSE file in the project root for full license information.
 
 import { useEffect, useMemo, useState } from "react";
-import { Mail, Edit2, Trash2, X } from "lucide-react";
-import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
+import { Mail, Edit2, Search, Trash2, X } from "lucide-react";
+import { Badge, Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import { getInitials } from "@shared/utils/text";
 import type { ProjectRole } from "@features/projects";
@@ -15,10 +15,12 @@ import styles from "./Administration.module.scss";
 
 interface MembersTableProps {
   members: Member[];
+  searchQuery: string;
   editingMemberId: string | null;
   canManage: boolean;
   currentUserId?: string;
   disableSelfRoleEdit?: boolean;
+  onSearchChange: (value: string) => void;
   onStartEdit: (memberId: string) => void;
   onCancelEdit: () => void;
   onUpdateRole: (memberId: string, role: ProjectRole) => void;
@@ -39,10 +41,12 @@ const roleAvatarMap: Record<ProjectRole, string> = {
 
 export function AdministrationMembersTable({
   members,
+  searchQuery,
   editingMemberId,
   canManage,
   currentUserId,
   disableSelfRoleEdit = false,
+  onSearchChange,
   onStartEdit,
   onCancelEdit,
   onUpdateRole,
@@ -82,6 +86,18 @@ export function AdministrationMembersTable({
 
   return (
     <div className={styles.tableSection}>
+      <div className={styles.memberSearchBar}>
+        <div className={styles.searchWrapper}>
+          <Search className={styles.searchIcon} />
+          <Input
+            type="text"
+            placeholder="Search members by name or email..."
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            className={styles.searchInput}
+          />
+        </div>
+      </div>
       <Card className={styles.tableCard}>
         <div className={styles.tableWrapper}>
           <Table>

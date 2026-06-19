@@ -13,6 +13,7 @@ export const ROUTES = {
 
   PROFILE: "/profile",
   ADMINISTRATE: "/administrate",
+  PROJECT_INTEGRATIONS: "/projects/:projectId/integrations",
   REGRESSION_RUNS: "/runs",
 
   DASHBOARD: "/dashboard",
