@@ -43,8 +43,14 @@ const regressionRunKeys = {
     [...regressionRunKeys.all, "artifact", projectId, applicationId, runId, artifactId] as const,
 };
 
+const integrationKeys = {
+  all: ["integrations"] as const,
+  status: (projectId: string, provider: string) => [...integrationKeys.all, "status", projectId, provider] as const,
+};
+
 export const queryKeys = {
   projects: projectKeys,
   targetApplications: targetApplicationKeys,
   regressionRuns: regressionRunKeys,
+  integrations: integrationKeys,
 };
