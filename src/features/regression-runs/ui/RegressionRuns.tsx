@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { TargetApplicationResponse } from "@coveritlabs/contracts";
+import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { ErrorBanner } from "@shared/feedback/ErrorBanner";
 import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
 import {
@@ -168,6 +169,92 @@ function RegressionRuns() {
     [scenarioArtifactsQuery.data?.artifactTree],
   );
   const scenarioEvents = useMemo(() => scenarioEventsQuery.data?.events ?? [], [scenarioEventsQuery.data?.events]);
+
+  const overviewContentError = useMemo(() => {
+    const contentQueries = [
+      {
+        isError: runsQuery.isError,
+        error: runsQuery.error,
+        refetch: runsQuery.refetch,
+      },
+      {
+        isError: Boolean(runId) && runDetailsQuery.isError,
+        error: runDetailsQuery.error,
+        refetch: runDetailsQuery.refetch,
+      },
+      {
+        isError: Boolean(runId) && scenariosQuery.isError,
+        error: scenariosQuery.error,
+        refetch: scenariosQuery.refetch,
+      },
+      {
+        isError: Boolean(scenarioId) && scenarioQuery.isError,
+        error: scenarioQuery.error,
+        refetch: scenarioQuery.refetch,
+      },
+      {
+        isError: Boolean(runId) && runTab === "artifacts" && runArtifactsQuery.isError,
+        error: runArtifactsQuery.error,
+        refetch: runArtifactsQuery.refetch,
+      },
+      {
+        isError:
+          Boolean(runId) &&
+          Boolean(scenarioId) &&
+          runTab === "scenarios" &&
+          scenarioTab === "events" &&
+          scenarioEventsQuery.isError,
+        error: scenarioEventsQuery.error,
+        refetch: scenarioEventsQuery.refetch,
+      },
+      {
+        isError:
+          Boolean(runId) &&
+          Boolean(scenarioId) &&
+          runTab === "scenarios" &&
+          scenarioTab === "artifacts" &&
+          scenarioArtifactsQuery.isError,
+        error: scenarioArtifactsQuery.error,
+        refetch: scenarioArtifactsQuery.refetch,
+      },
+    ];
+    const failedQueries = contentQueries.filter((query) => query.isError);
+
+    if (failedQueries.length === 0) return null;
+
+    return {
+      error: failedQueries[0].error,
+      retry: () => {
+        void Promise.all(failedQueries.map((query) => query.refetch()));
+      },
+    };
+  }, [
+    runArtifactsQuery.error,
+    runArtifactsQuery.isError,
+    runArtifactsQuery.refetch,
+    runDetailsQuery.error,
+    runDetailsQuery.isError,
+    runDetailsQuery.refetch,
+    runId,
+    runTab,
+    runsQuery.error,
+    runsQuery.isError,
+    runsQuery.refetch,
+    scenarioArtifactsQuery.error,
+    scenarioArtifactsQuery.isError,
+    scenarioArtifactsQuery.refetch,
+    scenarioEventsQuery.error,
+    scenarioEventsQuery.isError,
+    scenarioEventsQuery.refetch,
+    scenarioId,
+    scenarioQuery.error,
+    scenarioQuery.isError,
+    scenarioQuery.refetch,
+    scenarioTab,
+    scenariosQuery.error,
+    scenariosQuery.isError,
+    scenariosQuery.refetch,
+  ]);
 
   useEffect(() => {
     if (!runId) return;
@@ -339,75 +426,75 @@ function RegressionRuns() {
 
       {view === "statistics" ? (
         <RegressionStatsTab runs={filteredRuns} />
+      ) : overviewContentError ? (
+        <ContentErrorPanel
+          title="Unable to load regression runs"
+          message="We could not load the selected regression run content. Try again, or adjust the filters if the problem continues."
+          error={overviewContentError.error}
+          onRetry={overviewContentError.retry}
+          className={styles.contentErrorPanel}
+        />
       ) : (
         <div className={styles.overviewGrid}>
           <div className={styles.overviewSidebar}>
-            {runsQuery.isError ? (
-              <ErrorBanner message="Failed to load regression runs." />
-            ) : (
-              <RegressionRunsList
-                runs={filteredRuns}
-                selectedRunId={runId}
-                onSelectRun={(nextRunId) =>
-                  updateSearchParams(
-                    searchParams,
-                    setSearchParams,
-                    {
-                      runId: nextRunId,
-                      runTab: "scenarios",
-                      scenarioId: null,
-                      scenarioTab: "events",
-                    },
-                    false,
-                  )
-                }
-              />
-            )}
+            <RegressionRunsList
+              runs={filteredRuns}
+              selectedRunId={runId}
+              onSelectRun={(nextRunId) =>
+                updateSearchParams(
+                  searchParams,
+                  setSearchParams,
+                  {
+                    runId: nextRunId,
+                    runTab: "scenarios",
+                    scenarioId: null,
+                    scenarioTab: "events",
+                  },
+                  false,
+                )
+              }
+            />
           </div>
 
           <div className={styles.overviewWorkspace}>
-            {runId && runDetailsQuery.isError ? (
-              <ErrorBanner message="Failed to load the selected run." />
-            ) : (
-              <RegressionRunWorkspace
-                run={selectedRun}
-                runTab={runTab}
-                onRunTabChange={(nextTab) =>
-                  updateSearchParams(
-                    searchParams,
-                    setSearchParams,
-                    {
-                      runTab: nextTab,
-                      scenarioId: nextTab === "scenarios" ? scenarioId : null,
-                      scenarioTab: nextTab === "scenarios" ? scenarioTab : null,
-                    },
-                    false,
-                  )
-                }
-                scenarios={scenarios}
-                selectedScenario={selectedScenario}
-                selectedScenarioId={scenarioId}
-                onSelectScenario={(nextScenarioId) =>
-                  updateSearchParams(
-                    searchParams,
-                    setSearchParams,
-                    { scenarioId: nextScenarioId, scenarioTab: "events" },
-                    false,
-                  )
-                }
-                scenarioTab={scenarioTab}
-                onScenarioTabChange={(nextTab) =>
-                  updateSearchParams(searchParams, setSearchParams, { scenarioTab: nextTab }, false)
-                }
-                scenarioEvents={scenarioEvents}
-                scenarioArtifacts={scenarioArtifacts}
-                scenarioArtifactTree={scenarioArtifactTree}
-                runArtifacts={runArtifacts}
-                runArtifactTree={runArtifactTree}
-                projectId={selectedProject.id}
-                applicationId={activeApplication?.id ?? ""}
-              />
-            )}
+            <RegressionRunWorkspace
+              run={selectedRun}
+              runTab={runTab}
+              onRunTabChange={(nextTab) =>
+                updateSearchParams(
+                  searchParams,
+                  setSearchParams,
+                  {
+                    runTab: nextTab,
+                    scenarioId: nextTab === "scenarios" ? scenarioId : null,
+                    scenarioTab: nextTab === "scenarios" ? scenarioTab : null,
+                  },
+                  false,
+                )
+              }
+              scenarios={scenarios}
+              selectedScenario={selectedScenario}
+              selectedScenarioId={scenarioId}
+              onSelectScenario={(nextScenarioId) =>
+                updateSearchParams(
+                  searchParams,
+                  setSearchParams,
+                  { scenarioId: nextScenarioId, scenarioTab: "events" },
+                  false,
+                )
+              }
+              scenarioTab={scenarioTab}
+              onScenarioTabChange={(nextTab) =>
+                updateSearchParams(searchParams, setSearchParams, { scenarioTab: nextTab }, false)
+              }
+              scenarioEvents={scenarioEvents}
+              scenarioArtifacts={scenarioArtifacts}
+              scenarioArtifactTree={scenarioArtifactTree}
+              runArtifacts={runArtifacts}
+              runArtifactTree={runArtifactTree}
+              projectId={selectedProject.id}
+              applicationId={activeApplication?.id ?? ""}
+            />
           </div>
         </div>
       )}

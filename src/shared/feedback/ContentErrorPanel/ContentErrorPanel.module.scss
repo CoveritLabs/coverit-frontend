@@ -1,0 +1,139 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-5;
+  min-height: 22rem;
+  min-width: 0;
+  padding: $space-8 $space-4;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--card);
+  text-align: center;
+}
+
+.iconCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 2px solid rgba(var(--destructive-rgb, 231, 111, 81), 0.12);
+  border-radius: $radius-full;
+  background-color: rgba(var(--destructive-rgb, 231, 111, 81), 0.06);
+}
+
+.icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--destructive);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  max-width: 38rem;
+}
+
+.title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  line-height: 1.25;
+}
+
+.message {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: $font-size-sm;
+  line-height: 1.5;
+}
+
+.details {
+  width: min(100%, 44rem);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background-color: var(--card);
+  text-align: left;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  cursor: pointer;
+}
+
+.summaryLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.summaryNote {
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+}
+
+.summaryBody {
+  padding: $space-3 $space-4;
+  border-top: 1px solid var(--border);
+  background-color: rgba(var(--muted-rgb, 234, 246, 247), 0.12);
+}
+
+.codeTitle {
+  margin: 0 0 $space-2;
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.codeBlock {
+  display: block;
+  overflow-x: auto;
+  padding: $space-2;
+  border-radius: $radius-sm;
+  background-color: rgba(var(--destructive-rgb, 231, 111, 81), 0.06);
+  color: var(--destructive);
+  font-size: $font-size-sm;
+}
+
+.pre {
+  max-height: 12rem;
+  overflow: auto;
+  margin: 0;
+  padding: $space-3;
+  border-radius: $radius-sm;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+  white-space: pre-wrap;
+}
+
+.retryButton {
+  display: inline-flex;
+  gap: $space-2;
+}
