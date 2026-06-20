@@ -174,7 +174,7 @@ export function RegressionArtifactsPanel({
           </div>
           {expanded && (
             <div className={styles.artifactTreeChildren}>
-              {node.children?.map((child) => renderTreeNode(child, depth + 1))}
+              {node.children?.map((child: RegressionArtifactTreeNode) => renderTreeNode(child, depth + 1))}
             </div>
           )}
         </div>

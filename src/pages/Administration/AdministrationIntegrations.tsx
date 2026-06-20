@@ -2,15 +2,17 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import type { ComponentType } from "react";
-import { Clock3, ExternalLink, Mail, ShieldCheck, Unlink } from "lucide-react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { ExternalLink, Mail, ShieldCheck, Unlink } from "lucide-react";
 import { JiraIcon } from "@shared/icons";
-import { Badge, Button, Card } from "@shared/ui";
+import { Badge, Button, Card, Select } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import {
   useDisconnectIntegration,
+  useIntegrationReportingOptions,
   useIntegrationStatus,
   useStartIntegrationOAuth,
+  useUpdateIntegrationReportingConfig,
   type IntegrationProvider,
 } from "@features/integrations";
 import styles from "./Administration.module.scss";
@@ -50,8 +52,33 @@ interface AdministrationIntegrationsProps {
 
 export function AdministrationIntegrations({ projectId, canManage }: AdministrationIntegrationsProps) {
   const jiraStatus = useIntegrationStatus(projectId, "jira");
+  const jiraOptions = useIntegrationReportingOptions(projectId, "jira", Boolean(jiraStatus.data?.connected));
   const startOAuth = useStartIntegrationOAuth();
   const disconnectIntegration = useDisconnectIntegration();
+  const updateReportingConfig = useUpdateIntegrationReportingConfig();
+  const [jiraProjectId, setJiraProjectId] = useState<string | null>(null);
+  const [jiraIssueTypeId, setJiraIssueTypeId] = useState<string | null>(null);
+
+  const jiraProjects = jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.projects : [];
+  const jiraIssueTypes = jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.issueTypes : [];
+  const jiraReportingConfig =
+    jiraStatus.data?.reportingConfig?.case === "jiraReportingConfig"
+      ? jiraStatus.data.reportingConfig.value
+      : undefined;
+
+  useEffect(() => {
+    if (jiraReportingConfig?.project?.id) setJiraProjectId(jiraReportingConfig.project.id);
+    if (jiraReportingConfig?.issueType?.id) setJiraIssueTypeId(jiraReportingConfig.issueType.id);
+  }, [jiraReportingConfig?.issueType?.id, jiraReportingConfig?.project?.id]);
+
+  const jiraProjectOptions = useMemo(
+    () => jiraProjects.map((project) => ({ value: project.id, label: `${project.key} - ${project.name}` })),
+    [jiraProjects],
+  );
+  const jiraIssueTypeOptions = useMemo(
+    () => jiraIssueTypes.map((issueType) => ({ value: issueType.id, label: issueType.name })),
+    [jiraIssueTypes],
+  );
 
   const handleConnect = (provider: IntegrationProvider) => {
     startOAuth.mutate({ projectId, provider });
@@ -59,6 +86,27 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
 
   const handleDisconnect = (provider: IntegrationProvider) => {
     disconnectIntegration.mutate({ projectId, provider });
+  };
+
+  const handleSaveJiraReporting = () => {
+    const selectedProject = jiraProjects.find((project) => project.id === jiraProjectId);
+    const selectedIssueType = jiraIssueTypes.find((issueType) => issueType.id === jiraIssueTypeId);
+    if (!selectedProject || !selectedIssueType) return;
+
+    updateReportingConfig.mutate({
+      projectId,
+      provider: "jira",
+      payload: {
+        config: {
+          case: "jira",
+          value: {
+            enabled: true,
+            project: selectedProject,
+            issueType: selectedIssueType,
+          },
+        },
+      },
+    });
   };
 
   return (
@@ -122,6 +170,49 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
                                 {scope}
                               </Badge>
                             ))}
+                          </div>
+                        )}
+
+                        {integration.provider === "jira" && (
+                          <div className={styles.reportingConfigPanel}>
+                            <div>
+                              <p className={styles.integrationMetaLabel}>Scenario reporting</p>
+                              <p className={styles.integrationMeta}>
+                                {jiraReportingConfig?.enabled
+                                  ? `Issues will be created in ${jiraReportingConfig.project?.key ?? "Jira"}.`
+                                  : "Choose a Jira destination for failed and warning scenario reports."}
+                              </p>
+                            </div>
+                            {canManage && (
+                              <div className={styles.reportingConfigControls}>
+                                <Select
+                                  options={jiraProjectOptions}
+                                  value={jiraProjectId}
+                                  placeholder={jiraOptions.isLoading ? "Loading projects..." : "Jira project"}
+                                  onChange={setJiraProjectId}
+                                  disabled={jiraOptions.isLoading || jiraOptions.isError}
+                                />
+                                <Select
+                                  options={jiraIssueTypeOptions}
+                                  value={jiraIssueTypeId}
+                                  placeholder={jiraOptions.isLoading ? "Loading issue types..." : "Issue type"}
+                                  onChange={setJiraIssueTypeId}
+                                  disabled={jiraOptions.isLoading || jiraOptions.isError}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={handleSaveJiraReporting}
+                                  disabled={!jiraProjectId || !jiraIssueTypeId || updateReportingConfig.isPending}
+                                >
+                                  <ShieldCheck className={styles.iconSmall} />
+                                  {updateReportingConfig.isPending ? "Saving..." : "Save"}
+                                </Button>
+                              </div>
+                            )}
+                            {jiraOptions.isError && (
+                              <p className={styles.projectError}>Failed to load Jira reporting options.</p>
+                            )}
                           </div>
                         )}
                       </div>

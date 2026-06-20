@@ -6,7 +6,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@shared/config/queryKeys";
 import { toast } from "@shared/ui";
 import { integrationService } from "../../api/integrationService";
-import type { IntegrationProvider } from "../types/integration.types";
+import type {
+  IntegrationProvider,
+  IntegrationReportingConfigResponse,
+  UpdateIntegrationReportingConfigPayload,
+} from "../types/integration.types";
 import type { MessageResponse, StartIntegrationOAuthResponse } from "@coveritlabs/contracts";
 
 export function useStartIntegrationOAuth() {
@@ -34,6 +38,31 @@ export function useDisconnectIntegration() {
     },
     onError: (error) => {
       toast.error("Failed to disconnect integration", error.message);
+    },
+  });
+}
+
+export function useUpdateIntegrationReportingConfig() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    IntegrationReportingConfigResponse,
+    Error,
+    { projectId: string; provider: IntegrationProvider; payload: UpdateIntegrationReportingConfigPayload }
+  >({
+    mutationFn: ({ projectId, provider, payload }) =>
+      integrationService.updateReportingConfig(projectId, provider, payload),
+    onSuccess: (_data, variables) => {
+      toast.success("Reporting configuration saved");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.integrations.status(variables.projectId, variables.provider),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.integrations.reportingOptions(variables.projectId, variables.provider),
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to save reporting configuration", error.message);
     },
   });
 }

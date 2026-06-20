@@ -5,13 +5,14 @@
 import { downloadArtifact } from "./downloadArtifact";
 import { getArtifact, listRunArtifacts, listScenarioArtifacts } from "./regressionArtifactsApi";
 import { getRun, listRuns } from "./regressionRunsApi";
-import { getScenario, listScenarioEvents, listScenarios } from "./regressionScenariosApi";
+import { createScenarioIntegrationReport, getScenario, listScenarioEvents, listScenarios } from "./regressionScenariosApi";
 
 export const regressionRunService = {
   listRuns,
   getRun,
   listScenarios,
   getScenario,
+  createScenarioIntegrationReport,
   listScenarioEvents,
   listRunArtifacts,
   listScenarioArtifacts,

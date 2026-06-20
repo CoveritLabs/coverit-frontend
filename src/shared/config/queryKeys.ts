@@ -61,6 +61,8 @@ const regressionRunKeys = {
 const integrationKeys = {
   all: ["integrations"] as const,
   status: (projectId: string, provider: string) => [...integrationKeys.all, "status", projectId, provider] as const,
+  reportingOptions: (projectId: string, provider: string) =>
+    [...integrationKeys.all, "reporting-options", projectId, provider] as const,
 };
 
 export const queryKeys = {

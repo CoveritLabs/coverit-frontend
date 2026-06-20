@@ -778,6 +778,24 @@
   gap: $space-2;
 }
 
+.reportingConfigPanel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  max-width: 42rem;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--integration-detail-background);
+}
+
+.reportingConfigControls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.8fr) auto;
+  align-items: center;
+  gap: $space-2;
+}
+
 .integrationScopeBadge {
   max-width: 18rem;
   text-transform: none;
@@ -805,4 +823,10 @@
 
 .integrationStatusDisconnected {
   color: var(--muted-foreground);
+}
+
+@media (max-width: 780px) {
+  .reportingConfigControls {
+    grid-template-columns: 1fr;
+  }
 }

@@ -16,12 +16,14 @@ import {
   useRegressionScenarioEvents,
   useRegressionScenarios,
 } from "../model/queries/useRegressionRuns";
+import { useIntegrationStatus } from "@features/integrations";
 import { useTargetApplications } from "@features/target-applications";
 import type {
   SearchParamStatus,
   RegressionRunsView,
   RegressionRunTab,
   RegressionScenarioTab,
+  RegressionScenarioWithReports,
 } from "../model/types/regression-runs.types";
 import { EmptyState, TabButton } from "./components/common/common";
 import { RegressionRunsFilters } from "./components/filters/filters";
@@ -134,6 +136,7 @@ function RegressionRuns() {
     runId,
     scenarioId,
   );
+  const jiraStatusQuery = useIntegrationStatus(selectedProject?.id ?? null, "jira");
 
   const runs = useMemo(
     () => enrichRegressionRuns(runsQuery.data?.runs ?? [], versionNameById),
@@ -152,8 +155,14 @@ function RegressionRuns() {
     filteredRuns.find((run) => run.runId === runId) ??
     runs.find((run) => run.runId === runId) ??
     null;
-  const scenarios = useMemo(() => scenariosQuery.data?.scenarios ?? [], [scenariosQuery.data?.scenarios]);
-  const selectedScenario = scenarioQuery.data ?? scenarios.find((scenario) => scenario.id === scenarioId) ?? null;
+  const scenarios = useMemo<RegressionScenarioWithReports[]>(
+    () => scenariosQuery.data?.scenarios ?? [],
+    [scenariosQuery.data?.scenarios],
+  );
+  const selectedScenario =
+    scenarioQuery.data ??
+    scenarios.find((scenario: RegressionScenarioWithReports) => scenario.id === scenarioId) ??
+    null;
   const runArtifacts = useMemo(() => runArtifactsQuery.data?.artifacts ?? [], [runArtifactsQuery.data?.artifacts]);
   const runArtifactTree = useMemo(
     () => runArtifactsQuery.data?.artifactTree ?? [],
@@ -168,6 +177,96 @@ function RegressionRuns() {
     [scenarioArtifactsQuery.data?.artifactTree],
   );
   const scenarioEvents = useMemo(() => scenarioEventsQuery.data?.events ?? [], [scenarioEventsQuery.data?.events]);
+  const jiraReportingEnabled =
+    jiraStatusQuery.data?.reportingConfig?.case === "jiraReportingConfig" &&
+    jiraStatusQuery.data.reportingConfig.value.enabled;
+
+  const overviewContentError = useMemo(() => {
+    const contentQueries = [
+      {
+        isError: runsQuery.isError,
+        error: runsQuery.error,
+        refetch: runsQuery.refetch,
+      },
+      {
+        isError: Boolean(runId) && runDetailsQuery.isError,
+        error: runDetailsQuery.error,
+        refetch: runDetailsQuery.refetch,
+      },
+      {
+        isError: Boolean(runId) && scenariosQuery.isError,
+        error: scenariosQuery.error,
+        refetch: scenariosQuery.refetch,
+      },
+      {
+        isError: Boolean(scenarioId) && scenarioQuery.isError,
+        error: scenarioQuery.error,
+        refetch: scenarioQuery.refetch,
+      },
+      {
+        isError: Boolean(runId) && runTab === "artifacts" && runArtifactsQuery.isError,
+        error: runArtifactsQuery.error,
+        refetch: runArtifactsQuery.refetch,
+      },
+      {
+        isError:
+          Boolean(runId) &&
+          Boolean(scenarioId) &&
+          runTab === "scenarios" &&
+          scenarioTab === "events" &&
+          scenarioEventsQuery.isError,
+        error: scenarioEventsQuery.error,
+        refetch: scenarioEventsQuery.refetch,
+      },
+      {
+        isError:
+          Boolean(runId) &&
+          Boolean(scenarioId) &&
+          runTab === "scenarios" &&
+          scenarioTab === "artifacts" &&
+          scenarioArtifactsQuery.isError,
+        error: scenarioArtifactsQuery.error,
+        refetch: scenarioArtifactsQuery.refetch,
+      },
+    ];
+    const failedQueries = contentQueries.filter((query) => query.isError);
+
+    if (failedQueries.length === 0) return null;
+
+    return {
+      error: failedQueries[0].error,
+      retry: () => {
+        void Promise.all(failedQueries.map((query) => query.refetch()));
+      },
+    };
+  }, [
+    runArtifactsQuery.error,
+    runArtifactsQuery.isError,
+    runArtifactsQuery.refetch,
+    runDetailsQuery.error,
+    runDetailsQuery.isError,
+    runDetailsQuery.refetch,
+    runId,
+    runTab,
+    runsQuery.error,
+    runsQuery.isError,
+    runsQuery.refetch,
+    scenarioArtifactsQuery.error,
+    scenarioArtifactsQuery.isError,
+    scenarioArtifactsQuery.refetch,
+    scenarioEventsQuery.error,
+    scenarioEventsQuery.isError,
+    scenarioEventsQuery.refetch,
+    scenarioId,
+    scenarioQuery.error,
+    scenarioQuery.isError,
+    scenarioQuery.refetch,
+    scenarioTab,
+    scenariosQuery.error,
+    scenariosQuery.isError,
+    scenariosQuery.refetch,
+  ]);
+  void overviewContentError;
 
   useEffect(() => {
     if (!runId) return;
@@ -185,9 +284,12 @@ function RegressionRuns() {
 
   useEffect(() => {
     if (!runId || scenarios.length === 0 || runTab !== "scenarios") return;
-    const scenarioExists = scenarioId ? scenarios.some((scenario) => scenario.id === scenarioId) : false;
+    const scenarioExists = scenarioId
+      ? scenarios.some((scenario: RegressionScenarioWithReports) => scenario.id === scenarioId)
+      : false;
     if (!scenarioExists) {
-      const preferredScenario = scenarios.find((scenario) => scenario.status === "failed") ?? scenarios[0];
+      const preferredScenario =
+        scenarios.find((scenario: RegressionScenarioWithReports) => scenario.status === "failed") ?? scenarios[0];
       updateSearchParams(searchParams, setSearchParams, {
         scenarioId: preferredScenario.id,
         scenarioTab: "events",
@@ -198,7 +300,7 @@ function RegressionRuns() {
   const versionOptions = useMemo(
     () => [
       { value: "all", label: "All versions" },
-      ...((activeApplication?.versions ?? []).map((version) => ({
+      ...((activeApplication?.versions ?? []).map((version: { id: string; version: string }) => ({
         value: version.id,
         label: version.version,
       })) as Array<{ value: string; label: string }>),
@@ -366,48 +468,51 @@ function RegressionRuns() {
           </div>
 
           <div className={styles.overviewWorkspace}>
-            {runId && runDetailsQuery.isError ? (
-              <ErrorBanner message="Failed to load the selected run." />
-            ) : (
-              <RegressionRunWorkspace
-                run={selectedRun}
-                runTab={runTab}
-                onRunTabChange={(nextTab) =>
-                  updateSearchParams(
-                    searchParams,
-                    setSearchParams,
-                    {
-                      runTab: nextTab,
-                      scenarioId: nextTab === "scenarios" ? scenarioId : null,
-                      scenarioTab: nextTab === "scenarios" ? scenarioTab : null,
-                    },
-                    false,
-                  )
-                }
-                scenarios={scenarios}
-                selectedScenario={selectedScenario}
-                selectedScenarioId={scenarioId}
-                onSelectScenario={(nextScenarioId) =>
-                  updateSearchParams(
-                    searchParams,
-                    setSearchParams,
-                    { scenarioId: nextScenarioId, scenarioTab: "events" },
-                    false,
-                  )
-                }
-                scenarioTab={scenarioTab}
-                onScenarioTabChange={(nextTab) =>
-                  updateSearchParams(searchParams, setSearchParams, { scenarioTab: nextTab }, false)
-                }
-                scenarioEvents={scenarioEvents}
-                scenarioArtifacts={scenarioArtifacts}
-                scenarioArtifactTree={scenarioArtifactTree}
-                runArtifacts={runArtifacts}
-                runArtifactTree={runArtifactTree}
-                projectId={selectedProject.id}
-                applicationId={activeApplication?.id ?? ""}
-              />
-            )}
+            <RegressionRunWorkspace
+              run={selectedRun}
+              runTab={runTab}
+              onRunTabChange={(nextTab) =>
+                updateSearchParams(
+                  searchParams,
+                  setSearchParams,
+                  {
+                    runTab: nextTab,
+                    scenarioId: nextTab === "scenarios" ? scenarioId : null,
+                    scenarioTab: nextTab === "scenarios" ? scenarioTab : null,
+                  },
+                  false,
+                )
+              }
+              scenarios={scenarios}
+              selectedScenario={selectedScenario}
+              selectedScenarioId={scenarioId}
+              onSelectScenario={(nextScenarioId) =>
+                updateSearchParams(
+                  searchParams,
+                  setSearchParams,
+                  { scenarioId: nextScenarioId, scenarioTab: "events" },
+                  false,
+                )
+              }
+              scenarioTab={scenarioTab}
+              onScenarioTabChange={(nextTab) =>
+                updateSearchParams(searchParams, setSearchParams, { scenarioTab: nextTab }, false)
+              }
+              scenarioEvents={scenarioEvents}
+              scenarioArtifacts={scenarioArtifacts}
+              scenarioArtifactsLoading={
+                scenarioArtifactsQuery.isLoading ||
+                (scenarioArtifactsQuery.isFetching && scenarioArtifacts.length === 0)
+              }
+              scenarioArtifactsError={scenarioArtifactsQuery.isError}
+              onRetryScenarioArtifacts={() => void scenarioArtifactsQuery.refetch()}
+              scenarioArtifactTree={scenarioArtifactTree}
+              runArtifacts={runArtifacts}
+              runArtifactTree={runArtifactTree}
+              projectId={selectedProject.id}
+              applicationId={activeApplication?.id ?? ""}
+              jiraReportingEnabled={Boolean(jiraReportingEnabled)}
+            />
           </div>
         </div>
       )}

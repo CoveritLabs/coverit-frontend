@@ -3,12 +3,43 @@
 // See LICENSE file in the project root for full license information.
 
 import { apiClient } from "@shared/api/client";
-import type { IntegrationStatusResponse, MessageResponse, StartIntegrationOAuthResponse } from "@coveritlabs/contracts";
-import type { IntegrationProvider } from "../model/types/integration.types";
+import type { MessageResponse, StartIntegrationOAuthResponse } from "@coveritlabs/contracts";
+import type {
+  IntegrationProvider,
+  IntegrationReportingConfigResponse,
+  IntegrationReportingOptionsResponse,
+  IntegrationStatusWithReporting,
+  UpdateIntegrationReportingConfigPayload,
+} from "../model/types/integration.types";
 
 export const integrationService = {
-  async getIntegrationStatus(projectId: string, provider: IntegrationProvider): Promise<IntegrationStatusResponse> {
-    const res = await apiClient.get<IntegrationStatusResponse>(`projects/${projectId}/integrations/${provider}`);
+  async getIntegrationStatus(
+    projectId: string,
+    provider: IntegrationProvider,
+  ): Promise<IntegrationStatusWithReporting> {
+    const res = await apiClient.get<IntegrationStatusWithReporting>(`projects/${projectId}/integrations/${provider}`);
+    return res.data;
+  },
+
+  async getReportingOptions(
+    projectId: string,
+    provider: IntegrationProvider,
+  ): Promise<IntegrationReportingOptionsResponse> {
+    const res = await apiClient.get<IntegrationReportingOptionsResponse>(
+      `projects/${projectId}/integrations/${provider}/reporting/options`,
+    );
+    return res.data;
+  },
+
+  async updateReportingConfig(
+    projectId: string,
+    provider: IntegrationProvider,
+    payload: UpdateIntegrationReportingConfigPayload,
+  ): Promise<IntegrationReportingConfigResponse> {
+    const res = await apiClient.put<IntegrationReportingConfigResponse>(
+      `projects/${projectId}/integrations/${provider}/reporting/config`,
+      payload,
+    );
     return res.data;
   },
 
