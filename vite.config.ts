@@ -9,23 +9,14 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': resolve(__dirname, './src'),
+      '@app': resolve(__dirname, './src/app'),
       '@features': resolve(__dirname, './src/features'),
-      '@components': resolve(__dirname, './src/components'),
-      '@hooks': resolve(__dirname, './src/hooks'),
-      '@services': resolve(__dirname, './src/services'),
-      '@store': resolve(__dirname, './src/store'),
-      '@utils': resolve(__dirname, './src/utils'),
-      '@app-types': resolve(__dirname, './src/types'),
-      '@config': resolve(__dirname, './src/config'),
-      '@styles': resolve(__dirname, './src/styles'),
-      '@lib': resolve(__dirname, './src/lib'),
-      '@layouts': resolve(__dirname, './src/layouts'),
       '@pages': resolve(__dirname, './src/pages'),
+      '@shared': resolve(__dirname, './src/shared'),
       '@assets': resolve(__dirname, './src/assets'),
-      '@constants': resolve(__dirname, './src/constants'),
-      '@i18n': resolve(__dirname, './src/i18n'),
     },
   },
 })

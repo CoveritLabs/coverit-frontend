@@ -1,0 +1,127 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+:global(:root) {
+  /* Categories */
+
+  --regression-category-scenario: #1e4a6a;
+  --regression-category-scenario-bg: #edf4f8;
+
+  --regression-category-state: #2f6f8e;
+  --regression-category-state-bg: #eef7fb;
+
+  --regression-category-transition: #4fc3c6;
+  --regression-category-transition-bg: #edfafa;
+
+  --regression-category-design-class: #5d6b8a;
+  --regression-category-design-class-bg: #f3f5f9;
+
+  --regression-category-hook: #35b38a;
+  --regression-category-hook-bg: #edf9f4;
+
+  --regression-category-basic: #9a5d00;
+  --regression-category-basic-bg: #fff6df;
+
+  /* Assertion Results */
+
+  --regression-result-pass: #35b38a;
+  --regression-result-pass-bg: #edf9f4;
+
+  --regression-result-warn: #f4a261;
+  --regression-result-warn-bg: #fff4ea;
+
+  --regression-result-fail: #e13e15;
+  --regression-result-fail-bg: #feeee9;
+
+  /* Event Levels */
+
+  --regression-level-info: #2f6f8e;
+  --regression-level-info-bg: #eef7fb;
+
+  --regression-level-debug: #6c7f8b;
+  --regression-level-debug-bg: #f5f8f9;
+
+  --regression-level-warn: #f4a261;
+  --regression-level-warn-bg: #fff4ea;
+
+  --regression-level-error: #e13e15;
+  --regression-level-error-bg: #feeee9;
+}
+
+:global(.dark) {
+  /* Categories */
+
+  --regression-category-scenario: #7fb3d5;
+  --regression-category-scenario-bg: #182430;
+
+  --regression-category-state: #8fc8e6;
+  --regression-category-state-bg: #192a36;
+
+  --regression-category-transition: #4fc3c6;
+  --regression-category-transition-bg: #15292a;
+
+  --regression-category-design-class: #a8b3d1;
+  --regression-category-design-class-bg: #242938;
+
+  --regression-category-hook: #58c49c;
+  --regression-category-hook-bg: #162a23;
+
+  --regression-category-basic: #f0c36a;
+  --regression-category-basic-bg: #302611;
+
+  /* Assertion Results */
+
+  --regression-result-pass: #3fb950;
+  --regression-result-pass-bg: #16261b;
+
+  --regression-result-warn: #d29922;
+  --regression-result-warn-bg: #302613;
+
+  --regression-result-fail: #f85149;
+  --regression-result-fail-bg: #331a1a;
+
+  /* Event Levels */
+
+  --regression-level-info: #8fc8e6;
+  --regression-level-info-bg: #192a36;
+
+  --regression-level-debug: #9aa6b2;
+  --regression-level-debug-bg: #23282f;
+
+  --regression-level-warn: #d29922;
+  --regression-level-warn-bg: #302613;
+
+  --regression-level-error: #f85149;
+  --regression-level-error-bg: #331a1a;
+}
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--marker-size, 0.9rem);
+  height: var(--marker-size, 0.9rem);
+  color: var(--regression-semantic-foreground, var(--text-secondary));
+  background: transparent;
+  flex: 0 0 auto;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.85;
+  }
+}
+
+.basic {
+  opacity: 0.72;
+
+  svg {
+    width: 72%;
+    height: 72%;
+  }
+}

@@ -4,10 +4,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Mail, Edit2, Trash2, X } from "lucide-react";
-import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@components/ui";
-import { cn } from "@utils/cn";
-import { getInitials } from "@utils/text";
-import { formatProjectRole, normalizeProjectRole, PROJECT_ROLES, type ProjectRole } from "@constants/projectRoles";
+import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
+import { cn } from "@shared/utils/cn";
+import { getInitials } from "@shared/utils/text";
+import type { ProjectRole } from "@features/projects";
+import { PROJECT_ROLES } from "@features/projects";
+import { formatProjectRole, normalizeProjectRole } from "@features/projects";
 import type { Member } from "@coveritlabs/contracts";
 import styles from "./Administration.module.scss";
 
@@ -46,7 +48,6 @@ export function AdministrationMembersTable({
   onUpdateRole,
   onRemoveMember,
 }: MembersTableProps) {
-  // TODO: remove debug duplication after pagination testing.
   const displayMembers = useMemo(
     () =>
       (members || []).sort((a, b) => {

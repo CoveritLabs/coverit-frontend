@@ -15,10 +15,9 @@ import {
   Trash2,
   LogOut,
 } from "lucide-react";
-import { Button, Input } from "@components/ui";
-import { cn } from "@utils/cn";
-import { getProjectUserRole } from "@utils/projects";
-import { useProjects } from "@hooks/projects/useProjects";
+import { Button, Input } from "@shared/ui";
+import { cn } from "@shared/utils/cn";
+import { useProjects } from "@features/projects";
 import {
   useAddProjectMembers,
   useCreateProject,
@@ -27,9 +26,11 @@ import {
   useRemoveProjectMembers,
   useUpdateProject,
   useUpdateProjectMember,
-} from "@hooks/projects/useProjectMutations";
-import { DEFAULT_PROJECT_ROLE, normalizeProjectRole, type ProjectRole } from "@constants/projectRoles";
-import { PROJECT_GRADIENTS } from "@constants/projectGradients";
+} from "@features/projects";
+import type { ProjectRole } from "@features/projects";
+import { DEFAULT_PROJECT_ROLE } from "@features/projects";
+import { getProjectUserRole, normalizeProjectRole } from "@features/projects";
+import { GRADIENTS } from "@shared/constants/gradients";
 import styles from "./Administration.module.scss";
 import { AdministrationMembersTable } from "./AdministrationMembersTable";
 import {
@@ -39,7 +40,7 @@ import {
   AddMemberModal,
   LeaveProjectModal,
 } from "./AdministrationModals";
-import { useAuthStore } from "@/store";
+import { useAuthStore, useUIStore } from "@app/store";
 
 type ModalState =
   | { type: "none" }
@@ -65,6 +66,8 @@ const Administration = () => {
   const removeMembers = useRemoveProjectMembers();
   const user = useAuthStore((state) => state.user);
 
+  const storeSelectedProject = useUIStore((s) => s.selectedProject);
+  const setUserRole = useUIStore((s) => s.setUserRole);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,7 +79,7 @@ const Administration = () => {
     () =>
       projects.map((project, index) => ({
         project,
-        gradient: PROJECT_GRADIENTS[index % PROJECT_GRADIENTS.length],
+        gradient: GRADIENTS[index % GRADIENTS.length],
         memberCount: project.members?.length ?? 0,
         description: project.description?.trim() || "No description",
       })),
@@ -130,7 +133,15 @@ const Administration = () => {
   };
 
   const handleAddProject = (name: string, description: string) => {
-    createProject.mutate({ name, ...(description && { description }) }, { onSuccess: closeModal });
+    createProject.mutate(
+      { name, ...(description && { description }) },
+      {
+        onSuccess: (data) => {
+          closeModal();
+          setSelectedProjectId(data.id);
+        },
+      },
+    );
   };
 
   const handleUpdateProject = (name: string, description: string) => {
@@ -164,7 +175,14 @@ const Administration = () => {
     if (isOnlyAdmin && memberId === user?.id) return;
     updateMember.mutate(
       { projectId: selectedProjectId, data: { id: memberId, role: newRole } },
-      { onSuccess: () => setEditingMemberId(null) },
+      {
+        onSuccess: () => {
+          setEditingMemberId(null);
+          if (memberId === user?.id && storeSelectedProject?.id === selectedProjectId) {
+            setUserRole(newRole);
+          }
+        },
+      },
     );
   };
 
@@ -253,7 +271,7 @@ const Administration = () => {
                 <div className={styles.headerInfo}>
                   <div
                     className={styles.headerIcon}
-                    style={{ background: selectedProjectCard?.gradient ?? PROJECT_GRADIENTS[0] }}
+                    style={{ background: selectedProjectCard?.gradient ?? GRADIENTS[0] }}
                   >
                     <FolderKanban className={styles.iconMedium} />
                   </div>

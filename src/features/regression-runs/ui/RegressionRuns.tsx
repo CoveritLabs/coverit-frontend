@@ -1,0 +1,418 @@
+// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+// Proprietary and confidential. Unauthorized use is strictly prohibited.
+// See LICENSE file in the project root for full license information.
+
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import type { TargetApplicationResponse } from "@coveritlabs/contracts";
+import { ErrorBanner } from "@shared/feedback/ErrorBanner";
+import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
+import {
+  useRegressionRun,
+  useRegressionRunArtifacts,
+  useRegressionRuns,
+  useRegressionScenario,
+  useRegressionScenarioArtifacts,
+  useRegressionScenarioEvents,
+  useRegressionScenarios,
+} from "../model/queries/useRegressionRuns";
+import { useTargetApplications } from "@features/target-applications";
+import type {
+  SearchParamStatus,
+  RegressionRunsView,
+  RegressionRunTab,
+  RegressionScenarioTab,
+} from "../model/types/regression-runs.types";
+import { EmptyState, TabButton } from "./components/common/common";
+import { RegressionRunsFilters } from "./components/filters/filters";
+import { RegressionRunsHeader } from "./components/filters/header";
+import { RegressionRunsList } from "./components/runs/runs-list";
+import { RegressionRunWorkspace } from "./components/runs/run-workspace";
+import { RegressionStatsTab } from "./components/stats/stats-tab";
+import { updateSearchParams } from "../lib/formatters";
+import { buildVersionNameMap, enrichRegressionRun, enrichRegressionRuns } from "../model/mappers/run-view-model";
+import styles from "./RegressionRuns.module.scss";
+import { useUIStore } from "@app/store";
+
+function getSearchParamValue<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+  return value && allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+const VIEW_OPTIONS = ["overview", "statistics"] as const;
+const RUN_TAB_OPTIONS = ["scenarios", "artifacts"] as const;
+const SCENARIO_TAB_OPTIONS = ["events", "artifacts"] as const;
+
+function RegressionRuns() {
+  const selectedProject = useUIStore((state) => state.selectedProject);
+  const {
+    data: applications = [],
+    isLoading: applicationsLoading,
+    isError: applicationsError,
+  } = useTargetApplications(selectedProject?.id ?? null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchText, setSearchText] = useState("");
+
+  const applicationId = searchParams.get("appId");
+  const versionId = searchParams.get("versionId");
+  const status = (searchParams.get("status") as SearchParamStatus | null) ?? "all";
+  const view = getSearchParamValue<RegressionRunsView>(searchParams.get("view"), VIEW_OPTIONS, "overview");
+  const runId = searchParams.get("runId");
+  const runTab = getSearchParamValue<RegressionRunTab>(searchParams.get("runTab"), RUN_TAB_OPTIONS, "scenarios");
+  const scenarioId = searchParams.get("scenarioId");
+  const scenarioTab = getSearchParamValue<RegressionScenarioTab>(
+    searchParams.get("scenarioTab"),
+    SCENARIO_TAB_OPTIONS,
+    "events",
+  );
+
+  const activeApplication = useMemo(
+    () => applications.find((application) => application.id === applicationId) ?? null,
+    [applicationId, applications],
+  );
+
+  const versionNameById = useMemo(
+    () => buildVersionNameMap(activeApplication?.versions ?? []),
+    [activeApplication?.versions],
+  );
+
+  useEffect(() => {
+    if (applicationsLoading) return;
+    if (applications.length === 0) {
+      updateSearchParams(searchParams, setSearchParams, {
+        appId: null,
+        versionId: null,
+        runId: null,
+        runTab: null,
+        scenarioId: null,
+        scenarioTab: null,
+      });
+      return;
+    }
+
+    if (!applicationId || !applications.some((application) => application.id === applicationId)) {
+      updateSearchParams(searchParams, setSearchParams, {
+        appId: applications[0].id,
+        runId: null,
+        runTab: "scenarios",
+        scenarioId: null,
+        scenarioTab: "events",
+      });
+    }
+  }, [applicationId, applications, applicationsLoading, searchParams, setSearchParams]);
+
+  const runFilters = useMemo(
+    () => ({
+      versionId: versionId ?? undefined,
+      status: status === "all" ? undefined : status,
+    }),
+    [status, versionId],
+  );
+
+  const runsQuery = useRegressionRuns(selectedProject?.id ?? null, activeApplication?.id ?? null, runFilters);
+  const runDetailsQuery = useRegressionRun(selectedProject?.id ?? null, activeApplication?.id ?? null, runId);
+  const scenariosQuery = useRegressionScenarios(selectedProject?.id ?? null, activeApplication?.id ?? null, runId);
+  const scenarioQuery = useRegressionScenario(
+    selectedProject?.id ?? null,
+    activeApplication?.id ?? null,
+    runId,
+    scenarioId,
+  );
+  const runArtifactsQuery = useRegressionRunArtifacts(
+    selectedProject?.id ?? null,
+    activeApplication?.id ?? null,
+    runId,
+  );
+  const scenarioEventsQuery = useRegressionScenarioEvents(
+    selectedProject?.id ?? null,
+    activeApplication?.id ?? null,
+    runId,
+    scenarioId,
+  );
+  const scenarioArtifactsQuery = useRegressionScenarioArtifacts(
+    selectedProject?.id ?? null,
+    activeApplication?.id ?? null,
+    runId,
+    scenarioId,
+  );
+
+  const runs = useMemo(
+    () => enrichRegressionRuns(runsQuery.data?.runs ?? [], versionNameById),
+    [runsQuery.data?.runs, versionNameById],
+  );
+  const filteredRuns = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return runs;
+    return runs.filter((run) =>
+      [run.runId, run.versionName, run.versionId, run.status].some((value) => value?.toLowerCase().includes(query)),
+    );
+  }, [runs, searchText]);
+
+  const selectedRun =
+    (runDetailsQuery.data ? enrichRegressionRun(runDetailsQuery.data, versionNameById) : null) ??
+    filteredRuns.find((run) => run.runId === runId) ??
+    runs.find((run) => run.runId === runId) ??
+    null;
+  const scenarios = useMemo(() => scenariosQuery.data?.scenarios ?? [], [scenariosQuery.data?.scenarios]);
+  const selectedScenario = scenarioQuery.data ?? scenarios.find((scenario) => scenario.id === scenarioId) ?? null;
+  const runArtifacts = useMemo(() => runArtifactsQuery.data?.artifacts ?? [], [runArtifactsQuery.data?.artifacts]);
+  const runArtifactTree = useMemo(
+    () => runArtifactsQuery.data?.artifactTree ?? [],
+    [runArtifactsQuery.data?.artifactTree],
+  );
+  const scenarioArtifacts = useMemo(
+    () => scenarioArtifactsQuery.data?.artifacts ?? [],
+    [scenarioArtifactsQuery.data?.artifacts],
+  );
+  const scenarioArtifactTree = useMemo(
+    () => scenarioArtifactsQuery.data?.artifactTree ?? [],
+    [scenarioArtifactsQuery.data?.artifactTree],
+  );
+  const scenarioEvents = useMemo(() => scenarioEventsQuery.data?.events ?? [], [scenarioEventsQuery.data?.events]);
+
+  useEffect(() => {
+    if (!runId) return;
+    const runStillVisible = filteredRuns.some((run) => run.runId === runId);
+    if (!runStillVisible) {
+      const fallbackRun = filteredRuns[0] ?? null;
+      updateSearchParams(searchParams, setSearchParams, {
+        runId: fallbackRun?.runId ?? null,
+        runTab: fallbackRun ? "scenarios" : null,
+        scenarioId: null,
+        scenarioTab: null,
+      });
+    }
+  }, [filteredRuns, runId, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!runId || scenarios.length === 0 || runTab !== "scenarios") return;
+    const scenarioExists = scenarioId ? scenarios.some((scenario) => scenario.id === scenarioId) : false;
+    if (!scenarioExists) {
+      const preferredScenario = scenarios.find((scenario) => scenario.status === "failed") ?? scenarios[0];
+      updateSearchParams(searchParams, setSearchParams, {
+        scenarioId: preferredScenario.id,
+        scenarioTab: "events",
+      });
+    }
+  }, [runId, runTab, scenarioId, scenarios, searchParams, setSearchParams]);
+
+  const versionOptions = useMemo(
+    () => [
+      { value: "all", label: "All versions" },
+      ...((activeApplication?.versions ?? []).map((version) => ({
+        value: version.id,
+        label: version.version,
+      })) as Array<{ value: string; label: string }>),
+    ],
+    [activeApplication],
+  );
+
+  const applicationOptions = useMemo(
+    () =>
+      applications.map((application: TargetApplicationResponse) => ({
+        value: application.id,
+        label: application.name,
+      })),
+    [applications],
+  );
+
+  const latestRunAt = runs[0]?.createdAt;
+
+  const clearFilters = () => {
+    setSearchText("");
+    updateSearchParams(
+      searchParams,
+      setSearchParams,
+      {
+        versionId: null,
+        status: null,
+        runId: null,
+        runTab: "scenarios",
+        scenarioId: null,
+        scenarioTab: "events",
+      },
+      false,
+    );
+  };
+
+  if (!selectedProject) {
+    return (
+      <EmptyState
+        title="Choose a project"
+        description="Select a project from the sidebar to inspect regression runs."
+      />
+    );
+  }
+
+  if (applicationsLoading) {
+    return <PageLoader />;
+  }
+
+  if (applicationsError) {
+    return <ErrorBanner message="Failed to load target applications for this project." />;
+  }
+
+  if (applications.length === 0) {
+    return (
+      <EmptyState
+        title="No applications yet"
+        description="Create a target application before viewing regression runs."
+      />
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <RegressionRunsHeader
+        applicationName={activeApplication?.name ?? null}
+        latestRunAt={latestRunAt}
+        runCount={filteredRuns.length}
+      />
+
+      <div className={styles.topLevelTabs}>
+        <TabButton
+          active={view === "overview"}
+          onClick={() => updateSearchParams(searchParams, setSearchParams, { view: "overview" }, false)}
+        >
+          Overview
+        </TabButton>
+        <TabButton
+          active={view === "statistics"}
+          onClick={() => updateSearchParams(searchParams, setSearchParams, { view: "statistics" }, false)}
+        >
+          Statistics
+        </TabButton>
+      </div>
+
+      <RegressionRunsFilters
+        applicationOptions={applicationOptions}
+        versionOptions={versionOptions}
+        applicationId={activeApplication?.id ?? null}
+        versionId={versionId}
+        status={status}
+        searchText={searchText}
+        onApplicationChange={(value) => {
+          updateSearchParams(
+            searchParams,
+            setSearchParams,
+            {
+              appId: value,
+              versionId: null,
+              runId: null,
+              runTab: "scenarios",
+              scenarioId: null,
+              scenarioTab: "events",
+            },
+            false,
+          );
+        }}
+        onVersionChange={(value) => {
+          updateSearchParams(
+            searchParams,
+            setSearchParams,
+            {
+              versionId: value === "all" ? null : value,
+              runId: null,
+              runTab: "scenarios",
+              scenarioId: null,
+              scenarioTab: "events",
+            },
+            false,
+          );
+        }}
+        onStatusChange={(value) => {
+          updateSearchParams(
+            searchParams,
+            setSearchParams,
+            {
+              status: !value || value === "all" ? null : value,
+              runId: null,
+              runTab: "scenarios",
+              scenarioId: null,
+              scenarioTab: "events",
+            },
+            false,
+          );
+        }}
+        onSearchChange={setSearchText}
+        onClear={clearFilters}
+      />
+
+      {view === "statistics" ? (
+        <RegressionStatsTab runs={filteredRuns} />
+      ) : (
+        <div className={styles.overviewGrid}>
+          <div className={styles.overviewSidebar}>
+            {runsQuery.isError ? (
+              <ErrorBanner message="Failed to load regression runs." />
+            ) : (
+              <RegressionRunsList
+                runs={filteredRuns}
+                selectedRunId={runId}
+                onSelectRun={(nextRunId) =>
+                  updateSearchParams(
+                    searchParams,
+                    setSearchParams,
+                    {
+                      runId: nextRunId,
+                      runTab: "scenarios",
+                      scenarioId: null,
+                      scenarioTab: "events",
+                    },
+                    false,
+                  )
+                }
+              />
+            )}
+          </div>
+
+          <div className={styles.overviewWorkspace}>
+            {runId && runDetailsQuery.isError ? (
+              <ErrorBanner message="Failed to load the selected run." />
+            ) : (
+              <RegressionRunWorkspace
+                run={selectedRun}
+                runTab={runTab}
+                onRunTabChange={(nextTab) =>
+                  updateSearchParams(
+                    searchParams,
+                    setSearchParams,
+                    {
+                      runTab: nextTab,
+                      scenarioId: nextTab === "scenarios" ? scenarioId : null,
+                      scenarioTab: nextTab === "scenarios" ? scenarioTab : null,
+                    },
+                    false,
+                  )
+                }
+                scenarios={scenarios}
+                selectedScenario={selectedScenario}
+                selectedScenarioId={scenarioId}
+                onSelectScenario={(nextScenarioId) =>
+                  updateSearchParams(
+                    searchParams,
+                    setSearchParams,
+                    { scenarioId: nextScenarioId, scenarioTab: "events" },
+                    false,
+                  )
+                }
+                scenarioTab={scenarioTab}
+                onScenarioTabChange={(nextTab) =>
+                  updateSearchParams(searchParams, setSearchParams, { scenarioTab: nextTab }, false)
+                }
+                scenarioEvents={scenarioEvents}
+                scenarioArtifacts={scenarioArtifacts}
+                scenarioArtifactTree={scenarioArtifactTree}
+                runArtifacts={runArtifacts}
+                runArtifactTree={runArtifactTree}
+                projectId={selectedProject.id}
+                applicationId={activeApplication?.id ?? ""}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default RegressionRuns;
