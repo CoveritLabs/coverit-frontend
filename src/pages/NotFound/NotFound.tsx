@@ -4,8 +4,8 @@
 
 import { useNavigate } from "react-router-dom";
 import { Home, Search, FileQuestion } from "lucide-react";
-import { Button } from "@components/ui/Button/Button";
-import { ROUTES } from "@config/routes";
+import { Button } from "@shared/ui/Button/Button";
+import { ROUTES } from "@shared/config/routes";
 import styles from "./NotFound.module.scss";
 
 const NotFound = () => {

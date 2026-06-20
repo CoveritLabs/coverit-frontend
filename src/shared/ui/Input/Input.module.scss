@@ -1,0 +1,68 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+
+.input {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  height: $space-9;
+  width: 100%;
+  min-width: 0;
+  border-radius: $radius-md;
+  border: 1px solid var(--input);
+  padding: $space-1 $space-3;
+  font-size: $font-size-md;
+  background: var(--input-background);
+  color: var(--foreground);
+  transition:
+    color 0.2s,
+    box-shadow 0.2s;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.input::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.input[disabled] {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* file selector button (file: utilities) */
+.input::file-selector-button {
+  display: inline-flex;
+  height: $space-7;
+  border: 0;
+  background: transparent;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+/* focus-visible ring */
+.input:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(var(--ring-rgb), 0.5);
+}
+
+.input[aria-invalid="true"] {
+  box-shadow: 0 0 0 3px rgba(var(--destructive-rgb), 0.2);
+  border-color: var(--destructive);
+}
+
+@media (min-width: 768px) {
+  .input {
+    font-size: $font-size-sm;
+  }
+}
