@@ -177,7 +177,6 @@ function getStatusIcon(status: CrawlSessionStatus) {
   return Clock;
 }
 
-
 function createEmptyRegressionConfig(): RegressionCodebaseConfig {
   return {
     repositoryUrl: "",
@@ -749,7 +748,7 @@ const Applications = () => {
         application,
         gradient: GRADIENTS[index % GRADIENTS.length],
         versionCount: application.versions?.length ?? 0,
-        baseUrl: application.baseUrl?.trim() || "No description"
+        baseUrl: application.baseUrl?.trim() || "No description",
       })),
     [typedApplications],
   );
@@ -777,6 +776,7 @@ const Applications = () => {
     [selectedProject, user?.id],
   );
   const isAdmin = userRole === "ADMIN";
+  const isMember = userRole === "ADMIN" || userRole === "MEMBER";
 
   const { data: applicationDetails } = useApplicationDetails(
     selectedProject?.id ?? null,
@@ -1184,7 +1184,7 @@ const Applications = () => {
                   </div>
                 </div>
 
-                {isAdmin && (
+                {isAdmin ? (
                   <div className={styles.applicationActions}>
                     <Button
                       size="sm"
@@ -1226,7 +1226,19 @@ const Applications = () => {
                       Add Version
                     </Button>
                   </div>
-                )}
+                ) : isMember ? (
+                  <div className={styles.applicationActions}>
+                    <Button
+                      size="sm"
+                      onClick={() => dispatchModal({ type: "addVersion" })}
+                      aria-label="Add application version"
+                      title="Add application version"
+                    >
+                      <Plus className={styles.iconLarge} />
+                      Add Version
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1278,17 +1290,18 @@ const Applications = () => {
                         );
                       })}
 
-                      <button
-                        className={styles.versionAddButton}
-                        onClick={() => {
-                          dispatchModal({ type: "addVersion" });
-                        }}
-                      >
-                        <Plus className={styles.versionChipIcon} />
-                        <span>Add Version</span>
-                      </button>
+                      {isMember && (
+                        <button
+                          className={styles.versionAddButton}
+                          onClick={() => {
+                            dispatchModal({ type: "addVersion" });
+                          }}
+                        >
+                          <Plus className={styles.versionChipIcon} />
+                          <span>Add Version</span>
+                        </button>
+                      )}
                     </div>
-
                     <div className={styles.versionSessionSummary}>
                       <span>{sessionSummary.total} sessions</span>
                       <span className={styles.summaryDotSuccess} />
@@ -1356,15 +1369,24 @@ const Applications = () => {
                 <Card className={styles.noVersionsPanel}>
                   <Tag className={styles.noVersionsIcon} />
                   <h3>No versions yet</h3>
-                  <p>Create your first version to start crawling</p>
-                  <Button
-                    onClick={() => {
-                      dispatchModal({ type: "addVersion" });
-                    }}
-                  >
-                    <Plus className={styles.iconSmall} />
-                    Add First Version
-                  </Button>
+                  {isMember ? (
+                    <>
+                      <p className={styles.emptyText}>Create your first application version to start crawl sessions.</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          dispatchModal({ type: "addVersion" });
+                        }}
+                      >
+                        <Plus className={styles.iconSmall} />
+                        Add Version
+                      </Button>
+                    </>
+                  ) : (
+                    <p className={styles.emptyText}>
+                      Contact a project admin or member to create your first application version.
+                    </p>
+                  )}
                 </Card>
               </div>
             )}
@@ -1426,7 +1448,7 @@ const Applications = () => {
         />
       )}
 
-      {modal.type === "addVersion" && selectedApplication && isAdmin && (
+      {modal.type === "addVersion" && selectedApplication && (
         <AddVersionModal isNameDuplicate={isVersionNameDuplicate} onConfirm={handleAddVersion} onClose={closeModal} />
       )}
 

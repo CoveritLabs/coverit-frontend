@@ -136,7 +136,7 @@
   display: flex;
   align-items: center;
   gap: $space-2;
-  margin-top: $space-3;
+  margin-top: $space-1;
   font-size: $font-size-xs;
   color: var(--muted-foreground);
 }
@@ -479,7 +479,7 @@
 
 .emptyCard {
   text-align: center;
-  max-width: 320px;
+  max-width: 360px;
 }
 
 .emptyIcon {
@@ -503,6 +503,7 @@
   margin: $space-2 0 0;
   font-size: $font-size-sm;
   color: var(--muted-foreground);
+  margin-bottom: $space-3;
 }
 
 .modalOverlay {

@@ -6,13 +6,17 @@ import type {
   ListRegressionEventsResponse,
   RegressionArtifact,
   RegressionArtifactTreeNode,
-  RegressionScenario,
 } from "@coveritlabs/contracts";
 import { EmptyState, TabButton } from "../common/common";
 import { RegressionRunArtifactsTab } from "./run-artifacts-tab";
 import { RegressionRunSummary } from "./run-summary";
 import { RegressionScenariosTab } from "../scenarios/scenarios-tab";
-import type { RegressionRunListItem, RegressionRunTab, RegressionScenarioTab } from "../../../model/types/regression-runs.types";
+import type {
+  RegressionRunListItem,
+  RegressionRunTab,
+  RegressionScenarioTab,
+  RegressionScenarioWithReports,
+} from "../../../model/types/regression-runs.types";
 import styles from "../../RegressionRuns.module.scss";
 
 export function RegressionRunWorkspace({
@@ -27,28 +31,36 @@ export function RegressionRunWorkspace({
   onScenarioTabChange,
   scenarioEvents,
   scenarioArtifacts,
+  scenarioArtifactsLoading,
+  scenarioArtifactsError,
+  onRetryScenarioArtifacts,
   scenarioArtifactTree,
   runArtifacts,
   runArtifactTree,
   projectId,
   applicationId,
+  jiraReportingEnabled,
 }: {
   run: RegressionRunListItem | null;
   runTab: RegressionRunTab;
   onRunTabChange: (tab: RegressionRunTab) => void;
-  scenarios: RegressionScenario[];
-  selectedScenario: RegressionScenario | null;
+  scenarios: RegressionScenarioWithReports[];
+  selectedScenario: RegressionScenarioWithReports | null;
   selectedScenarioId: string | null;
   onSelectScenario: (scenarioId: string) => void;
   scenarioTab: RegressionScenarioTab;
   onScenarioTabChange: (tab: RegressionScenarioTab) => void;
   scenarioEvents: ListRegressionEventsResponse["events"];
   scenarioArtifacts: RegressionArtifact[];
+  scenarioArtifactsLoading: boolean;
+  scenarioArtifactsError: boolean;
+  onRetryScenarioArtifacts: () => void;
   scenarioArtifactTree: RegressionArtifactTreeNode[];
   runArtifacts: RegressionArtifact[];
   runArtifactTree: RegressionArtifactTreeNode[];
   projectId: string;
   applicationId: string;
+  jiraReportingEnabled: boolean;
 }) {
   if (!run) {
     return (
@@ -82,10 +94,14 @@ export function RegressionRunWorkspace({
           onScenarioTabChange={onScenarioTabChange}
           scenarioEvents={scenarioEvents}
           scenarioArtifacts={scenarioArtifacts}
+          scenarioArtifactsLoading={scenarioArtifactsLoading}
+          scenarioArtifactsError={scenarioArtifactsError}
+          onRetryScenarioArtifacts={onRetryScenarioArtifacts}
           scenarioArtifactTree={scenarioArtifactTree}
           projectId={projectId}
           applicationId={applicationId}
           runId={run.runId}
+          jiraReportingEnabled={jiraReportingEnabled}
         />
       ) : runTab === "artifacts" ? (
         <RegressionRunArtifactsTab

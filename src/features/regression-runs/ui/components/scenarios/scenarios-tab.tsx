@@ -6,14 +6,13 @@ import type {
   ListRegressionEventsResponse,
   RegressionArtifact,
   RegressionArtifactTreeNode,
-  RegressionScenario,
 } from "@coveritlabs/contracts";
 import { EmptyState } from "../common/common";
 import { RegressionScenarioArtifacts } from "./scenario-artifacts";
 import { RegressionScenarioDetail } from "./scenario-detail";
 import { RegressionScenarioEvents } from "./scenario-events";
 import { RegressionScenarioList } from "./scenario-list";
-import type { RegressionScenarioTab } from "../../../model/types/regression-runs.types";
+import type { RegressionScenarioTab, RegressionScenarioWithReports } from "../../../model/types/regression-runs.types";
 import styles from "../../RegressionRuns.module.scss";
 
 export function RegressionScenariosTab({
@@ -25,23 +24,31 @@ export function RegressionScenariosTab({
   onScenarioTabChange,
   scenarioEvents,
   scenarioArtifacts,
+  scenarioArtifactsLoading,
+  scenarioArtifactsError,
+  onRetryScenarioArtifacts,
   scenarioArtifactTree,
   projectId,
   applicationId,
   runId,
+  jiraReportingEnabled,
 }: {
-  scenarios: RegressionScenario[];
-  selectedScenario: RegressionScenario | null;
+  scenarios: RegressionScenarioWithReports[];
+  selectedScenario: RegressionScenarioWithReports | null;
   selectedScenarioId: string | null;
   scenarioTab: RegressionScenarioTab;
   onSelectScenario: (scenarioId: string) => void;
   onScenarioTabChange: (tab: RegressionScenarioTab) => void;
   scenarioEvents: ListRegressionEventsResponse["events"];
   scenarioArtifacts: RegressionArtifact[];
+  scenarioArtifactsLoading: boolean;
+  scenarioArtifactsError: boolean;
+  onRetryScenarioArtifacts: () => void;
   scenarioArtifactTree: RegressionArtifactTreeNode[];
   projectId: string;
   applicationId: string;
   runId: string;
+  jiraReportingEnabled: boolean;
 }) {
   return (
     <div className={styles.scenarioSplit}>
@@ -62,16 +69,24 @@ export function RegressionScenariosTab({
             scenario={selectedScenario}
             scenarioTab={scenarioTab}
             onScenarioTabChange={onScenarioTabChange}
+            artifacts={scenarioArtifacts}
+            artifactsLoading={scenarioArtifactsLoading}
+            artifactsError={scenarioArtifactsError}
+            onRetryArtifacts={onRetryScenarioArtifacts}
+            projectId={projectId}
+            applicationId={applicationId}
+            runId={runId}
+            jiraReportingEnabled={jiraReportingEnabled}
           >
             {scenarioTab === "events" ? (
               <RegressionScenarioEvents events={scenarioEvents} />
             ) : (
-          <RegressionScenarioArtifacts
-            artifacts={scenarioArtifacts}
-            artifactTree={scenarioArtifactTree}
-            projectId={projectId}
-            applicationId={applicationId}
-            runId={runId}
+              <RegressionScenarioArtifacts
+                artifacts={scenarioArtifacts}
+                artifactTree={scenarioArtifactTree}
+                projectId={projectId}
+                applicationId={applicationId}
+                runId={runId}
               />
             )}
           </RegressionScenarioDetail>

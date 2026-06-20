@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
+      'framer-motion': resolve(__dirname, './node_modules/framer-motion/dist/cjs/index.js'),
       '@': resolve(__dirname, './src'),
       '@app': resolve(__dirname, './src/app'),
       '@features': resolve(__dirname, './src/features'),

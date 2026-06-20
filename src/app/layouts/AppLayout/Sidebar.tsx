@@ -13,7 +13,7 @@ import { getProjectUserRole } from "@features/projects";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore, useUIStore } from "@app/store";
 import { Select } from "@shared/ui";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard },

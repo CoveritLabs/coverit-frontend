@@ -187,6 +187,7 @@
 
 .header {
   padding: $space-6;
+  padding-bottom: 0;
   border-bottom: 1px solid var(--border);
   background: var(--card);
 }
@@ -282,8 +283,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: $space-4;
   min-height: 0;
   padding: $space-6;
+}
+
+.memberSearchBar {
+  padding-top: $space-1;
 }
 
 .tableCard {
@@ -470,7 +476,7 @@
 
 .emptyCard {
   text-align: center;
-  max-width: 320px;
+  max-width: 360px;
 }
 
 .emptyIcon {
@@ -494,6 +500,7 @@
   margin: $space-2 0 0;
   font-size: $font-size-sm;
   color: var(--muted-foreground);
+  margin-bottom: $space-3;
 }
 
 .modalOverlay {
@@ -613,5 +620,213 @@
     color: var(--destructive) !important;
     background-color: color-mix(in oklab, var(--destructive) 12%, transparent) !important;
     border-color: color-mix(in oklab, var(--destructive) 35%, transparent) !important;
+  }
+}
+
+.tabSwitcher {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.tabButton:hover {
+  color: var(--text-primary);
+}
+
+.tabButtonActive {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.integrationsList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.integrationCard {
+  padding: $space-4;
+}
+
+.integrationRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+}
+
+.integrationInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  min-width: min(100%, 24rem);
+  flex: 1;
+}
+
+.integrationLogo {
+  width: 42px;
+  height: 42px;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: var(--integration-logo-background);
+  flex-shrink: 0;
+}
+
+.integrationContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.integrationNameRow {
+  display: flex;
+  align-items: center;
+  gap: $space-6;
+  flex-wrap: wrap;
+}
+
+.integrationName {
+  margin: 0;
+  font-weight: 600;
+  font-size: $font-size-sm;
+}
+
+.integrationDescription {
+  font-size: $font-size-sm;
+  color: var(--muted-foreground);
+  margin: $space-1 0 0;
+}
+
+.integrationMeta {
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+  margin: $space-3 0 0;
+}
+
+.integrationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin-top: $space-3;
+}
+
+.integrationDetailRow,
+.integrationUserEmail {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  min-width: 0;
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+  margin-top: $space-1;
+}
+
+.integrationDetailRow span,
+.integrationMetaItem span,
+.integrationUserEmail span {
+  min-width: 0;
+  @include truncate;
+}
+
+.integrationUserCard {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--integration-detail-background);
+  max-width: 24rem;
+}
+
+.integrationMetaLabel {
+  margin: 0 0 $space-1;
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+}
+
+.integrationUserName {
+  margin: 0;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--foreground);
+}
+
+.integrationScopes {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.reportingConfigPanel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  max-width: 42rem;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--integration-detail-background);
+}
+
+.reportingConfigControls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.8fr) auto;
+  align-items: center;
+  gap: $space-2;
+}
+
+.integrationScopeBadge {
+  max-width: 18rem;
+  text-transform: none;
+  color: var(--muted-foreground);
+}
+
+.integrationTextButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.integrationActions {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.integrationStatusConnected {
+  color: var(--success);
+  border-color: var(--success);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.integrationStatusDisconnected {
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 780px) {
+  .reportingConfigControls {
+    grid-template-columns: 1fr;
   }
 }

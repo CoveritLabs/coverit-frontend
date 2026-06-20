@@ -9,13 +9,15 @@
 # Proprietary and confidential. Unauthorized use is strictly prohibited.
 # See LICENSE file in the project root for full license information.
 
-
 # Usage:
-#   ./docker.sh up                   -> start frontend & backend with remote images
-#   ./docker.sh up --tag latest      -> start all with tag latest
-#   ./docker.sh up --tag api:1.2     -> frontend :dev, api :1.2
-#   ./docker.sh up --local           -> frontend & api local (hot-reload)
-#   ./docker.sh up --local --tag api:1.2 -> frontend local, api remote 1.2
+#   ./docker.sh up                         -> full stack with remote images
+#   ./docker.sh up --tag latest            -> all services use tag latest
+#   ./docker.sh up --tag api:1.2           -> only API uses tag 1.2
+#   ./docker.sh up --tag docgen:1.2        -> only DocGen uses tag 1.2
+#   ./docker.sh up --tag crawler:1.2       -> only Crawler uses tag 1.2
+#   ./docker.sh up --tag regression:1.2    -> only Regression uses tag 1.2
+#   ./docker.sh up --local                 -> full stack local dev builds
+#   ./docker.sh up --test-prod             -> full stack local production builds
 
 print_help() {
   echo "Usage: $0 [up|down|logs] [--tag <[service:]tag>] [--local] [--test-prod]"
@@ -23,77 +25,136 @@ print_help() {
 
 set -e
 
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  print_help
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export FRONTEND_DIR="$SCRIPT_DIR"
 export API_DIR="$(cd "$SCRIPT_DIR/../coverit-api" && pwd)"
+export DOCGEN_DIR="$(cd "$SCRIPT_DIR/../coverit-docgen" && pwd)"
+export CRAWLER_DIR="$(cd "$SCRIPT_DIR/../coverit-crawler" && pwd)"
+export REGRESSION_DIR="$(cd "$SCRIPT_DIR/../coverit-regression" && pwd)"
 
 CMD="${1:-up}"
 shift 2>/dev/null || true
 
-# Defaults
 export API_TAG="dev"
 export FRONTEND_TAG="dev"
+export DOCGEN_TAG="dev"
+export CRAWLER_TAG="dev"
+export REGRESSION_TAG="dev"
 
 LOCAL=false
 TEST_PROD=false
 API_TAG_OVERRIDDEN=false
 FRONTEND_TAG_OVERRIDDEN=false
+DOCGEN_TAG_OVERRIDDEN=false
+CRAWLER_TAG_OVERRIDDEN=false
+REGRESSION_TAG_OVERRIDDEN=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --tag)
       if echo "$2" | grep -q ":"; then
         SERVICE=$(echo "$2" | cut -d: -f1 | tr '[:lower:]' '[:upper:]')
-        VAL=$(echo "$2" | cut -d: -f2)
-        export "${SERVICE}_TAG"="$VAL"
-        [ "$SERVICE" = "API" ] && API_TAG_OVERRIDDEN=true
-        [ "$SERVICE" = "FRONTEND" ] && FRONTEND_TAG_OVERRIDDEN=true
+        VAL=$(echo "$2" | cut -d: -f2-)
+        case "$SERVICE" in
+          API)
+            export API_TAG="$VAL"
+            API_TAG_OVERRIDDEN=true
+            ;;
+          FRONTEND)
+            export FRONTEND_TAG="$VAL"
+            FRONTEND_TAG_OVERRIDDEN=true
+            ;;
+          DOCGEN)
+            export DOCGEN_TAG="$VAL"
+            DOCGEN_TAG_OVERRIDDEN=true
+            ;;
+          CRAWLER)
+            export CRAWLER_TAG="$VAL"
+            CRAWLER_TAG_OVERRIDDEN=true
+            ;;
+          REGRESSION)
+            export REGRESSION_TAG="$VAL"
+            REGRESSION_TAG_OVERRIDDEN=true
+            ;;
+          *)
+            echo "Unknown service for --tag: $SERVICE"
+            exit 1
+            ;;
+        esac
       else
         export API_TAG="$2"
         export FRONTEND_TAG="$2"
+        export DOCGEN_TAG="$2"
+        export CRAWLER_TAG="$2"
+        export REGRESSION_TAG="$2"
       fi
       shift 2
       ;;
     --local) LOCAL=true; shift ;;
     --test-prod) TEST_PROD=true; shift ;;
+    -h|--help) print_help; exit 0 ;;
     *) echo "Unknown flag: $1"; exit 1 ;;
   esac
 done
 
-# API owns its services (db, redis). Start from the API base compose, then
-# layer API overrides, then the frontend compose, then frontend overrides.
-ENV_FILE_ARG=""
+ENV_FILE_ARGS=""
 if [ -f "$API_DIR/.env" ]; then
-  ENV_FILE_ARG="--env-file $API_DIR/.env"
+  ENV_FILE_ARGS="$ENV_FILE_ARGS --env-file $API_DIR/.env"
 fi
-EXEC_CMD="docker compose $ENV_FILE_ARG -f $API_DIR/docker-compose.yml"
+
+EXEC_CMD="docker compose$ENV_FILE_ARGS -f $API_DIR/docker-compose.yml"
 
 if [ "$LOCAL" = true ]; then
-  # local dev: hot-reload builds for both
+  echo "Starting CoverIt full stack in local dev mode..."
   if [ "$API_TAG_OVERRIDDEN" = false ]; then
-    echo "Using local API..."
     EXEC_CMD="$EXEC_CMD -f $API_DIR/overrides/api.dev.yml"
   fi
-  EXEC_CMD="$EXEC_CMD -f docker-compose.yml"
+  EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/docker-compose.yml"
   if [ "$FRONTEND_TAG_OVERRIDDEN" = false ]; then
-    echo "Using local Frontend..."
-    EXEC_CMD="$EXEC_CMD -f overrides/frontend.dev.yml"
+    EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/overrides/frontend.dev.yml"
+  fi
+  EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml"
+  if [ "$DOCGEN_TAG_OVERRIDDEN" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/overrides/api.dev.yml"
+  fi
+  EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml"
+  if [ "$CRAWLER_TAG_OVERRIDDEN" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/overrides/crawler.dev.yml"
+  fi
+  EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml"
+  if [ "$REGRESSION_TAG_OVERRIDDEN" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/overrides/regression.dev.yml"
   fi
 elif [ "$TEST_PROD" = true ]; then
-  # local prod builds against cloud db/redis
-  echo "Starting in Production Test mode (Aiven)..."
-  EXEC_CMD="$EXEC_CMD -f $API_DIR/overrides/api.cloud.yml -f $API_DIR/overrides/api.test.yml -f docker-compose.yml -f overrides/frontend.prod.yml"
+  echo "Starting CoverIt full stack in Production Test mode..."
+  EXEC_CMD="$EXEC_CMD -f $API_DIR/overrides/api.test.yml"
+  EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/docker-compose.yml -f $FRONTEND_DIR/overrides/frontend.prod.yml"
+  EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml -f $DOCGEN_DIR/overrides/api.test.yml"
+  EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml -f $CRAWLER_DIR/overrides/crawler.prod.yml"
+  EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml -f $REGRESSION_DIR/overrides/regression.prod.yml"
 else
-  # default: remote images, local db/redis
-  EXEC_CMD="$EXEC_CMD -f docker-compose.yml"
+  echo "Starting CoverIt full stack with remote images..."
+  EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/docker-compose.yml"
+  EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml"
+  EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml"
+  EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml"
 fi
 
 case "$CMD" in
   up)
-    $EXEC_CMD up -d --build
+    if [ "$LOCAL" = true ] || [ "$TEST_PROD" = true ]; then
+      $EXEC_CMD up -d --build --remove-orphans
+    else
+      $EXEC_CMD up -d --remove-orphans
+    fi
     ;;
   down)
-    $EXEC_CMD down
+    $EXEC_CMD down --remove-orphans
     ;;
   logs)
     $EXEC_CMD logs -f

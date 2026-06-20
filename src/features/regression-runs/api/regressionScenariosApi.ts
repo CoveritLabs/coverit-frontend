@@ -7,9 +7,13 @@ import type {
   ListRegressionEventsRequest,
   ListRegressionEventsResponse,
   ListRegressionScenariosResponse,
-  RegressionScenario as RegressionScenarioResponse,
 } from "@coveritlabs/contracts";
 import type { Payload } from "@shared/types/common";
+import type {
+  CreateScenarioIntegrationReportRequest,
+  CreateScenarioIntegrationReportResponse,
+  RegressionScenarioWithReports,
+} from "../model/types/regression-runs.types";
 
 export async function listScenarios(
   projectId: string,
@@ -27,8 +31,8 @@ export async function getScenario(
   applicationId: string,
   runId: string,
   scenarioId: string,
-): Promise<RegressionScenarioResponse> {
-  const res = await apiClient.get<RegressionScenarioResponse>(
+): Promise<RegressionScenarioWithReports> {
+  const res = await apiClient.get<RegressionScenarioWithReports>(
     `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios/${scenarioId}`,
   );
   return res.data;
@@ -44,6 +48,21 @@ export async function listScenarioEvents(
   const res = await apiClient.get<ListRegressionEventsResponse>(
     `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios/${scenarioId}/events`,
     { params },
+  );
+  return res.data;
+}
+
+export async function createScenarioIntegrationReport(
+  projectId: string,
+  applicationId: string,
+  runId: string,
+  scenarioId: string,
+  provider: "jira",
+  payload: CreateScenarioIntegrationReportRequest,
+): Promise<CreateScenarioIntegrationReportResponse> {
+  const res = await apiClient.post<CreateScenarioIntegrationReportResponse>(
+    `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios/${scenarioId}/reports/${provider}`,
+    payload,
   );
   return res.data;
 }

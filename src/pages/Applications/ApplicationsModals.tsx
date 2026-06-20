@@ -388,7 +388,7 @@ export const RotateApiKeyModal = ({
           ) : (
             <>
               <p className={styles.mutedText}>
-                Rotate the API key for <strong>{applicationName}</strong>? Existing integrations using the old
+                Rotate the API key for <strong>{applicationName}</strong>? Existing regression frameworks using the old
                 key will need to update to the new key to continue working.
               </p>
               <div className={styles.modalActions}>
@@ -537,11 +537,7 @@ function splitPatterns(value: string) {
     .filter(Boolean);
 }
 
-export const CreateCrawlSessionModal = ({
-  initialData,
-  onConfirm,
-  onClose,
-}: CreateCrawlSessionModalProps) => {
+export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: CreateCrawlSessionModalProps) => {
   const [trigger, setTrigger] = useState<CrawlSessionTrigger>(initialData?.trigger ?? "manual");
   const [maxStates, setMaxStates] = useState(String(initialData?.crawlConfig.maxStates ?? 1000));
   const [maxDepth, setMaxDepth] = useState(String(initialData?.crawlConfig.maxDepth ?? 10));

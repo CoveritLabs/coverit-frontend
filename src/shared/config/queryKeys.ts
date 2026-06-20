@@ -38,8 +38,13 @@ const regressionRunKeys = {
     [...regressionRunKeys.all, "scenarios", projectId, applicationId, runId] as const,
   scenario: (projectId: string, applicationId: string, runId: string, scenarioId: string) =>
     [...regressionRunKeys.scenarios(projectId, applicationId, runId), "detail", scenarioId] as const,
-  events: (projectId: string, applicationId: string, runId: string, scenarioId: string, filters: Record<string, unknown>) =>
-    [...regressionRunKeys.all, "events", projectId, applicationId, runId, scenarioId, filters] as const,
+  events: (
+    projectId: string,
+    applicationId: string,
+    runId: string,
+    scenarioId: string,
+    filters: Record<string, unknown>,
+  ) => [...regressionRunKeys.all, "events", projectId, applicationId, runId, scenarioId, filters] as const,
   artifacts: (projectId: string, applicationId: string, runId: string, filters: Record<string, unknown>) =>
     [...regressionRunKeys.all, "artifacts", projectId, applicationId, runId, filters] as const,
   scenarioArtifacts: (
@@ -53,8 +58,16 @@ const regressionRunKeys = {
     [...regressionRunKeys.all, "artifact", projectId, applicationId, runId, artifactId] as const,
 };
 
+const integrationKeys = {
+  all: ["integrations"] as const,
+  status: (projectId: string, provider: string) => [...integrationKeys.all, "status", projectId, provider] as const,
+  reportingOptions: (projectId: string, provider: string) =>
+    [...integrationKeys.all, "reporting-options", projectId, provider] as const,
+};
+
 export const queryKeys = {
   projects: projectKeys,
   targetApplications: targetApplicationKeys,
   regressionRuns: regressionRunKeys,
+  integrations: integrationKeys,
 };

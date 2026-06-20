@@ -2,6 +2,4 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-export * from './GoogleIcon'
-export * from './GitHubIcon'
-export * from './JiraIcon'
+export * from "./ContentErrorPanel";
