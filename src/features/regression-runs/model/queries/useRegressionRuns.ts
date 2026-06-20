@@ -16,12 +16,21 @@ import type {
   RegressionScenario as RegressionScenarioResponse,
 } from "@coveritlabs/contracts";
 import { queryKeys } from "@shared/config/queryKeys";
+import type { Payload } from "@shared/types/common";
 import { regressionRunService } from "../../api/regressionRunService";
+
+const emptyRunsResponse = { runs: [] } as unknown as ListRegressionRunsResponse;
+const emptyScenariosResponse = { scenarios: [] } as unknown as ListRegressionScenariosResponse;
+const emptyEventsResponse = { events: [] } as unknown as ListRegressionEventsResponse;
+const emptyArtifactsResponse = {
+  artifacts: [],
+  artifactTree: [],
+} as unknown as ListRegressionArtifactsResponse;
 
 export function useRegressionRuns(
   projectId: string | null,
   applicationId: string | null,
-  filters: ListRegressionRunsRequest = {},
+  filters: Payload<ListRegressionRunsRequest> = {},
 ) {
   const queryClient = useQueryClient();
   const safeProjectId = projectId ?? "__missing__";
@@ -35,8 +44,8 @@ export function useRegressionRuns(
       projectId && applicationId
         ? (queryClient.getQueryData<ListRegressionRunsResponse>(
             queryKeys.regressionRuns.list(projectId, applicationId, filters),
-          ) ?? { runs: [] })
-        : { runs: [] },
+          ) ?? emptyRunsResponse)
+        : emptyRunsResponse,
   });
 }
 
@@ -73,8 +82,8 @@ export function useRegressionScenarios(projectId: string | null, applicationId: 
       projectId && applicationId && runId
         ? (queryClient.getQueryData<ListRegressionScenariosResponse>(
             queryKeys.regressionRuns.scenarios(projectId, applicationId, runId),
-          ) ?? { scenarios: [] })
-        : { scenarios: [] },
+          ) ?? emptyScenariosResponse)
+        : emptyScenariosResponse,
   });
 }
 
@@ -108,7 +117,7 @@ export function useRegressionScenarioEvents(
   applicationId: string | null,
   runId: string | null,
   scenarioId: string | null,
-  filters: ListRegressionEventsRequest = {},
+  filters: Payload<ListRegressionEventsRequest> = {},
 ) {
   const queryClient = useQueryClient();
   const safeProjectId = projectId ?? "__missing__";
@@ -131,8 +140,8 @@ export function useRegressionScenarioEvents(
       projectId && applicationId && runId && scenarioId
         ? (queryClient.getQueryData<ListRegressionEventsResponse>(
             queryKeys.regressionRuns.events(projectId, applicationId, runId, scenarioId, filters),
-          ) ?? { events: [] })
-        : { events: [] },
+          ) ?? emptyEventsResponse)
+        : emptyEventsResponse,
   });
 }
 
@@ -140,7 +149,7 @@ export function useRegressionRunArtifacts(
   projectId: string | null,
   applicationId: string | null,
   runId: string | null,
-  filters: ListRegressionArtifactsRequest = {},
+  filters: Payload<ListRegressionArtifactsRequest> = {},
 ) {
   const queryClient = useQueryClient();
   const safeProjectId = projectId ?? "__missing__";
@@ -155,8 +164,8 @@ export function useRegressionRunArtifacts(
       projectId && applicationId && runId
         ? (queryClient.getQueryData<ListRegressionArtifactsResponse>(
             queryKeys.regressionRuns.artifacts(projectId, applicationId, runId, filters),
-          ) ?? { artifacts: [], artifactTree: [] })
-        : { artifacts: [], artifactTree: [] },
+          ) ?? emptyArtifactsResponse)
+        : emptyArtifactsResponse,
   });
 }
 
@@ -165,7 +174,7 @@ export function useRegressionScenarioArtifacts(
   applicationId: string | null,
   runId: string | null,
   scenarioId: string | null,
-  filters: ListRegressionArtifactsRequest = {},
+  filters: Payload<ListRegressionArtifactsRequest> = {},
 ) {
   const queryClient = useQueryClient();
   const safeProjectId = projectId ?? "__missing__";
@@ -194,8 +203,8 @@ export function useRegressionScenarioArtifacts(
       projectId && applicationId && runId && scenarioId
         ? (queryClient.getQueryData<ListRegressionArtifactsResponse>(
             queryKeys.regressionRuns.scenarioArtifacts(projectId, applicationId, runId, scenarioId, filters),
-          ) ?? { artifacts: [], artifactTree: [] })
-        : { artifacts: [], artifactTree: [] },
+          ) ?? emptyArtifactsResponse)
+        : emptyArtifactsResponse,
   });
 }
 

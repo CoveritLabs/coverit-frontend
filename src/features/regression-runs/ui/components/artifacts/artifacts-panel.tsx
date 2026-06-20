@@ -242,7 +242,7 @@ function toFileNode(artifact: RegressionArtifact): RegressionArtifactTreeNode {
     artifact,
     artifactCount: 1,
     sizeBytes: artifact.sizeBytes,
-  };
+  } as RegressionArtifactTreeNode;
 }
 
 function flattenArtifactTree(nodes: RegressionArtifactTreeNode[]): RegressionArtifact[] {
