@@ -9,7 +9,12 @@ import type { RegressionArtifact, RegressionArtifactTreeNode } from "@coveritlab
 import { Card } from "@shared/ui";
 import { useRegressionRunDownloads } from "../../../model/queries/useRegressionRunDownloads";
 import { RegressionArtifactPreviewCard } from "./artifact-preview-card";
-import { formatArtifactKind, formatBytes, formatTextArtifactPreview, getArtifactPreviewKind } from "../../../lib/formatters";
+import {
+  formatArtifactKind,
+  formatBytes,
+  formatTextArtifactPreview,
+  getArtifactPreviewKind,
+} from "../../../lib/formatters";
 import styles from "../../RegressionRuns.module.scss";
 
 const TEXT_PREVIEW_MAX_BYTES = 1024 * 1024;
@@ -59,7 +64,8 @@ export function RegressionArtifactsPanel({
       return;
     }
     if (!activeArtifactId || !treeArtifacts.some((artifact) => artifact.id === activeArtifactId)) {
-      const preferredArtifact = treeArtifacts.find((artifact) => getArtifactPreviewKind(artifact) !== "none") ?? treeArtifacts[0];
+      const preferredArtifact =
+        treeArtifacts.find((artifact) => getArtifactPreviewKind(artifact) !== "none") ?? treeArtifacts[0];
       setActiveArtifactId(preferredArtifact.id);
     }
   }, [activeArtifactId, treeArtifacts]);
@@ -166,7 +172,11 @@ export function RegressionArtifactsPanel({
               </div>
             </button>
           </div>
-          {expanded && <div className={styles.artifactTreeChildren}>{node.children?.map((child) => renderTreeNode(child, depth + 1))}</div>}
+          {expanded && (
+            <div className={styles.artifactTreeChildren}>
+              {node.children?.map((child) => renderTreeNode(child, depth + 1))}
+            </div>
+          )}
         </div>
       );
     }
@@ -177,7 +187,9 @@ export function RegressionArtifactsPanel({
     return (
       <div
         key={node.id}
-        className={artifact.id === activeArtifactId ? `${styles.artifactItem} ${styles.artifactItemActive}` : styles.artifactItem}
+        className={
+          artifact.id === activeArtifactId ? `${styles.artifactItem} ${styles.artifactItemActive}` : styles.artifactItem
+        }
       >
         <button
           type="button"
@@ -206,16 +218,16 @@ export function RegressionArtifactsPanel({
         <div className={styles.panelHeader}>
           <div>
             <h3>{title}</h3>
-            <p>{artifacts.length} artifact{artifacts.length === 1 ? "" : "s"}</p>
+            <p>
+              {artifacts.length} artifact{artifacts.length === 1 ? "" : "s"}
+            </p>
           </div>
         </div>
 
         {treeArtifacts.length === 0 ? (
           <div className={styles.panelEmpty}>No artifacts available.</div>
         ) : (
-          <div className={styles.artifactList}>
-            {displayTree.map((node) => renderTreeNode(node))}
-          </div>
+          <div className={styles.artifactList}>{displayTree.map((node) => renderTreeNode(node))}</div>
         )}
       </Card>
 
@@ -242,7 +254,7 @@ function toFileNode(artifact: RegressionArtifact): RegressionArtifactTreeNode {
     artifact,
     artifactCount: 1,
     sizeBytes: artifact.sizeBytes,
-  };
+  } as RegressionArtifactTreeNode;
 }
 
 function flattenArtifactTree(nodes: RegressionArtifactTreeNode[]): RegressionArtifact[] {

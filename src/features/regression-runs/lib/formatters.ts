@@ -106,8 +106,12 @@ function isJsonArtifact(artifact: RegressionArtifactResponse): boolean {
   return artifact.name.toLowerCase().endsWith(".json");
 }
 
-export function formatBytes(bytes?: number) {
+export function formatBytes(bytes?: number | bigint) {
   if (!bytes || bytes <= 0) return "Unknown size";
+  if (typeof bytes === "bigint") {
+    if (bytes > BigInt(Number.MAX_SAFE_INTEGER)) return `${bytes.toString()} B`;
+    bytes = Number(bytes);
+  }
   const units = ["B", "KB", "MB", "GB"];
   let value = bytes;
   let unitIndex = 0;

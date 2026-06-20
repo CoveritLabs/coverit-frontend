@@ -14,6 +14,16 @@ const targetApplicationKeys = {
   lists: (projectId: string) => [...targetApplicationKeys.all, "list", projectId] as const,
   detail: (projectId: string, applicationId: string) =>
     [...targetApplicationKeys.all, "detail", projectId, applicationId] as const,
+  applicationDetails: (projectId: string, applicationId: string, versionId: string) =>
+    [...targetApplicationKeys.all, "application-details", projectId, applicationId, versionId] as const,
+  crawlSessions: (projectId: string, applicationId: string, versionId: string) =>
+    [...targetApplicationKeys.all, "crawl-sessions", projectId, applicationId, versionId] as const,
+  crawlSession: (projectId: string, applicationId: string, versionId: string, sessionId: string) =>
+    [...targetApplicationKeys.all, "crawl-session", projectId, applicationId, versionId, sessionId] as const,
+  regressionConfig: (projectId: string, applicationId: string) =>
+    [...targetApplicationKeys.all, "regression-config", projectId, applicationId] as const,
+  crawlSchedules: (projectId: string, applicationId: string) =>
+    [...targetApplicationKeys.all, "crawl-schedules", projectId, applicationId] as const,
 };
 
 const regressionRunKeys = {
@@ -28,8 +38,13 @@ const regressionRunKeys = {
     [...regressionRunKeys.all, "scenarios", projectId, applicationId, runId] as const,
   scenario: (projectId: string, applicationId: string, runId: string, scenarioId: string) =>
     [...regressionRunKeys.scenarios(projectId, applicationId, runId), "detail", scenarioId] as const,
-  events: (projectId: string, applicationId: string, runId: string, scenarioId: string, filters: Record<string, unknown>) =>
-    [...regressionRunKeys.all, "events", projectId, applicationId, runId, scenarioId, filters] as const,
+  events: (
+    projectId: string,
+    applicationId: string,
+    runId: string,
+    scenarioId: string,
+    filters: Record<string, unknown>,
+  ) => [...regressionRunKeys.all, "events", projectId, applicationId, runId, scenarioId, filters] as const,
   artifacts: (projectId: string, applicationId: string, runId: string, filters: Record<string, unknown>) =>
     [...regressionRunKeys.all, "artifacts", projectId, applicationId, runId, filters] as const,
   scenarioArtifacts: (

@@ -31,7 +31,7 @@
 
 .sidebarTitleRow {
   @include flex-between;
-  margin-bottom: $space-1;
+  margin-bottom: $space-4;
   gap: $space-3;
 }
 
@@ -55,7 +55,7 @@
 }
 
 .projectSection {
-  padding: $space-4;
+  padding: $space-4 $space-5;
 }
 
 .projectSectionTitle {
@@ -70,16 +70,14 @@
 .projectList {
   display: flex;
   flex-direction: column;
-  gap: $space-2;
+  gap: $space-3;
 }
 
 .projectItem {
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-  padding: $space-3;
+  display: block;
+  padding: $space-4;
   border-radius: $radius-md;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   background: transparent;
   text-align: left;
   width: 100%;
@@ -91,12 +89,13 @@
 }
 
 .projectItem:hover {
-  background: color-mix(in oklab, var(--sidebar-accent) 50%, transparent);
+  background: color-mix(in oklab, var(--sidebar-accent) 45%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
 }
 
 .projectItemActive {
-  background: var(--sidebar-accent);
-  border-color: color-mix(in oklab, var(--sidebar-accent) 40%, transparent);
+  background: color-mix(in oklab, var(--primary) 8%, var(--sidebar-accent));
+  border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
   color: var(--sidebar-accent-foreground);
 }
 
@@ -127,7 +126,7 @@
 
 .projectName {
   margin: 0;
-  font-size: $font-size-sm;
+  font-size: $font-size-base;
   font-weight: $font-weight-semibold;
   color: inherit;
   @include truncate;
@@ -145,7 +144,10 @@
 .projectDescription {
   flex: 1;
   min-width: 0;
+  margin-top: $space-2;
   color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: $font-size-xs;
   @include truncate;
 }
 
@@ -266,12 +268,19 @@
   position: relative;
 }
 
+.applicationSearch {
+  position: relative;
+}
+
 .searchIcon {
   position: absolute;
   left: $space-3;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted-foreground);
+  width: 1rem;
+  height: 1rem;
+  z-index: 1;
 }
 
 .searchInput {
@@ -833,4 +842,861 @@
   padding: $space-6;
 
   @include custom-scrollbar;
+}
+
+.deleteTextButton {
+  color: var(--destructive);
+
+  &:hover {
+    color: var(--destructive) !important;
+    background: color-mix(in oklab, var(--destructive) 12%, transparent) !important;
+  }
+}
+
+.versionSessionSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  flex-shrink: 0;
+  font-size: $font-size-xs;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.summaryDotSuccess,
+.summaryDotFailed {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: $radius-full;
+}
+
+.summaryDotSuccess {
+  background: var(--success);
+}
+
+.summaryDotFailed {
+  background: var(--destructive);
+}
+
+.detailTabs {
+  display: flex;
+  align-items: center;
+  gap: $space-5;
+  padding: 0 $space-6;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.detailTab {
+  position: relative;
+  padding: $space-4 0;
+  color: var(--muted-foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.detailTabActive {
+  color: var(--primary);
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--primary);
+  }
+}
+
+.detailStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $space-4;
+  margin-bottom: $space-5;
+}
+
+.detailStatCard {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  min-height: 5.5rem;
+  padding: $space-5;
+}
+
+.detailStatIcon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: $radius-md;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  flex-shrink: 0;
+}
+
+.detailStatIconSuccess {
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+}
+
+.detailStatValue {
+  display: block;
+  color: var(--foreground);
+  font-size: $font-size-3xl;
+  line-height: $line-height-tight;
+}
+
+.detailStatLabel {
+  display: block;
+  margin-top: $space-1;
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+  text-transform: uppercase;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--foreground);
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+}
+
+.sectionSubtitle {
+  margin: $space-1 0 0;
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+}
+
+.regressionCard {
+  min-height: 11rem;
+  padding: $space-5;
+  margin-bottom: $space-5;
+}
+
+.regressionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.regressionBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-3;
+  margin-top: $space-7;
+}
+
+.repoLine {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+}
+
+.branchLine {
+  margin-left: $space-6;
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+  font-family: var(--font-mono);
+
+  span {
+    margin: 0 $space-1;
+  }
+}
+
+.emptyCodebase {
+  min-height: 6.8rem;
+  margin-top: $space-5;
+  border: 1px dashed var(--border);
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  color: var(--muted-foreground);
+  font-size: $font-size-sm;
+}
+
+.iconSmallMuted {
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.sessionsPanel {
+  overflow: hidden;
+}
+
+.sessionsPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-5 $space-5 0;
+}
+
+.sessionsFilterBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-4;
+  padding: $space-4 $space-5 $space-5;
+}
+
+.sessionsAppSelect {
+  width: 12rem;
+  flex-shrink: 0;
+}
+
+.filterGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.filterPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: $space-8;
+  padding: 0 $space-3;
+  border-radius: $radius-md;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  transition:
+    background-color $transition-fast,
+    color $transition-fast;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.filterPillActive {
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.sessionsTableWrap {
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  @include custom-scrollbar;
+}
+
+.sessionsTable {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: $space-4 $space-5;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    color: var(--muted-foreground);
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    text-transform: uppercase;
+  }
+
+  td {
+    color: var(--foreground);
+    font-size: $font-size-sm;
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.startedCell {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  white-space: nowrap;
+}
+
+.sessionStatusIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.sessionStatusSuccess {
+  color: var(--success);
+  border-color: color-mix(in oklab, var(--success) 40%, var(--border));
+  background: transparent;
+}
+
+.sessionStatusFailed {
+  color: var(--destructive);
+  border-color: color-mix(in oklab, var(--destructive) 42%, var(--border));
+  background: transparent;
+}
+
+.sessionStatusRunning {
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 42%, var(--border));
+  background: transparent;
+}
+
+.sessionStatusProgress {
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 42%, var(--border));
+  background: transparent;
+}
+
+.sessionStatusPending {
+  color: var(--muted-foreground);
+  border-color: color-mix(in oklab, var(--muted-foreground) 34%, var(--border));
+  background: transparent;
+}
+
+.sessionStatusAnimated {
+  animation: status-spin 1s linear infinite;
+}
+
+.sessionApplicationCell {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  > span {
+    display: inline-flex;
+    gap: $space-1;
+  }
+}
+
+.compactBadge {
+  padding: 0.1rem $space-2;
+  font-size: 0.68rem;
+  line-height: 1.1;
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+}
+
+.sessionBadge {
+  border: 1px solid currentColor;
+}
+
+.triggerBadge {
+  color: var(--foreground);
+  background: transparent;
+}
+
+.durationCell {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: var(--muted-foreground);
+}
+
+.sessionActions {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.tableIconLink {
+  width: $space-9;
+  height: $space-9;
+  border-radius: $radius-md;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  transition:
+    background-color $transition-fast,
+    color $transition-fast;
+
+  &:hover {
+    color: var(--foreground);
+    background: color-mix(in oklab, var(--muted) 55%, transparent);
+  }
+}
+
+.sessionsEmpty {
+  padding: $space-8;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.noSessionsState {
+  min-height: 18rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-4;
+  color: var(--muted-foreground);
+  text-align: center;
+
+  p {
+    margin: 0;
+    font-size: $font-size-sm;
+  }
+}
+
+.noSessionsIcon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--muted-foreground);
+}
+
+.startCrawlButton {
+  height: auto;
+  padding: 0;
+}
+
+.noVersionsPanel {
+  min-height: 15.5rem;
+  border-style: dashed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  color: var(--muted-foreground);
+
+  h3 {
+    margin: 0;
+    color: var(--foreground);
+    font-size: $font-size-base;
+  }
+
+  p {
+    margin: 0;
+    font-size: $font-size-sm;
+  }
+}
+
+.noVersionsIcon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--muted-foreground);
+}
+
+.schedulesSection {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.schedulesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.scheduleList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.scheduleRow {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-4;
+}
+
+.scheduleInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-1;
+  text-align: left;
+  color: var(--foreground);
+
+  span {
+    color: var(--muted-foreground);
+    font-size: $font-size-xs;
+    font-family: var(--font-mono);
+  }
+}
+
+.toggle {
+  width: 2.25rem;
+  height: 1.25rem;
+  padding: 0.125rem;
+  border-radius: $radius-full;
+  background: var(--muted);
+  transition: background-color $transition-fast;
+
+  span {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: $radius-full;
+    background: var(--foreground);
+    transition: transform $transition-fast;
+  }
+}
+
+.toggleEnabled {
+  background: var(--primary);
+
+  span {
+    transform: translateX(1rem);
+    background: var(--primary-foreground);
+  }
+}
+
+.scheduleEmpty {
+  padding: $space-6;
+  color: var(--muted-foreground);
+}
+
+.detailsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: $z-modal;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(0 0 0 / 0.55);
+}
+
+.detailsPanel {
+  width: min(42.5rem, 100vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  overflow: auto;
+  padding: $space-6;
+  padding-bottom: 5.25rem;
+  border-left: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: -20px 0 60px rgb(0 0 0 / 0.3);
+  animation: slide-in-right $transition-normal both;
+
+  @include custom-scrollbar;
+}
+
+.detailsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.detailsBreadcrumb {
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+  font-family: var(--font-mono);
+}
+
+.detailsStatusBadge {
+  width: fit-content;
+  padding: $space-3 $space-4;
+  border: 1px solid currentColor;
+  font-size: $font-size-sm;
+}
+
+.detailsMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $space-4;
+
+  span {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+  }
+
+  small {
+    color: var(--muted-foreground);
+    font-size: $font-size-xs;
+    text-transform: uppercase;
+  }
+
+  strong {
+    font-size: $font-size-xs;
+    font-family: var(--font-mono);
+  }
+}
+
+.detailsStatGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-4;
+}
+
+.baseUrlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.fieldLabel {
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+}
+
+.copyField {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3;
+  border-radius: $radius-md;
+  border: 1px solid color-mix(in oklab, var(--primary) 25%, var(--border));
+  background: #050a1b;
+
+  code {
+    flex: 1;
+    min-width: 0;
+    color: #fff;
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+}
+
+.detailsCollapse {
+  border: 1px solid var(--border);
+  border-radius: $radius-lg;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.detailsCollapseHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  text-align: left;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.detailsCollapseBody {
+  padding: 0 $space-4 $space-4;
+}
+
+.codeBlock {
+  max-height: 16rem;
+  overflow: auto;
+  padding: $space-4;
+  border-radius: $radius-md;
+  background: #050a1b;
+  color: #fff;
+  font-size: $font-size-xs;
+  line-height: $line-height-relaxed;
+
+  @include custom-scrollbar;
+}
+
+.linkedScheduleCard {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-4;
+  padding: $space-4;
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+  }
+
+  small {
+    color: var(--muted-foreground);
+    font-size: $font-size-xs;
+    font-family: var(--font-mono);
+  }
+}
+
+.detailsFooter {
+  position: sticky;
+  bottom: -$space-6;
+  z-index: $z-sticky;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $space-4;
+  margin: auto (-$space-6) (-$space-6);
+  padding: $space-3 $space-6;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+}
+
+.downloadReportLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.regressionModal {
+  width: 100%;
+  max-width: 32rem;
+  padding: $space-6;
+  border-radius: $radius-lg;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.2);
+}
+
+.sessionModal {
+  width: min(48rem, calc(100vw - #{$space-8}));
+  max-height: calc(100vh - #{$space-8});
+  overflow: auto;
+  padding: $space-6;
+  border-radius: $radius-lg;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.2);
+
+  @include custom-scrollbar;
+}
+
+.modalDescription {
+  margin: 0;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+}
+
+.modalGridTwo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+}
+
+.modalGridThree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $space-3;
+}
+
+.modalSectionTitle {
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.modalTextarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: $font-size-sm;
+
+  &:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 22%, transparent);
+  }
+}
+
+.modalCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--primary);
+  }
+}
+
+.fieldHelp {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: $font-size-xs;
+}
+
+.scheduleModal {
+  width: 100%;
+  max-width: 20rem;
+  padding: $space-4;
+  border-radius: $radius-lg;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.2);
+}
+
+@media (max-width: 1180px) {
+  .detailStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 18rem;
+  }
+
+  .applicationHeaderTop,
+  .versionBarContent,
+  .schedulesHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .versionSessionSummary {
+    align-self: flex-start;
+  }
+
+  .detailStatsGrid,
+  .detailsMetaGrid,
+  .detailsStatGrid,
+  .modalGridThree,
+  .modalGridTwo {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes status-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }

@@ -4,7 +4,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Mail, Edit2, Search, Trash2, X } from "lucide-react";
-import { Badge, Button, Card, Input, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import { getInitials } from "@shared/utils/text";
 import type { ProjectRole } from "@features/projects";

@@ -5,18 +5,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Users,
-  Plus,
-  Settings,
-  ChevronRight,
-  UserPlus,
-  FolderKanban,
-  Edit2,
-  Trash2,
-  LogOut,
-  Plug,
-} from "lucide-react";
+import { Users, Plus, Settings, ChevronRight, UserPlus, FolderKanban, Edit2, Trash2, LogOut, Plug } from "lucide-react";
 import { Button, toast } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import { queryKeys } from "@shared/config/queryKeys";
@@ -394,7 +383,6 @@ const Administration = () => {
                   Integrations
                 </button>
               </div>
-
             </div>
 
             {activeTab === "members" ? (
