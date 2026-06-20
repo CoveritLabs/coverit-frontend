@@ -1448,7 +1448,7 @@
 
 .reportTextarea {
   width: 100%;
-  min-height: 9rem;
+  min-height: 17rem;
   resize: vertical;
   padding: $space-3;
   border-radius: $radius-md;
@@ -1456,6 +1456,17 @@
   background: var(--background);
   color: var(--foreground);
   font: inherit;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+
+  &:focus {
+    border-color: color-mix(in oklab, var(--primary) 58%, var(--border));
+    box-shadow: 0 0 0 3px rgba(var(--ring-rgb), 0.16);
+    outline: none;
+  }
 }
 
 .reportArtifactList {

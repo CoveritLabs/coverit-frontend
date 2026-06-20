@@ -297,12 +297,28 @@ export function RegressionScenarioDetail({
 function defaultReportDescription(scenario: RegressionScenarioWithReports): string {
   const name = scenario.title ?? scenario.scenarioName ?? scenario.scenarioKey;
   const status = scenario.status === "passed" && scenario.warningCount > 0 ? "warning" : scenario.status;
-  return [
-    `Scenario: ${name}`,
-    `Status: ${status}`,
-    `Failures: ${scenario.failedCount}`,
-    `Warnings: ${scenario.warningCount}`,
-  ].join("\n");
+  const location = scenario.file ? `${scenario.file}${scenario.line ? `:${scenario.line}` : ""}` : undefined;
+  const sections = [
+    "## Scenario details",
+    `- Scenario: ${name}`,
+    `- Status: ${status}`,
+    "",
+    "## Observed result",
+    status === "failed"
+      ? "The scenario failed before completing the expected flow."
+      : "The scenario completed with warnings that should be reviewed.",
+    "",
+    "## Result counts",
+    `- Passed checks: ${scenario.passedCount}`,
+    `- Failed checks: ${scenario.failedCount}`,
+    `- Warnings: ${scenario.warningCount}`,
+  ];
+
+  if (location) {
+    sections.push("", "## Location", `- File: ${location}`);
+  }
+
+  return sections.join("\n");
 }
 
 function formatReportStatus(status: string): string {
