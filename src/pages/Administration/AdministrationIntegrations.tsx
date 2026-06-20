@@ -14,6 +14,8 @@ import {
   useStartIntegrationOAuth,
   useUpdateIntegrationReportingConfig,
   type IntegrationProvider,
+  type JiraIssueProject,
+  type JiraIssueType,
 } from "@features/integrations";
 import styles from "./Administration.module.scss";
 
@@ -33,18 +35,6 @@ const INTEGRATIONS: IntegrationDefinition[] = [
   },
 ];
 
-function formatIntegrationDate(value?: string) {
-  if (!value) return undefined;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
 interface AdministrationIntegrationsProps {
   projectId: string;
   canManage: boolean;
@@ -59,8 +49,10 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
   const [jiraProjectId, setJiraProjectId] = useState<string | null>(null);
   const [jiraIssueTypeId, setJiraIssueTypeId] = useState<string | null>(null);
 
-  const jiraProjects = jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.projects : [];
-  const jiraIssueTypes = jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.issueTypes : [];
+  const jiraProjects: JiraIssueProject[] =
+    jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.projects : [];
+  const jiraIssueTypes: JiraIssueType[] =
+    jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.issueTypes : [];
   const jiraReportingConfig =
     jiraStatus.data?.reportingConfig?.case === "jiraReportingConfig"
       ? jiraStatus.data.reportingConfig.value
@@ -117,10 +109,6 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
           const status = integration.provider === "jira" ? jiraStatus.data : undefined;
           const isConnected = Boolean(status?.connected);
           const connectedBy = status?.authorizedByUser;
-          const refreshedAt = formatIntegrationDate(status?.refreshedAt);
-          const updatedAt = formatIntegrationDate(status?.updatedAt);
-          const connectedAt = formatIntegrationDate(status?.createdAt);
-          const tokenExpiresAt = formatIntegrationDate(status?.accessTokenExpiresAt);
           const isLoading = integration.provider === "jira" && jiraStatus.isLoading;
           const isPending =
             (startOAuth.isPending && startOAuth.variables?.provider === integration.provider) ||
@@ -165,7 +153,7 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
 
                         {status?.scopes && status.scopes.length > 0 && (
                           <div className={styles.integrationScopes}>
-                            {status.scopes.map((scope) => (
+                            {status.scopes.map((scope: string) => (
                               <Badge key={scope} variant="outline" className={styles.integrationScopeBadge}>
                                 {scope}
                               </Badge>

@@ -34,6 +34,7 @@ import {
   LeaveProjectModal,
 } from "./AdministrationModals";
 import { useAuthStore, useUIStore } from "@app/store";
+import type { Member } from "@coveritlabs/contracts";
 
 type AdministrationTab = "members" | "integrations";
 
@@ -91,12 +92,12 @@ const Administration = () => {
     [projectCards, selectedProjectId],
   );
   const selectedProject = selectedProjectCard?.project ?? null;
-  const currentMembers = useMemo(() => selectedProject?.members ?? [], [selectedProject]);
+  const currentMembers = useMemo<Member[]>(() => selectedProject?.members ?? [], [selectedProject]);
   const userRole = useMemo(() => getProjectUserRole(selectedProject, user?.id), [selectedProject, user?.id]);
   const isAdmin = userRole === "ADMIN";
   const canLeaveProject = Boolean(selectedProject && userRole && user?.email);
   const adminCount = useMemo(
-    () => currentMembers.filter((member) => normalizeProjectRole(member.role) === "ADMIN").length,
+    () => currentMembers.filter((member: Member) => normalizeProjectRole(member.role) === "ADMIN").length,
     [currentMembers],
   );
   const isOnlyAdmin = Boolean(user?.id && isAdmin && adminCount === 1);
@@ -148,7 +149,7 @@ const Administration = () => {
 
   const filteredMembers = useMemo(
     () =>
-      currentMembers.filter((member) => {
+      currentMembers.filter((member: Member) => {
         const query = searchQuery.trim().toLowerCase();
         if (!query) return true;
         return (
