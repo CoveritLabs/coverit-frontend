@@ -12,7 +12,7 @@ import styles from "./ResetPasswordPage.module.scss";
 import { cn } from "@shared/utils/cn";
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, CheckCircle2, Loader2 } from "lucide-react";
 import { ROUTES } from "@shared/config/routes";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { authService } from "../../../api/authService";
 import type { AxiosError } from "axios";
 import type { ErrorResponse } from "@coveritlabs/contracts";
@@ -72,13 +72,12 @@ const ResetPasswordPage = () => {
         <p className={styles.subtitle}>Create a new password for your account</p>
       </div>
 
-      <AnimatePresence mode="wait">
+      <>
         {!done ? (
           <motion.form
             key="form"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onSubmit={handleSubmit}
             className={styles.formContent}
@@ -120,17 +119,15 @@ const ResetPasswordPage = () => {
                   )}
                   autoComplete="new-password"
                 />
-                <AnimatePresence>
-                  {confirm && confirm === password && password.length > 0 && (
-                    <motion.span
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className={styles.confirmCheck}
-                    >
-                      <CheckCircle2 className={styles.confirmCheckIcon} />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                {confirm && confirm === password && password.length > 0 && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={styles.confirmCheck}
+                  >
+                    <CheckCircle2 className={styles.confirmCheckIcon} />
+                  </motion.span>
+                )}
               </div>
             </Field>
 
@@ -187,7 +184,7 @@ const ResetPasswordPage = () => {
             </Button>
           </motion.div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 };

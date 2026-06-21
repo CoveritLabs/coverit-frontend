@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 export type CrawlSessionStatus = "not_started" | "success" | "failed" | "running" | "in_progress";
-export type CrawlSessionTrigger = "manual" | "scheduled";
+export type CrawlSessionTrigger = "manual" | "on_demand" | "scheduled";
 export type CrawlSessionStatusFilter = CrawlSessionStatus | "all";
 export type CrawlSessionTriggerFilter = CrawlSessionTrigger | "all";
 export type ApplicationDetailTab = "crawl-sessions" | "schedules";

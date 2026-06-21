@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the application root for full license information.
 
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { Check, Copy, X } from "lucide-react";
 import { Button, Input, Label, Select } from "@shared/ui";
 import type {
@@ -13,6 +13,12 @@ import type {
   ScheduleFrequency,
 } from "@features/target-applications";
 import styles from "./Applications.module.scss";
+
+function closeOnBackdropMouseDown(event: MouseEvent<HTMLDivElement>, onClose: () => void) {
+  if (event.target === event.currentTarget) {
+    onClose();
+  }
+}
 
 function getRepositoryPath(repositoryUrl: string) {
   try {
@@ -58,7 +64,7 @@ export const AddApplicationModal = ({
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Create New Application</h3>
@@ -155,7 +161,7 @@ export const EditApplicationModal = ({
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Edit Application</h3>
@@ -213,7 +219,7 @@ export const DeleteApplicationModal = ({ applicationName, onConfirm, onClose }: 
   const deleteMatches = confirmName === applicationName;
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Delete Application</h3>
@@ -268,7 +274,7 @@ export const AddVersionModal = ({ isNameDuplicate, onConfirm, onClose }: AddVers
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Create New Application Version</h3>
@@ -310,7 +316,7 @@ interface DeleteVersionModalProps {
 }
 
 export const DeleteVersionModal = ({ versionName, onConfirm, onClose }: DeleteVersionModalProps) => (
-  <div className={styles.modalOverlay} onClick={onClose}>
+  <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
       <div className={styles.modalHeader}>
         <h3 className={styles.modalTitle}>Delete Version</h3>
@@ -360,7 +366,7 @@ export const RotateApiKeyModal = ({
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Rotate API Key</h3>
@@ -414,7 +420,7 @@ interface LeaveApplicationModalProps {
 }
 
 export const LeaveApplicationModal = ({ isOnlyMember, onConfirm, onClose }: LeaveApplicationModalProps) => (
-  <div className={styles.modalOverlay} onClick={onClose}>
+  <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
       <div className={styles.modalHeader}>
         <h3 className={styles.modalTitle}>Leave Application</h3>
@@ -470,7 +476,7 @@ export const RegressionCodebaseConfigModal = ({
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.regressionModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Regression Codebase Configuration</h3>
@@ -526,7 +532,7 @@ interface CreateCrawlSessionModalProps {
 }
 
 const TRIGGER_OPTIONS: Array<{ value: CrawlSessionTrigger; label: string }> = [
-  { value: "manual", label: "Manual" },
+  { value: "on_demand", label: "On Demand" },
   { value: "scheduled", label: "Scheduled" },
 ];
 
@@ -538,7 +544,7 @@ function splitPatterns(value: string) {
 }
 
 export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: CreateCrawlSessionModalProps) => {
-  const [trigger, setTrigger] = useState<CrawlSessionTrigger>(initialData?.trigger ?? "manual");
+  const [trigger, setTrigger] = useState<CrawlSessionTrigger>(initialData?.trigger ?? "on_demand");
   const [maxStates, setMaxStates] = useState(String(initialData?.crawlConfig.maxStates ?? 1000));
   const [maxDepth, setMaxDepth] = useState(String(initialData?.crawlConfig.maxDepth ?? 10));
   const [includeUrlPatterns, setIncludeUrlPatterns] = useState(
@@ -593,7 +599,7 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.sessionModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Create Crawl Session</h3>
@@ -751,7 +757,7 @@ export const ScheduleConfigModal = ({ initialSchedule = null, onConfirm, onClose
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.scheduleModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalBody}>
           <div className={styles.modalField}>
@@ -793,7 +799,7 @@ interface DeleteScheduleModalProps {
 }
 
 export const DeleteScheduleModal = ({ scheduleTitle, onConfirm, onClose }: DeleteScheduleModalProps) => (
-  <div className={styles.modalOverlay} onClick={onClose}>
+  <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
       <div className={styles.modalHeader}>
         <h3 className={styles.modalTitle}>Delete Schedule</h3>

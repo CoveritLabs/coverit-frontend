@@ -3,7 +3,18 @@
 // See LICENSE file in the project root for full license information.
 
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, AppWindow, Sun, Moon, User, ShieldCheck, LogOut, ListChecks } from "lucide-react";
+import {
+  LayoutDashboard,
+  AppWindow,
+  Sun,
+  Moon,
+  User,
+  ShieldCheck,
+  LogOut,
+  ListChecks,
+  MonitorPlay,
+  Workflow,
+} from "lucide-react";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useProjects } from "@features/projects";
 import { ROUTES } from "@shared/config/routes";
@@ -13,11 +24,13 @@ import { getProjectUserRole } from "@features/projects";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore, useUIStore } from "@app/store";
 import { Select } from "@shared/ui";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: "Applications", to: ROUTES.APPLICATIONS, icon: AppWindow },
+  { label: "Test Flows", to: ROUTES.TEST_FLOWS, icon: Workflow },
+  { label: "Manual Recording", to: ROUTES.MANUAL_RECORDINGS, icon: MonitorPlay },
   { label: "Regression Runs", to: ROUTES.REGRESSION_RUNS, icon: ListChecks },
 ];
 
@@ -132,61 +145,58 @@ export function Sidebar() {
 
       {/* Profile menu */}
       <div ref={menuRef} className={styles.profileMenu} onClick={(e) => e.stopPropagation()}>
-        <AnimatePresence>
-          {profileOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: -20, scaleX: 0.8 }}
-              animate={{ opacity: 1, x: 0, scaleX: 1 }}
-              exit={{ opacity: 0, x: -20, scaleX: 0.8 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className={styles.menuPanel}
-              style={{ transformOrigin: "left center" }}
-            >
-              {/* Menu items */}
-              <div className={styles.menuItems}>
-                {PROFILE_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.label}
-                      onClick={() => {
-                        navigate(item.to);
-                        setProfileOpen(false);
-                      }}
-                      className={styles.menuItem}
-                    >
-                      <div className={styles.menuItemIcon}>
-                        <Icon size={14} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className={styles.menuItemLabel}>{item.label}</p>
-                        <p className={styles.menuItemDesc}>{item.description}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+        {profileOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: -20, scaleX: 0.8 }}
+            animate={{ opacity: 1, x: 0, scaleX: 1 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className={styles.menuPanel}
+            style={{ transformOrigin: "left center" }}
+          >
+            {/* Menu items */}
+            <div className={styles.menuItems}>
+              {PROFILE_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.label}
+                    onClick={() => {
+                      navigate(item.to);
+                      setProfileOpen(false);
+                    }}
+                    className={styles.menuItem}
+                  >
+                    <div className={styles.menuItemIcon}>
+                      <Icon size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={styles.menuItemLabel}>{item.label}</p>
+                      <p className={styles.menuItemDesc}>{item.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* Logout */}
-              <div className={styles.logoutSection}>
-                <button
-                  onClick={() => {
-                    setProfileOpen(false);
-                    logout().then(() => navigate(ROUTES.LOGIN));
-                  }}
-                  className={styles.menuItem}
-                >
-                  <div className={styles.menuItemIcon}>
-                    <LogOut size={14} />
-                  </div>
-                  <div>
-                    <p className={styles.menuItemLabel}>Logout</p>
-                  </div>
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            {/* Logout */}
+            <div className={styles.logoutSection}>
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  logout().then(() => navigate(ROUTES.LOGIN));
+                }}
+                className={styles.menuItem}
+              >
+                <div className={styles.menuItemIcon}>
+                  <LogOut size={14} />
+                </div>
+                <div>
+                  <p className={styles.menuItemLabel}>Logout</p>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        )}
       </div>
     </aside>
   );

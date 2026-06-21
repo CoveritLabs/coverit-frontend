@@ -14,7 +14,9 @@ export const LazyOAuthCallbackPage = lazy(() => import("@pages/auth/OAuthCallbac
 
 export const LazyDashboard = lazy(() => import("@pages/Dashboard/Dashboard"));
 export const LazyApplications = lazy(() => import("@pages/Applications/Applications"));
+export const LazyManualSession = lazy(() => import("@pages/ManualSession/ManualSession"));
 export const LazyRegressionRuns = lazy(() => import("@pages/RegressionRuns/RegressionRuns"));
+export const LazyTestFlows = lazy(() => import("@pages/TestFlows/TestFlows"));
 export const LazyAdministration = lazy(() => import("@pages/Administration/Administration"));
 export const LazyNotFound = lazy(() => import("@pages/NotFound/NotFound"));
 

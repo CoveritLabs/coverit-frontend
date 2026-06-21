@@ -58,6 +58,13 @@ const regressionRunKeys = {
     [...regressionRunKeys.all, "artifact", projectId, applicationId, runId, artifactId] as const,
 };
 
+const testFlowKeys = {
+  all: ["test-flows"] as const,
+  lists: (projectId: string, applicationId: string) => [...testFlowKeys.all, "list", projectId, applicationId] as const,
+  list: (projectId: string, applicationId: string, filters: Record<string, unknown>) =>
+    [...testFlowKeys.lists(projectId, applicationId), filters] as const,
+};
+
 const integrationKeys = {
   all: ["integrations"] as const,
   status: (projectId: string, provider: string) => [...integrationKeys.all, "status", projectId, provider] as const,
@@ -69,5 +76,6 @@ export const queryKeys = {
   projects: projectKeys,
   targetApplications: targetApplicationKeys,
   regressionRuns: regressionRunKeys,
+  testFlows: testFlowKeys,
   integrations: integrationKeys,
 };

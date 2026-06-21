@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import styles from "./ForgotPasswordPage.module.scss";
 import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { ROUTES } from "@shared/config/routes";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { authService } from "../../../api/authService";
 import type { AxiosError } from "axios";
 import type { ErrorResponse } from "@coveritlabs/contracts";
@@ -51,13 +51,12 @@ const ForgotPasswordPage = () => {
 
       {error && <ErrorBanner message={error} />}
 
-      <AnimatePresence mode="wait">
+      <>
         {!sent ? (
           <motion.form
             key="form"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onSubmit={handleSubmit}
             className={styles.formContent}
@@ -118,7 +117,7 @@ const ForgotPasswordPage = () => {
             </Button>
           </motion.div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 };

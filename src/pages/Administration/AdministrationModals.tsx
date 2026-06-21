@@ -2,13 +2,19 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { X } from "lucide-react";
 import { Button, Input, Label } from "@shared/ui";
 import type { ProjectRole } from "@features/projects";
 import { PROJECT_ROLES } from "@features/projects";
 import { formatProjectRole } from "@features/projects";
 import styles from "./Administration.module.scss";
+
+function closeOnBackdropMouseDown(event: MouseEvent<HTMLDivElement>, onClose: () => void) {
+  if (event.target === event.currentTarget) {
+    onClose();
+  }
+}
 
 interface AddProjectModalProps {
   isNameDuplicate: (name: string) => boolean;
@@ -30,7 +36,7 @@ export const AddProjectModal = ({ isNameDuplicate, onConfirm, onClose }: AddProj
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Create New Project</h3>
@@ -106,7 +112,7 @@ export const EditProjectModal = ({
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Edit Project</h3>
@@ -164,7 +170,7 @@ export const DeleteProjectModal = ({ projectName, onConfirm, onClose }: DeletePr
   const deleteMatches = confirmName === projectName;
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Delete Project</h3>
@@ -219,7 +225,7 @@ export const AddMemberModal = ({ defaultRole, onConfirm, onClose }: AddMemberMod
   };
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Add Team Member</h3>
@@ -275,7 +281,7 @@ interface LeaveProjectModalProps {
 }
 
 export const LeaveProjectModal = ({ isOnlyMember, onConfirm, onClose }: LeaveProjectModalProps) => (
-  <div className={styles.modalOverlay} onClick={onClose}>
+  <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
       <div className={styles.modalHeader}>
         <h3 className={styles.modalTitle}>Leave Project</h3>

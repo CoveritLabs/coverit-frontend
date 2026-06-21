@@ -9,6 +9,11 @@
 # Proprietary and confidential. Unauthorized use is strictly prohibited.
 # See LICENSE file in the project root for full license information.
 
+
+# Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+# Proprietary and confidential. Unauthorized use is strictly prohibited.
+# See LICENSE file in the project root for full license information.
+
 # Usage:
 #   ./docker.sh up                         -> full stack with remote images
 #   ./docker.sh up --tag latest            -> all services use tag latest
@@ -17,10 +22,13 @@
 #   ./docker.sh up --tag crawler:1.2       -> only Crawler uses tag 1.2
 #   ./docker.sh up --tag regression:1.2    -> only Regression uses tag 1.2
 #   ./docker.sh up --local                 -> full stack local dev builds
+#   ./docker.sh up --local --no-build      -> full stack local dev without rebuilding images
+#   ./docker.sh up --local --app-only      -> API + Frontend + Postgres + Redis + Neo4j
+#   ./docker.sh up --local --skip-workers  -> full stack except crawler/regression workers
 #   ./docker.sh up --test-prod             -> full stack local production builds
 
 print_help() {
-  echo "Usage: $0 [up|down|logs] [--tag <[service:]tag>] [--local] [--test-prod]"
+  echo "Usage: $0 [up|down|logs] [--tag <[service:]tag>] [--local] [--test-prod] [--no-build] [--app-only] [--skip-workers]"
 }
 
 set -e
@@ -48,6 +56,9 @@ export REGRESSION_TAG="dev"
 
 LOCAL=false
 TEST_PROD=false
+NO_BUILD=false
+APP_ONLY=false
+SKIP_WORKERS=false
 API_TAG_OVERRIDDEN=false
 FRONTEND_TAG_OVERRIDDEN=false
 DOCGEN_TAG_OVERRIDDEN=false
@@ -97,10 +108,18 @@ while [ $# -gt 0 ]; do
       ;;
     --local) LOCAL=true; shift ;;
     --test-prod) TEST_PROD=true; shift ;;
+    --no-build) NO_BUILD=true; shift ;;
+    --app-only) APP_ONLY=true; shift ;;
+    --skip-workers) SKIP_WORKERS=true; shift ;;
     -h|--help) print_help; exit 0 ;;
     *) echo "Unknown flag: $1"; exit 1 ;;
   esac
 done
+
+if [ "$APP_ONLY" = true ] && [ "$SKIP_WORKERS" = true ]; then
+  echo "--app-only already skips workers; use one of --app-only or --skip-workers."
+  exit 1
+fi
 
 ENV_FILE_ARGS=""
 if [ -f "$API_DIR/.env" ]; then
@@ -110,7 +129,13 @@ fi
 EXEC_CMD="docker compose$ENV_FILE_ARGS -f $API_DIR/docker-compose.yml"
 
 if [ "$LOCAL" = true ]; then
-  echo "Starting CoverIt full stack in local dev mode..."
+  if [ "$APP_ONLY" = true ]; then
+    echo "Starting CoverIt app stack in local dev mode..."
+  elif [ "$SKIP_WORKERS" = true ]; then
+    echo "Starting CoverIt full stack in local dev mode without crawler/regression workers..."
+  else
+    echo "Starting CoverIt full stack in local dev mode..."
+  fi
   if [ "$API_TAG_OVERRIDDEN" = false ]; then
     EXEC_CMD="$EXEC_CMD -f $API_DIR/overrides/api.dev.yml"
   fi
@@ -118,36 +143,62 @@ if [ "$LOCAL" = true ]; then
   if [ "$FRONTEND_TAG_OVERRIDDEN" = false ]; then
     EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/overrides/frontend.dev.yml"
   fi
-  EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml"
-  if [ "$DOCGEN_TAG_OVERRIDDEN" = false ]; then
-    EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/overrides/api.dev.yml"
+  if [ "$APP_ONLY" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml"
+    if [ "$DOCGEN_TAG_OVERRIDDEN" = false ]; then
+      EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/overrides/api.dev.yml"
+    fi
   fi
-  EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml"
-  if [ "$CRAWLER_TAG_OVERRIDDEN" = false ]; then
-    EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/overrides/crawler.dev.yml"
-  fi
-  EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml"
-  if [ "$REGRESSION_TAG_OVERRIDDEN" = false ]; then
-    EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/overrides/regression.dev.yml"
+  if [ "$APP_ONLY" = false ] && [ "$SKIP_WORKERS" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml"
+    if [ "$CRAWLER_TAG_OVERRIDDEN" = false ]; then
+      EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/overrides/crawler.dev.yml"
+    fi
+    EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml"
+    if [ "$REGRESSION_TAG_OVERRIDDEN" = false ]; then
+      EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/overrides/regression.dev.yml"
+    fi
   fi
 elif [ "$TEST_PROD" = true ]; then
-  echo "Starting CoverIt full stack in Production Test mode..."
+  if [ "$APP_ONLY" = true ]; then
+    echo "Starting CoverIt app stack in Production Test mode..."
+  elif [ "$SKIP_WORKERS" = true ]; then
+    echo "Starting CoverIt full stack in Production Test mode without crawler/regression workers..."
+  else
+    echo "Starting CoverIt full stack in Production Test mode..."
+  fi
   EXEC_CMD="$EXEC_CMD -f $API_DIR/overrides/api.test.yml"
   EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/docker-compose.yml -f $FRONTEND_DIR/overrides/frontend.prod.yml"
-  EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml -f $DOCGEN_DIR/overrides/api.test.yml"
-  EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml -f $CRAWLER_DIR/overrides/crawler.prod.yml"
-  EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml -f $REGRESSION_DIR/overrides/regression.prod.yml"
+  if [ "$APP_ONLY" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml -f $DOCGEN_DIR/overrides/api.test.yml"
+  fi
+  if [ "$APP_ONLY" = false ] && [ "$SKIP_WORKERS" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml -f $CRAWLER_DIR/overrides/crawler.prod.yml"
+    EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml -f $REGRESSION_DIR/overrides/regression.prod.yml"
+  fi
 else
-  echo "Starting CoverIt full stack with remote images..."
+  if [ "$APP_ONLY" = true ]; then
+    echo "Starting CoverIt app stack with remote images..."
+  elif [ "$SKIP_WORKERS" = true ]; then
+    echo "Starting CoverIt full stack with remote images without crawler/regression workers..."
+  else
+    echo "Starting CoverIt full stack with remote images..."
+  fi
   EXEC_CMD="$EXEC_CMD -f $FRONTEND_DIR/docker-compose.yml"
-  EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml"
-  EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml"
-  EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml"
+  if [ "$APP_ONLY" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $DOCGEN_DIR/docker-compose.yml -f $DOCGEN_DIR/overrides/integrated.local.yml"
+  fi
+  if [ "$APP_ONLY" = false ] && [ "$SKIP_WORKERS" = false ]; then
+    EXEC_CMD="$EXEC_CMD -f $CRAWLER_DIR/docker-compose.yml"
+    EXEC_CMD="$EXEC_CMD -f $REGRESSION_DIR/docker-compose.yml"
+  fi
 fi
 
 case "$CMD" in
   up)
-    if [ "$LOCAL" = true ] || [ "$TEST_PROD" = true ]; then
+    if [ "$NO_BUILD" = true ]; then
+      $EXEC_CMD up -d --no-build --remove-orphans
+    elif [ "$LOCAL" = true ] || [ "$TEST_PROD" = true ]; then
       $EXEC_CMD up -d --build --remove-orphans
     else
       $EXEC_CMD up -d --remove-orphans
