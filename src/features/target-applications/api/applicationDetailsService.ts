@@ -25,6 +25,11 @@ interface CreateIdResponse {
   id: string;
 }
 
+export interface ManualSessionConnectResponse {
+  sessionId: string;
+  wsTicket: string;
+}
+
 type ApiTrigger = number | string;
 type ApiStatus = number | string;
 
@@ -88,6 +93,7 @@ interface ApiCrawlScheduleListResponse {
 const TRIGGER_TO_API: Record<CrawlSessionTrigger, number> = {
   manual: 1,
   scheduled: 2,
+  on_demand: 5,
 };
 
 const SCHEDULE_TYPE_TO_API = {
@@ -136,7 +142,9 @@ function normalizeStatus(status: ApiStatus): CrawlSessionStatus {
 
 function normalizeTrigger(trigger: ApiTrigger): CrawlSessionTrigger {
   const value = typeof trigger === "number" ? trigger : trigger.toUpperCase();
-  return value === 2 || value === "SCHEDULED" ? "scheduled" : "manual";
+  if (value === 2 || value === "SCHEDULED") return "scheduled";
+  if (value === 5 || value === "ON_DEMAND") return "on_demand";
+  return "manual";
 }
 
 function getDurationMinutes(startedAt?: string, finishedAt?: string) {
@@ -402,6 +410,17 @@ export const applicationDetailsService = {
   }): Promise<MessageResponse> {
     const response = await apiClient.put<MessageResponse>(
       `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/crawl-sessions/${params.sessionId}/start`,
+    );
+    return response.data;
+  },
+
+  async connectManualSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+  }): Promise<ManualSessionConnectResponse> {
+    const response = await apiClient.post<ManualSessionConnectResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/manual-recordings/connect`,
     );
     return response.data;
   },

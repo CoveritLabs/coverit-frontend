@@ -30,6 +30,7 @@ const NAV_ITEMS = [
   { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: "Applications", to: ROUTES.APPLICATIONS, icon: AppWindow },
   { label: "Test Flows", to: ROUTES.TEST_FLOWS, icon: Workflow },
+  { label: "Manual Recording", to: ROUTES.MANUAL_RECORDINGS, icon: MonitorPlay },
   { label: "Regression Runs", to: ROUTES.REGRESSION_RUNS, icon: ListChecks },
 ];
 

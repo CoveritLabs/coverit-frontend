@@ -7,6 +7,7 @@ export { useTargetApplication, useTargetApplications } from "./model/queries/use
 export { applicationDetailsService } from "./api/applicationDetailsService";
 export {
   useCreateCrawlSession,
+  useConnectManualSession,
   useDeleteCrawlSchedule,
   useSaveCrawlSchedule,
   useSaveRegressionCodebaseConfig,

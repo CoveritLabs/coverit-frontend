@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@shared/config/queryKeys";
 import { toast } from "@shared/ui";
 import { applicationDetailsService } from "../../api/applicationDetailsService";
+import type { ManualSessionConnectResponse } from "../../api/applicationDetailsService";
 import type {
   CrawlSchedule,
   CreateCrawlSessionInput,
@@ -106,6 +107,20 @@ export function useStartCrawlSession() {
     },
     onError: (error) => {
       toast.error("Failed to start crawl session", error.message);
+    },
+  });
+}
+
+export function useConnectManualSession() {
+  return useMutation<
+    ManualSessionConnectResponse,
+    Error,
+    { projectId: string; applicationId: string; versionId: string }
+  >({
+    mutationFn: ({ projectId, applicationId, versionId }) =>
+      applicationDetailsService.connectManualSession({ projectId, applicationId, versionId }),
+    onError: (error) => {
+      toast.error("Failed to connect manual recording", error.message);
     },
   });
 }

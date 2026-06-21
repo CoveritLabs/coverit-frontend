@@ -9,6 +9,7 @@ import { AuthLayout } from "@app/layouts/AuthLayout/AuthLayout";
 import {
   LazyDashboard,
   LazyApplications,
+  LazyManualSession,
   LazyAdministration,
   LazyRegressionRuns,
   LazyTestFlows,
@@ -31,6 +32,7 @@ const OAuthCallbackPage = withSuspense(LazyOAuthCallbackPage);
 
 const Dashboard = withSuspense(LazyDashboard);
 const Applications = withSuspense(LazyApplications);
+const ManualSession = withSuspense(LazyManualSession);
 const RegressionRuns = withSuspense(LazyRegressionRuns);
 const TestFlows = withSuspense(LazyTestFlows);
 const Administration = withSuspense(LazyAdministration);
@@ -49,6 +51,8 @@ const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: ROUTES.DASHBOARD, element: <Dashboard /> },
           { path: ROUTES.APPLICATIONS, element: <Applications /> },
+          { path: ROUTES.MANUAL_RECORDINGS, element: <ManualSession /> },
+          { path: ROUTES.MANUAL_RECORDING, element: <ManualSession /> },
           { path: ROUTES.ADMINISTRATE, element: <Administration /> },
           { path: ROUTES.PROJECT_INTEGRATIONS, element: <Administration /> },
           { path: ROUTES.REGRESSION_RUNS, element: <RegressionRuns /> },
