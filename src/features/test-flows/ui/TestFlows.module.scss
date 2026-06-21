@@ -1,0 +1,310 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  max-height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-primary);
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.headerSubtitle {
+  max-width: 44rem;
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.headerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.headerMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.9rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--muted);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.filtersCard {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.filtersRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 12rem)) minmax(14rem, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--text-secondary);
+
+  input {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.tableCard {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.contentErrorPanel {
+  flex: 1;
+  min-height: 0;
+}
+
+.tableWrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.urlText,
+.hashText {
+  display: block;
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hashText {
+  padding: 0.1rem 0.25rem;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--muted) 55%, transparent);
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.urlText {
+  color: var(--text-primary);
+  font-size: 0.86rem;
+}
+
+.stepCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 1.7rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.completeBadge {
+  border-color: color-mix(in oklab, var(--success) 35%, var(--border));
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.clippedBadge {
+  border-color: color-mix(in oklab, var(--warning) 35%, var(--border));
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+  color: var(--warning);
+}
+
+.dateText {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.tableFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.paginationInfo {
+  min-width: 0;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.paginationButton {
+  min-width: 4.25rem;
+}
+
+.paginationPage {
+  min-width: 4.5rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.emptyRow:hover {
+  background: transparent;
+}
+
+.emptyCell {
+  height: 18rem;
+  padding: 0;
+}
+
+.tableEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+  }
+
+  p {
+    max-width: 26rem;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 18rem;
+  margin: 1rem;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+  }
+
+  p {
+    max-width: 24rem;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+}
+
+.emptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1024px) {
+  .filtersRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    max-height: none;
+    overflow: auto;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .headerMeta {
+    justify-content: flex-start;
+  }
+
+  .filtersRow {
+    grid-template-columns: 1fr;
+  }
+
+  .tableCard {
+    min-height: 24rem;
+  }
+
+  .tableFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .paginationControls {
+    justify-content: space-between;
+  }
+}

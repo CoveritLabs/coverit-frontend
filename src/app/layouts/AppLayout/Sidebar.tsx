@@ -3,7 +3,18 @@
 // See LICENSE file in the project root for full license information.
 
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, AppWindow, Sun, Moon, User, ShieldCheck, LogOut, ListChecks } from "lucide-react";
+import {
+  LayoutDashboard,
+  AppWindow,
+  Sun,
+  Moon,
+  User,
+  ShieldCheck,
+  LogOut,
+  ListChecks,
+  MonitorPlay,
+  Workflow,
+} from "lucide-react";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useProjects } from "@features/projects";
 import { ROUTES } from "@shared/config/routes";
@@ -18,6 +29,7 @@ import { motion } from "motion/react";
 const NAV_ITEMS = [
   { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: "Applications", to: ROUTES.APPLICATIONS, icon: AppWindow },
+  { label: "Test Flows", to: ROUTES.TEST_FLOWS, icon: Workflow },
   { label: "Regression Runs", to: ROUTES.REGRESSION_RUNS, icon: ListChecks },
 ];
 
