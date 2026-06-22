@@ -10,7 +10,6 @@ import type {
   ListRegressionEventsResponse,
   ListRegressionRunsRequest,
   ListRegressionRunsResponse,
-  ListRegressionScenariosResponse,
   RegressionArtifact as RegressionArtifactResponse,
   RegressionRun as RegressionRunResponse,
 } from "@coveritlabs/contracts";
@@ -21,15 +20,12 @@ import { regressionRunService } from "../../api/regressionRunService";
 import type {
   CreateScenarioIntegrationReportRequest,
   CreateScenarioIntegrationReportResponse,
+  ListRegressionScenariosWithReportsResponse,
   RegressionScenarioWithReports,
 } from "../types/regression-runs.types";
 
-type ListRegressionScenariosWithReportsResponse = Omit<ListRegressionScenariosResponse, "scenarios"> & {
-  scenarios: RegressionScenarioWithReports[];
-};
-
 const emptyRunsResponse = { runs: [] } as unknown as ListRegressionRunsResponse;
-const emptyScenariosResponse = { scenarios: [] } as unknown as ListRegressionScenariosResponse;
+const emptyScenariosResponse = { scenarios: [] } as ListRegressionScenariosWithReportsResponse;
 const emptyEventsResponse = { events: [] } as unknown as ListRegressionEventsResponse;
 const emptyArtifactsResponse = {
   artifacts: [],

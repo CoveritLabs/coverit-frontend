@@ -72,10 +72,16 @@ const integrationKeys = {
     [...integrationKeys.all, "reporting-options", projectId, provider] as const,
 };
 
+const dashboardKeys = {
+  all: ["dashboard"] as const,
+  detail: (projectId: string, versionId: string) => [...dashboardKeys.all, "detail", projectId, versionId] as const,
+};
+
 export const queryKeys = {
   projects: projectKeys,
   targetApplications: targetApplicationKeys,
   regressionRuns: regressionRunKeys,
   testFlows: testFlowKeys,
   integrations: integrationKeys,
+  dashboard: dashboardKeys,
 };
