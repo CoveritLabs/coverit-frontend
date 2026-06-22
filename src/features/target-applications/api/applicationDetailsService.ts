@@ -108,6 +108,12 @@ const DEFAULT_CRAWL_CONFIG: CrawlConfigInput = {
   maxStates: 1000,
   timeoutSeconds: 3600,
   generateTestFlows: true,
+  testFlowGeneration: {
+    coveragePercentage: 100,
+    numOfTf: 1,
+    numOfStates: 20,
+    minNumOfStatesPerTf: 3,
+  },
   crawlerSettings: {
     maxTransitions: 5000,
     useSemanticDiversity: true,

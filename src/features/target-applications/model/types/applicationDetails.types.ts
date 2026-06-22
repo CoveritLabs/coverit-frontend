@@ -27,6 +27,12 @@ export interface CrawlConfigInput {
   maxStates: number;
   timeoutSeconds: number;
   generateTestFlows: boolean;
+  testFlowGeneration?: {
+    coveragePercentage?: number;
+    numOfTf?: number;
+    numOfStates?: number;
+    minNumOfStatesPerTf?: number;
+  };
   crawlerSettings?: {
     maxTransitions?: number;
     useSemanticDiversity?: boolean;

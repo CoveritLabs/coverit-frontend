@@ -582,6 +582,16 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const [maxStates, setMaxStates] = useState(String(initialData?.crawlConfig.maxStates ?? 1000));
   const [timeoutSeconds, setTimeoutSeconds] = useState(String(initialData?.crawlConfig.timeoutSeconds ?? 3600));
   const [generateTestFlows, setGenerateTestFlows] = useState(initialData?.crawlConfig.generateTestFlows ?? true);
+  const [coveragePercentage, setCoveragePercentage] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.coveragePercentage ?? 100),
+  );
+  const [numOfTf, setNumOfTf] = useState(String(initialData?.crawlConfig.testFlowGeneration?.numOfTf ?? 1));
+  const [numOfStates, setNumOfStates] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.numOfStates ?? 20),
+  );
+  const [minNumOfStatesPerTf, setMinNumOfStatesPerTf] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.minNumOfStatesPerTf ?? 3),
+  );
   const [maxTransitions, setMaxTransitions] = useState(
     String(initialData?.crawlConfig.crawlerSettings?.maxTransitions ?? 5000),
   );
@@ -599,6 +609,10 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
 
   const parsedMaxStates = Number(maxStates);
   const parsedTimeoutSeconds = Number(timeoutSeconds);
+  const parsedCoveragePercentage = Number(coveragePercentage);
+  const parsedNumOfTf = Number(numOfTf);
+  const parsedNumOfStates = Number(numOfStates);
+  const parsedMinNumOfStatesPerTf = Number(minNumOfStatesPerTf);
   const parsedMaxTransitions = Number(maxTransitions);
   const inputDefaultsInvalid = hasInvalidInputDefaultRows(fieldPatternRows);
   const inputDefaultsDuplicated = hasDuplicateInputDefaultKeys(fieldPatternRows);
@@ -607,6 +621,15 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
     parsedMaxStates > 0 &&
     Number.isInteger(parsedTimeoutSeconds) &&
     parsedTimeoutSeconds > 0 &&
+    Number.isFinite(parsedCoveragePercentage) &&
+    parsedCoveragePercentage >= 0 &&
+    parsedCoveragePercentage <= 100 &&
+    Number.isInteger(parsedNumOfTf) &&
+    parsedNumOfTf > 0 &&
+    Number.isInteger(parsedNumOfStates) &&
+    parsedNumOfStates > 0 &&
+    Number.isInteger(parsedMinNumOfStatesPerTf) &&
+    parsedMinNumOfStatesPerTf > 0 &&
     Number.isInteger(parsedMaxTransitions) &&
     parsedMaxTransitions > 0 &&
     !inputDefaultsInvalid &&
@@ -636,6 +659,12 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
         maxStates: parsedMaxStates,
         timeoutSeconds: parsedTimeoutSeconds,
         generateTestFlows,
+        testFlowGeneration: {
+          coveragePercentage: parsedCoveragePercentage,
+          numOfTf: parsedNumOfTf,
+          numOfStates: parsedNumOfStates,
+          minNumOfStatesPerTf: parsedMinNumOfStatesPerTf,
+        },
         crawlerSettings: {
           maxTransitions: parsedMaxTransitions,
           useSemanticDiversity,
@@ -759,6 +788,52 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
             />
             <span>Generate test flows after crawl</span>
           </label>
+
+          <div className={styles.modalSectionTitle}>Test Flow Generation</div>
+          <div className={styles.modalGridTwo}>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-coverage-percentage">Coverage Percentage</Label>
+              <Input
+                id="tf-coverage-percentage"
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={coveragePercentage}
+                onChange={(event) => setCoveragePercentage(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-count">Number of Test Flows</Label>
+              <Input
+                id="tf-count"
+                type="number"
+                min={1}
+                value={numOfTf}
+                onChange={(event) => setNumOfTf(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-num-states">States per Test Flow</Label>
+              <Input
+                id="tf-num-states"
+                type="number"
+                min={1}
+                value={numOfStates}
+                onChange={(event) => setNumOfStates(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-min-states">Minimum States per Test Flow</Label>
+              <Input
+                id="tf-min-states"
+                type="number"
+                min={1}
+                value={minNumOfStatesPerTf}
+                onChange={(event) => setMinNumOfStatesPerTf(event.target.value)}
+              />
+            </div>
+          </div>
           <label className={styles.modalCheckbox}>
             <input
               type="checkbox"

@@ -1089,6 +1089,10 @@ const Applications = () => {
       session.crawlConfig.inputDefaults && typeof session.crawlConfig.inputDefaults === "object"
         ? (session.crawlConfig.inputDefaults as CreateCrawlSessionInput["crawlConfig"]["inputDefaults"])
         : undefined;
+    const testFlowGeneration =
+      session.crawlConfig.testFlowGeneration && typeof session.crawlConfig.testFlowGeneration === "object"
+        ? (session.crawlConfig.testFlowGeneration as Record<string, unknown>)
+        : {};
 
     handleOpenCreateSession({
       trigger: "manual",
@@ -1096,6 +1100,12 @@ const Applications = () => {
         maxStates: Number(session.crawlConfig.maxStates ?? 1000),
         timeoutSeconds: Number(session.crawlConfig.timeoutSeconds ?? 3600),
         generateTestFlows: session.crawlConfig.generateTestFlows !== false,
+        testFlowGeneration: {
+          coveragePercentage: Number(testFlowGeneration.coveragePercentage ?? 100),
+          numOfTf: Number(testFlowGeneration.numOfTf ?? 1),
+          numOfStates: Number(testFlowGeneration.numOfStates ?? 20),
+          minNumOfStatesPerTf: Number(testFlowGeneration.minNumOfStatesPerTf ?? 3),
+        },
         crawlerSettings: {
           maxTransitions: Number(crawlerSettings.maxTransitions ?? 5000),
           useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
