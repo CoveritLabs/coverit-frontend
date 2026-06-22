@@ -47,7 +47,7 @@
   --ring-rgb: 79, 195, 198;
 
   /* Status */
-  --success: #35b38a;
+  --success: #11a37f;
   --warning: #f4a261;
   --destructive: #e13e15;
   --destructive-rgb: 231, 111, 81;
@@ -61,7 +61,7 @@
   --chart-1: #1e4a6a;
   --chart-2: #4fc3c6;
   --chart-3: #7edfe1;
-  --chart-4: #35b38a;
+  --chart-4: #11a37f;
   --chart-5: #f4a261;
 
   /* Sidebar */
@@ -75,24 +75,7 @@
   --sidebar-ring: #4fc3c6;
 
   /* Manual Session */
-  --manual-session-bg: #eef7f8;
-  --manual-session-text: #102b3f;
-  --manual-session-muted: #557084;
-  --manual-session-panel: #ffffff;
-  --manual-session-control: #f5fbfc;
-  --manual-session-border: #d6e8ec;
-  --manual-session-border-strong: #b9d4db;
   --manual-session-viewport-shell: #dfeaec;
   --manual-session-viewport-bg: #e8f3f5;
   --manual-session-grid: rgb(255 255 255 / 0.72);
-  --manual-session-accent: #11a37f;
-  --manual-session-accent-foreground: #ffffff;
-  --manual-session-accent-glow: rgb(17 163 127 / 0.18);
-  --manual-session-warning: #d8921d;
-  --manual-session-warning-glow: rgb(216 146 29 / 0.18);
-  --manual-session-danger: #d63b32;
-  --manual-session-danger-foreground: #ffffff;
-  --manual-session-step-index-bg: #e6f1f3;
-  --manual-session-event-bg: #f8fcfd;
-  --manual-session-pending-bg: #f1faf8;
 }

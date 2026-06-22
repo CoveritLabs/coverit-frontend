@@ -313,7 +313,6 @@ function DetailsTop({
   return (
     <>
       <div className={styles.detailStatsGrid}>
-        <StatCard icon={Tag} value={stats.versionCount} label="VERSIONS" />
         <StatCard icon={BadgeCheck} value={stats.crawledCount} label="CRAWLED" tone="success" />
         <StatCard icon={Network} value={stats.statesDiscovered} label="STATES DISCOVERED" />
         <StatCard icon={Clock} value={stats.lastCrawlDate} label="LAST CRAWL" />
