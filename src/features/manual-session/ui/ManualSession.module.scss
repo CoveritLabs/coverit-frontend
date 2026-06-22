@@ -1,0 +1,759 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+.shell {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--manual-session-bg);
+  color: var(--manual-session-text);
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--manual-session-panel);
+  border-bottom: 1px solid var(--manual-session-border);
+}
+
+.headerIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.headerBackButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--manual-session-muted);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.headerBackButton:hover {
+  color: var(--manual-session-text);
+  border-color: var(--manual-session-border-strong);
+}
+
+.statusCluster,
+.statusGroup {
+  display: flex;
+  align-items: center;
+}
+
+.recordingTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+
+  strong {
+    color: var(--manual-session-text);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  span {
+    max-width: min(38vw, 30rem);
+    overflow: hidden;
+    color: var(--manual-session-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.selectGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.selectLabel {
+  font-size: 0.75rem;
+  color: var(--manual-session-muted);
+  text-transform: uppercase;
+}
+
+.selectGroup select,
+.field select {
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  color: var(--manual-session-text);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.statusCluster {
+  justify-content: flex-end;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.urlText {
+  max-width: min(38vw, 42rem);
+  overflow: hidden;
+  color: var(--manual-session-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusGroup {
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.statusIcon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--manual-session-muted);
+}
+
+.statusDotLive,
+.statusDotIdle {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.statusDotLive {
+  background: var(--manual-session-accent);
+  box-shadow: 0 0 0 3px var(--manual-session-accent-glow);
+}
+
+.statusDotIdle {
+  background: var(--manual-session-warning);
+  box-shadow: 0 0 0 3px var(--manual-session-warning-glow);
+}
+
+.statusText {
+  color: var(--manual-session-muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.timer {
+  color: var(--manual-session-text);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.idleTimer {
+  flex-shrink: 0;
+  color: var(--manual-session-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  min-height: 0;
+}
+
+.viewportWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 1rem;
+  background: var(--manual-session-viewport-shell);
+}
+
+.viewportFrame {
+  position: relative;
+  aspect-ratio: 1365 / 768;
+  width: 100%;
+  max-height: 100%;
+  max-width: calc((100vh - 5.5rem) * 1365 / 768);
+  overflow: hidden;
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(135deg, var(--manual-session-grid) 25%, transparent 25%),
+    linear-gradient(225deg, var(--manual-session-grid) 25%, transparent 25%),
+    var(--manual-session-viewport-bg);
+  background-size: 20px 20px;
+}
+
+.browserCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: default;
+}
+
+.viewportEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--manual-session-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--manual-session-panel);
+  border-left: 1px solid var(--manual-session-border);
+}
+
+.sidebarContext {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--manual-session-border);
+}
+
+.sidebarContextHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  strong {
+    color: var(--manual-session-text);
+    font-size: 0.875rem;
+  }
+}
+
+.contextEyebrow {
+  color: var(--manual-session-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.targetSummary {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--manual-session-muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentPage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+
+  span:last-child {
+    overflow: hidden;
+    color: var(--manual-session-text);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid var(--manual-session-border);
+}
+
+.tabButton,
+.tabButtonActive {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--manual-session-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabButtonActive {
+  color: var(--manual-session-accent);
+  border-bottom-color: var(--manual-session-accent);
+}
+
+.tabIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.tabContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.connectButton,
+.reportButton,
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  color: var(--manual-session-accent-foreground);
+  background: var(--manual-session-accent);
+  border: 1px solid transparent;
+}
+
+.connectButton {
+  width: 100%;
+  color: var(--manual-session-accent-foreground);
+  background: var(--manual-session-accent);
+  border: 1px solid transparent;
+}
+
+.dangerButton {
+  color: var(--manual-session-danger);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-danger);
+}
+
+.secondaryButton {
+  color: var(--manual-session-text);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border-strong);
+}
+
+.reportButton {
+  color: var(--manual-session-danger-foreground);
+  background: var(--manual-session-danger);
+  border: 1px solid transparent;
+}
+
+.backButton {
+  margin: 0 1rem 1rem;
+  color: var(--manual-session-muted);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled,
+.connectButton:disabled,
+.reportButton:disabled,
+.backButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.buttonIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.spinnerIcon {
+  width: 1rem;
+  height: 1rem;
+  animation: manualSessionSpin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.actionFeedbackPending,
+.actionFeedbackSuccess,
+.actionFeedbackError {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.5rem 0.625rem;
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.actionFeedbackPending {
+  color: var(--manual-session-muted);
+}
+
+.actionFeedbackSuccess {
+  color: var(--manual-session-accent);
+  border-color: var(--manual-session-border-strong);
+}
+
+.actionFeedbackError {
+  color: var(--manual-session-danger);
+  border-color: var(--manual-session-danger);
+}
+
+.feedbackIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.integrationNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem;
+  color: var(--manual-session-muted);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.stepsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--manual-session-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.stepCount {
+  min-width: 1.5rem;
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  color: var(--manual-session-text);
+  background: var(--manual-session-control);
+  text-align: center;
+}
+
+.flowMarker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  color: var(--manual-session-muted);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.markerIcon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--manual-session-accent);
+}
+
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step,
+.stepPending,
+.stepEvent {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--manual-session-control);
+}
+
+.stepEvent {
+  background: var(--manual-session-event-bg);
+}
+
+.stepPending {
+  border: 1px dashed var(--manual-session-border-strong);
+  background: var(--manual-session-pending-bg);
+}
+
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.75rem;
+  width: 1.75rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  color: var(--manual-session-muted);
+  background: var(--manual-session-step-index-bg);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+
+  strong,
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: var(--manual-session-text);
+    font-weight: 600;
+  }
+
+  span {
+    color: var(--manual-session-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+}
+
+.stepActionButton {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+  min-height: 1.75rem;
+  max-width: 6.75rem;
+  padding: 0 0.5rem;
+  color: var(--manual-session-text);
+  background: var(--manual-session-panel);
+  border: 1px solid var(--manual-session-border-strong);
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stepActionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pendingBadge,
+.recordedBadge {
+  align-self: center;
+  flex: 0 0 auto;
+  padding: 0.25rem 0.5rem;
+  color: var(--manual-session-muted);
+  background: var(--manual-session-panel);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.recordedBadge {
+  color: var(--manual-session-accent);
+  border-color: var(--manual-session-border-strong);
+}
+
+.stepActionIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  color: var(--manual-session-muted);
+  font-size: 0.8125rem;
+}
+
+.field textarea {
+  min-height: 7rem;
+  resize: vertical;
+  color: var(--manual-session-text);
+  background: var(--manual-session-control);
+  border: 1px solid var(--manual-session-border);
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+  font: inherit;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.48);
+}
+
+.confirmationModal {
+  width: min(100%, 30rem);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.confirmationTitleGroup {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.modalTitle {
+  margin: 0;
+  color: var(--manual-session-text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.modalDescription {
+  margin: 0.25rem 0 0;
+  color: var(--manual-session-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.confirmationIcon,
+.confirmationIconDanger {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.0625rem;
+}
+
+.confirmationIcon {
+  color: var(--manual-session-accent);
+}
+
+.confirmationIconDanger {
+  color: var(--manual-session-danger);
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}
+
+@keyframes manualSessionSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 960px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 22rem;
+  }
+
+  .panel {
+    border-left: 0;
+    border-top: 1px solid var(--manual-session-border);
+  }
+
+  .statusBar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerIdentity {
+    width: 100%;
+  }
+
+  .recordingTitle span {
+    max-width: 100%;
+  }
+
+  .statusCluster {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
