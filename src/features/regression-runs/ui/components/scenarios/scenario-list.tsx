@@ -2,10 +2,10 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import type { RegressionScenario } from "@coveritlabs/contracts";
 import { Card } from "@shared/ui";
 import { ExecutionStatusBadge, ResultDistribution } from "../common/common";
 import { formatDuration, formatStatus } from "../../../lib/formatters";
+import type { RegressionScenarioWithReports } from "../../../model/types/regression-runs.types";
 import styles from "../../RegressionRuns.module.scss";
 
 export function RegressionScenarioList({
@@ -13,7 +13,7 @@ export function RegressionScenarioList({
   selectedScenarioId,
   onSelectScenario,
 }: {
-  scenarios: RegressionScenario[];
+  scenarios: RegressionScenarioWithReports[];
   selectedScenarioId: string | null;
   onSelectScenario: (scenarioId: string) => void;
 }) {

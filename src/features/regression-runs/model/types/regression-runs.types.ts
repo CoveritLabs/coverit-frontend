@@ -5,6 +5,7 @@
 import type {
   CreateScenarioIntegrationReportRequest as ContractCreateScenarioIntegrationReportRequest,
   ScenarioIntegrationReport as ContractScenarioIntegrationReport,
+  ListRegressionScenariosResponse,
   RegressionArtifact,
   RegressionRun,
   RegressionScenario,
@@ -21,7 +22,16 @@ export type ArtifactPreviewKind = "image" | "video" | "text" | "none";
 
 export type ScenarioIntegrationReport = Payload<ContractScenarioIntegrationReport>;
 
-export type RegressionScenarioWithReports = Payload<RegressionScenario>;
+export type RegressionScenarioWithReports = Payload<RegressionScenario> & {
+  integrationReports?: ScenarioIntegrationReport[];
+};
+
+export type ListRegressionScenariosWithReportsResponse = Omit<
+  Payload<ListRegressionScenariosResponse>,
+  "scenarios"
+> & {
+  scenarios: RegressionScenarioWithReports[];
+};
 
 export type CreateScenarioIntegrationReportRequest = Payload<ContractCreateScenarioIntegrationReportRequest>;
 

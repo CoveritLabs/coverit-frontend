@@ -3,7 +3,7 @@
 // See LICENSE file in the application root for full license information.
 
 import { type MouseEvent, useState } from "react";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, Label, Select } from "@shared/ui";
 import type {
   CreateCrawlSessionInput,
@@ -536,67 +536,196 @@ const TRIGGER_OPTIONS: Array<{ value: CrawlSessionTrigger; label: string }> = [
   { value: "scheduled", label: "Scheduled" },
 ];
 
-function splitPatterns(value: string) {
-  return value
-    .split(/\r?\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+type InputDefaultRow = {
+  id: string;
+  key: string;
+  value: string;
+};
+
+function createInputDefaultRow(key = "", value = ""): InputDefaultRow {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    key,
+    value,
+  };
+}
+
+function inputDefaultRowsFromRecord(record: Record<string, string> | undefined): InputDefaultRow[] {
+  const rows = Object.entries(record ?? {}).map(([key, value]) => createInputDefaultRow(key, value));
+  return rows.length > 0 ? rows : [createInputDefaultRow()];
+}
+
+function inputDefaultRowsToRecord(rows: InputDefaultRow[]) {
+  return rows.reduce<Record<string, string>>((acc, row) => {
+    const key = row.key.trim();
+    const value = row.value.trim();
+    if (key && value) acc[key] = value;
+    return acc;
+  }, {});
+}
+
+function hasInvalidInputDefaultRows(rows: InputDefaultRow[]) {
+  return rows.some((row) => {
+    const key = row.key.trim();
+    const value = row.value.trim();
+    return (key && !value) || (!key && value);
+  });
+}
+
+function hasDuplicateInputDefaultKeys(rows: InputDefaultRow[]) {
+  const keys = rows.map((row) => row.key.trim()).filter(Boolean);
+  return new Set(keys).size !== keys.length;
 }
 
 export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: CreateCrawlSessionModalProps) => {
   const [trigger, setTrigger] = useState<CrawlSessionTrigger>(initialData?.trigger ?? "on_demand");
   const [maxStates, setMaxStates] = useState(String(initialData?.crawlConfig.maxStates ?? 1000));
-  const [maxDepth, setMaxDepth] = useState(String(initialData?.crawlConfig.maxDepth ?? 10));
-  const [includeUrlPatterns, setIncludeUrlPatterns] = useState(
-    initialData?.crawlConfig.includeUrlPatterns.join("\n") ?? "",
-  );
-  const [excludeUrlPatterns, setExcludeUrlPatterns] = useState(
-    initialData?.crawlConfig.excludeUrlPatterns.join("\n") ?? "",
-  );
-  const [enableSemanticDecisions, setEnableSemanticDecisions] = useState(
-    initialData?.crawlConfig.enableSemanticDecisions ?? false,
-  );
   const [timeoutSeconds, setTimeoutSeconds] = useState(String(initialData?.crawlConfig.timeoutSeconds ?? 3600));
-  const [codegenBranch, setCodegenBranch] = useState(initialData?.codegenConfig.codegenBranch ?? "auto-tests");
-  const [prTargetBranch, setPrTargetBranch] = useState(initialData?.codegenConfig.prTargetBranch ?? "main");
-  const [prTitle, setPrTitle] = useState(initialData?.codegenConfig.prTitle ?? "");
-  const [prBody, setPrBody] = useState(initialData?.codegenConfig.prBody ?? "");
-  const [prDraft, setPrDraft] = useState(initialData?.codegenConfig.prDraft ?? true);
+  const [generateTestFlows, setGenerateTestFlows] = useState(initialData?.crawlConfig.generateTestFlows ?? true);
+  const [coveragePercentage, setCoveragePercentage] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.coveragePercentage ?? 100),
+  );
+  const [numOfTf, setNumOfTf] = useState(String(initialData?.crawlConfig.testFlowGeneration?.numOfTf ?? 1));
+  const [numOfStates, setNumOfStates] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.numOfStates ?? 20),
+  );
+  const [minNumOfStatesPerTf, setMinNumOfStatesPerTf] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.minNumOfStatesPerTf ?? 3),
+  );
+  const [maxTransitions, setMaxTransitions] = useState(
+    String(initialData?.crawlConfig.crawlerSettings?.maxTransitions ?? 5000),
+  );
+  const [useSemanticDiversity, setUseSemanticDiversity] = useState(
+    initialData?.crawlConfig.crawlerSettings?.useSemanticDiversity ?? true,
+  );
+  const [fieldPatternRows, setFieldPatternRows] = useState(() =>
+    inputDefaultRowsFromRecord(initialData?.crawlConfig.inputDefaults?.fieldPatterns),
+  );
+  const [codegenBranch, setCodegenBranch] = useState(initialData?.codegenConfig?.codegenBranch ?? "auto-tests");
+  const [prTargetBranch, setPrTargetBranch] = useState(initialData?.codegenConfig?.prTargetBranch ?? "main");
+  const [prTitle, setPrTitle] = useState(initialData?.codegenConfig?.prTitle ?? "");
+  const [prBody, setPrBody] = useState(initialData?.codegenConfig?.prBody ?? "");
+  const [prDraft, setPrDraft] = useState(initialData?.codegenConfig?.prDraft ?? true);
 
   const parsedMaxStates = Number(maxStates);
-  const parsedMaxDepth = Number(maxDepth);
   const parsedTimeoutSeconds = Number(timeoutSeconds);
+  const parsedCoveragePercentage = Number(coveragePercentage);
+  const parsedNumOfTf = Number(numOfTf);
+  const parsedNumOfStates = Number(numOfStates);
+  const parsedMinNumOfStatesPerTf = Number(minNumOfStatesPerTf);
+  const parsedMaxTransitions = Number(maxTransitions);
+  const inputDefaultsInvalid = hasInvalidInputDefaultRows(fieldPatternRows);
+  const inputDefaultsDuplicated = hasDuplicateInputDefaultKeys(fieldPatternRows);
   const canSave =
     Number.isInteger(parsedMaxStates) &&
     parsedMaxStates > 0 &&
-    Number.isInteger(parsedMaxDepth) &&
-    parsedMaxDepth > 0 &&
     Number.isInteger(parsedTimeoutSeconds) &&
     parsedTimeoutSeconds > 0 &&
-    codegenBranch.trim().length > 0 &&
-    prTargetBranch.trim().length > 0;
+    Number.isFinite(parsedCoveragePercentage) &&
+    parsedCoveragePercentage >= 0 &&
+    parsedCoveragePercentage <= 100 &&
+    Number.isInteger(parsedNumOfTf) &&
+    parsedNumOfTf > 0 &&
+    Number.isInteger(parsedNumOfStates) &&
+    parsedNumOfStates > 0 &&
+    Number.isInteger(parsedMinNumOfStatesPerTf) &&
+    parsedMinNumOfStatesPerTf > 0 &&
+    Number.isInteger(parsedMaxTransitions) &&
+    parsedMaxTransitions > 0 &&
+    !inputDefaultsInvalid &&
+    !inputDefaultsDuplicated;
 
   const handleConfirm = () => {
     if (!canSave) return;
+    const fieldPatterns = inputDefaultRowsToRecord(fieldPatternRows);
+    const inputDefaults =
+      Object.keys(fieldPatterns).length > 0
+        ? { fieldPatterns, typeFallbacks: {} }
+        : undefined;
+    const codegenConfig =
+      codegenBranch.trim().length > 0 && prTargetBranch.trim().length > 0
+        ? {
+            codegenBranch: codegenBranch.trim(),
+            prTargetBranch: prTargetBranch.trim(),
+            prTitle: prTitle.trim(),
+            prBody: prBody.trim(),
+            prDraft,
+          }
+        : undefined;
+
     onConfirm({
       trigger,
       crawlConfig: {
         maxStates: parsedMaxStates,
-        maxDepth: parsedMaxDepth,
-        includeUrlPatterns: splitPatterns(includeUrlPatterns),
-        excludeUrlPatterns: splitPatterns(excludeUrlPatterns),
-        enableSemanticDecisions,
         timeoutSeconds: parsedTimeoutSeconds,
+        generateTestFlows,
+        testFlowGeneration: {
+          coveragePercentage: parsedCoveragePercentage,
+          numOfTf: parsedNumOfTf,
+          numOfStates: parsedNumOfStates,
+          minNumOfStatesPerTf: parsedMinNumOfStatesPerTf,
+        },
+        crawlerSettings: {
+          maxTransitions: parsedMaxTransitions,
+          useSemanticDiversity,
+        },
+        inputDefaults,
       },
-      codegenConfig: {
-        codegenBranch: codegenBranch.trim(),
-        prTargetBranch: prTargetBranch.trim(),
-        prTitle: prTitle.trim(),
-        prBody: prBody.trim(),
-        prDraft,
-      },
+      codegenConfig,
     });
   };
+
+  const renderInputDefaultRows = (
+    label: string,
+    rows: InputDefaultRow[],
+    setRows: (rows: InputDefaultRow[]) => void,
+  ) => (
+    <div className={styles.inputDefaultsGroup}>
+      <div className={styles.inputDefaultsHeader}>
+        <Label>{label}</Label>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={styles.iconButton}
+          onClick={() => setRows([...rows, createInputDefaultRow()])}
+          aria-label={`Add ${label}`}
+        >
+          <Plus className={styles.iconSmall} />
+        </Button>
+      </div>
+      <div className={styles.inputDefaultsRows}>
+        {rows.map((row) => (
+          <div className={styles.inputDefaultsRow} key={row.id}>
+            <Input
+              value={row.key}
+              onChange={(event) =>
+                setRows(rows.map((item) => (item.id === row.id ? { ...item, key: event.target.value } : item)))
+              }
+              placeholder="Key"
+            />
+            <Input
+              value={row.value}
+              onChange={(event) =>
+                setRows(rows.map((item) => (item.id === row.id ? { ...item, value: event.target.value } : item)))
+              }
+              placeholder="Value"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className={styles.iconButton}
+              onClick={() => setRows(rows.length > 1 ? rows.filter((item) => item.id !== row.id) : [createInputDefaultRow()])}
+              aria-label={`Remove ${label}`}
+            >
+              <Trash2 className={styles.iconSmall} />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
@@ -630,16 +759,6 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
               />
             </div>
             <div className={styles.modalField}>
-              <Label htmlFor="crawl-max-depth">Max Depth</Label>
-              <Input
-                id="crawl-max-depth"
-                type="number"
-                min={1}
-                value={maxDepth}
-                onChange={(event) => setMaxDepth(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
               <Label htmlFor="crawl-timeout">Timeout Seconds</Label>
               <Input
                 id="crawl-timeout"
@@ -649,27 +768,14 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
                 onChange={(event) => setTimeoutSeconds(event.target.value)}
               />
             </div>
-          </div>
-
-          <div className={styles.modalGridTwo}>
             <div className={styles.modalField}>
-              <Label htmlFor="crawl-include-patterns">Include URL Patterns</Label>
-              <textarea
-                id="crawl-include-patterns"
-                className={styles.modalTextarea}
-                value={includeUrlPatterns}
-                onChange={(event) => setIncludeUrlPatterns(event.target.value)}
-                placeholder="One pattern per line"
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="crawl-exclude-patterns">Exclude URL Patterns</Label>
-              <textarea
-                id="crawl-exclude-patterns"
-                className={styles.modalTextarea}
-                value={excludeUrlPatterns}
-                onChange={(event) => setExcludeUrlPatterns(event.target.value)}
-                placeholder="One pattern per line"
+              <Label htmlFor="crawl-max-transitions">Max Transitions</Label>
+              <Input
+                id="crawl-max-transitions"
+                type="number"
+                min={1}
+                value={maxTransitions}
+                onChange={(event) => setMaxTransitions(event.target.value)}
               />
             </div>
           </div>
@@ -677,11 +783,70 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
           <label className={styles.modalCheckbox}>
             <input
               type="checkbox"
-              checked={enableSemanticDecisions}
-              onChange={(event) => setEnableSemanticDecisions(event.target.checked)}
+              checked={generateTestFlows}
+              onChange={(event) => setGenerateTestFlows(event.target.checked)}
             />
-            <span>Enable Semantic Decisions</span>
+            <span>Generate test flows after crawl</span>
           </label>
+
+          <div className={styles.modalSectionTitle}>Test Flow Generation</div>
+          <div className={styles.modalGridTwo}>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-coverage-percentage">Coverage Percentage</Label>
+              <Input
+                id="tf-coverage-percentage"
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={coveragePercentage}
+                onChange={(event) => setCoveragePercentage(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-count">Number of Test Flows</Label>
+              <Input
+                id="tf-count"
+                type="number"
+                min={1}
+                value={numOfTf}
+                onChange={(event) => setNumOfTf(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-num-states">States per Test Flow</Label>
+              <Input
+                id="tf-num-states"
+                type="number"
+                min={1}
+                value={numOfStates}
+                onChange={(event) => setNumOfStates(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="tf-min-states">Minimum States per Test Flow</Label>
+              <Input
+                id="tf-min-states"
+                type="number"
+                min={1}
+                value={minNumOfStatesPerTf}
+                onChange={(event) => setMinNumOfStatesPerTf(event.target.value)}
+              />
+            </div>
+          </div>
+          <label className={styles.modalCheckbox}>
+            <input
+              type="checkbox"
+              checked={useSemanticDiversity}
+              onChange={(event) => setUseSemanticDiversity(event.target.checked)}
+            />
+            <span>Use semantic diversity</span>
+          </label>
+
+          <div className={styles.modalSectionTitle}>Input Defaults</div>
+          {renderInputDefaultRows("Field Patterns", fieldPatternRows, setFieldPatternRows)}
+          {inputDefaultsInvalid && <p className={styles.applicationError}>Each input default needs both a key and a value.</p>}
+          {inputDefaultsDuplicated && <p className={styles.applicationError}>Input default keys must be unique.</p>}
 
           <div className={styles.modalSectionTitle}>Codegen Config</div>
           <div className={styles.modalGridTwo}>

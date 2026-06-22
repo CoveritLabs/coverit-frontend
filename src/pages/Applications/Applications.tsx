@@ -1102,27 +1102,47 @@ const Applications = () => {
   };
 
   const handleRerun = (session: CrawlSession) => {
+    const crawlerSettings =
+      session.crawlConfig.crawlerSettings && typeof session.crawlConfig.crawlerSettings === "object"
+        ? (session.crawlConfig.crawlerSettings as Record<string, unknown>)
+        : {};
+    const inputDefaults =
+      session.crawlConfig.inputDefaults && typeof session.crawlConfig.inputDefaults === "object"
+        ? (session.crawlConfig.inputDefaults as CreateCrawlSessionInput["crawlConfig"]["inputDefaults"])
+        : undefined;
+    const testFlowGeneration =
+      session.crawlConfig.testFlowGeneration && typeof session.crawlConfig.testFlowGeneration === "object"
+        ? (session.crawlConfig.testFlowGeneration as Record<string, unknown>)
+        : {};
+
     handleOpenCreateSession({
       trigger: "manual",
       crawlConfig: {
         maxStates: Number(session.crawlConfig.maxStates ?? 1000),
-        maxDepth: Number(session.crawlConfig.maxDepth ?? 10),
-        includeUrlPatterns: Array.isArray(session.crawlConfig.includeUrlPatterns)
-          ? (session.crawlConfig.includeUrlPatterns as string[])
-          : [],
-        excludeUrlPatterns: Array.isArray(session.crawlConfig.excludeUrlPatterns)
-          ? (session.crawlConfig.excludeUrlPatterns as string[])
-          : [],
-        enableSemanticDecisions: Boolean(session.crawlConfig.enableSemanticDecisions),
         timeoutSeconds: Number(session.crawlConfig.timeoutSeconds ?? 3600),
+        generateTestFlows: session.crawlConfig.generateTestFlows !== false,
+        testFlowGeneration: {
+          coveragePercentage: Number(testFlowGeneration.coveragePercentage ?? 100),
+          numOfTf: Number(testFlowGeneration.numOfTf ?? 1),
+          numOfStates: Number(testFlowGeneration.numOfStates ?? 20),
+          minNumOfStatesPerTf: Number(testFlowGeneration.minNumOfStatesPerTf ?? 3),
+        },
+        crawlerSettings: {
+          maxTransitions: Number(crawlerSettings.maxTransitions ?? 5000),
+          useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
+        },
+        inputDefaults,
       },
-      codegenConfig: {
-        codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
-        prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
-        prTitle: String(session.codegenConfig.prTitle ?? ""),
-        prBody: String(session.codegenConfig.prBody ?? ""),
-        prDraft: Boolean(session.codegenConfig.prDraft ?? true),
-      },
+      codegenConfig:
+        Object.keys(session.codegenConfig).length > 0
+          ? {
+              codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
+              prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
+              prTitle: String(session.codegenConfig.prTitle ?? ""),
+              prBody: String(session.codegenConfig.prBody ?? ""),
+              prDraft: Boolean(session.codegenConfig.prDraft ?? true),
+            }
+          : undefined,
     });
     setSelectedSessionId(null);
   };
