@@ -2,9 +2,30 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
+import { RefreshCw } from "lucide-react";
 import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
 import type { TestFlow } from "../../model/types/test-flows.types";
 import styles from "../TestFlows.module.scss";
+
+function formatFlowType(type: TestFlow["testFlowType"]) {
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function formatStatus(status: TestFlow["status"]) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function shortId(value: string) {
+  return value.slice(0, 8);
+}
 
 export function TestFlowsTable({
   flows,
@@ -15,6 +36,8 @@ export function TestFlowsTable({
   isFetching,
   onPreviousPage,
   onNextPage,
+  onGenerate,
+  generatingFlowId,
 }: {
   flows: TestFlow[];
   formatDateTime: (value?: string) => string;
@@ -24,6 +47,8 @@ export function TestFlowsTable({
   isFetching: boolean;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  onGenerate: (flow: TestFlow) => void;
+  generatingFlowId?: string | null;
 }) {
   const showEmptyState = flows.length === 0 && !hasPreviousPage && !hasNextPage;
 
@@ -33,22 +58,23 @@ export function TestFlowsTable({
         <Table>
           <TableHead>
             <TableRow>
-              <TableHeaderCell>Checkpoint URL</TableHeaderCell>
-              <TableHeaderCell>Checkpoint Hash</TableHeaderCell>
-              <TableHeaderCell>Target Hash</TableHeaderCell>
+              <TableHeaderCell>TestFlow</TableHeaderCell>
+              <TableHeaderCell>Type</TableHeaderCell>
               <TableHeaderCell>Steps</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>Version</TableHeaderCell>
               <TableHeaderCell>Crawl Session</TableHeaderCell>
               <TableHeaderCell>Created</TableHeaderCell>
+              <TableHeaderCell>Actions</TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {showEmptyState ? (
               <TableRow className={styles.emptyRow}>
-                <TableCell colSpan={7} className={styles.emptyCell}>
+                <TableCell colSpan={8} className={styles.emptyCell}>
                   <div className={styles.tableEmpty}>
                     <h3>No test flows found</h3>
-                    <p>Try a different application, version, clipped status, or search query.</p>
+                    <p>Try a different application, version, flow type, or search query.</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -56,19 +82,15 @@ export function TestFlowsTable({
               flows.map((flow) => (
                 <TableRow key={flow.id}>
                   <TableCell>
-                    <span className={styles.urlText} title={flow.checkpointUrl || "No checkpoint URL"}>
-                      {flow.checkpointUrl || "No checkpoint URL"}
-                    </span>
+                    <div className={styles.flowIdCell} title={flow.id}>
+                      <span>TestFlow #{shortId(flow.id)}</span>
+                      <code>{shortId(flow.checkpointStateHash)}</code>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <code className={styles.hashText} title={flow.checkpointStateHash}>
-                      {flow.checkpointStateHash}
-                    </code>
-                  </TableCell>
-                  <TableCell>
-                    <code className={styles.hashText} title={flow.targetStateHash}>
-                      {flow.targetStateHash}
-                    </code>
+                    <Badge variant="outline" className={styles.typeBadge}>
+                      {formatFlowType(flow.testFlowType)}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <span className={styles.stepCount}>{flow.stepCount}</span>
@@ -76,18 +98,48 @@ export function TestFlowsTable({
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={flow.isClipped ? styles.clippedBadge : styles.completeBadge}
+                      className={`${styles.statusBadge} ${styles[`status${flow.status}`]}`}
+                      title={
+                        flow.generatedAt
+                          ? `Generated ${formatDateTime(flow.generatedAt)}; modified ${formatDateTime(flow.modifiedAt)}`
+                          : `Modified ${formatDateTime(flow.modifiedAt)}`
+                      }
                     >
-                      {flow.isClipped ? "Clipped" : "Complete"}
+                      {formatStatus(flow.status)}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <code className={styles.hashText} title={flow.crawlSessionId}>
-                      {flow.crawlSessionId}
-                    </code>
+                    <span className={styles.versionText} title={flow.appVersionId}>
+                      {flow.appVersionName}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className={styles.sessionCell} title={flow.crawlSessionId}>
+                      <code>{shortId(flow.crawlSessionId)}</code>
+                      <span>
+                        {flow.crawlSession.triggerType} / {flow.crawlSession.status}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span className={styles.dateText}>{formatDateTime(flow.createdAt)}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={styles.generateButton}
+                      onClick={() => onGenerate(flow)}
+                      disabled={flow.status === "GENERATED" || generatingFlowId === flow.id}
+                      title={
+                        flow.status === "GENERATED"
+                          ? "This flow is up to date"
+                          : `Generate from ${flow.transitionRefs.length} transition(s)`
+                      }
+                    >
+                      <RefreshCw size={14} />
+                      Generate
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

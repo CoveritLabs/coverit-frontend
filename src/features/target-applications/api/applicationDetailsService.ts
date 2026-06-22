@@ -425,6 +425,18 @@ export const applicationDetailsService = {
     return response.data;
   },
 
+  async reattachManualSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+    sessionId: string;
+  }): Promise<ManualSessionConnectResponse> {
+    const response = await apiClient.post<ManualSessionConnectResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/manual-recordings/${params.sessionId}/reattach`,
+    );
+    return response.data;
+  },
+
   async getRegressionConfig(projectId: string, applicationId: string): Promise<RegressionCodebaseConfig | undefined> {
     const response = await apiClient.get<ApiRegressionCodebase[]>(
       `projects/${projectId}/target-applications/${applicationId}/regression-codebases`,

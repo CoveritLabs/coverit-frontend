@@ -4,13 +4,14 @@
 
 import { Filter, Search } from "lucide-react";
 import { Button, Input, Select } from "@shared/ui";
-import type { TestFlowClippedFilter } from "../../model/types/test-flows.types";
+import type { TestFlowTypeFilter } from "../../model/types/test-flows.types";
 import styles from "../TestFlows.module.scss";
 
-const CLIPPED_OPTIONS: Array<{ value: TestFlowClippedFilter; label: string }> = [
+const TYPE_OPTIONS: Array<{ value: TestFlowTypeFilter; label: string }> = [
   { value: "all", label: "All flows" },
-  { value: "complete", label: "Complete" },
-  { value: "clipped", label: "Clipped" },
+  { value: "MANUAL", label: "Manual" },
+  { value: "BUG_REPRODUCTION", label: "Bug reproduction" },
+  { value: "COVERAGE", label: "Coverage" },
 ];
 
 export function TestFlowsFilters({
@@ -18,11 +19,11 @@ export function TestFlowsFilters({
   versionOptions,
   applicationId,
   versionId,
-  clipped,
+  type,
   searchText,
   onApplicationChange,
   onVersionChange,
-  onClippedChange,
+  onTypeChange,
   onSearchChange,
   onClear,
 }: {
@@ -30,11 +31,11 @@ export function TestFlowsFilters({
   versionOptions: Array<{ value: string; label: string }>;
   applicationId: string | null;
   versionId: string | null;
-  clipped: TestFlowClippedFilter;
+  type: TestFlowTypeFilter;
   searchText: string;
   onApplicationChange: (value: string | null) => void;
   onVersionChange: (value: string | null) => void;
-  onClippedChange: (value: TestFlowClippedFilter) => void;
+  onTypeChange: (value: TestFlowTypeFilter) => void;
   onSearchChange: (value: string) => void;
   onClear: () => void;
 }) {
@@ -54,9 +55,9 @@ export function TestFlowsFilters({
           placeholder="All versions"
         />
         <Select
-          options={CLIPPED_OPTIONS}
-          value={clipped}
-          onChange={(value) => onClippedChange((value ?? "all") as TestFlowClippedFilter)}
+          options={TYPE_OPTIONS}
+          value={type}
+          onChange={(value) => onTypeChange((value ?? "all") as TestFlowTypeFilter)}
           placeholder="All flows"
         />
         <div className={styles.searchBox}>

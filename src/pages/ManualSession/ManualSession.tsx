@@ -6,7 +6,22 @@ import { useUIStore } from "@app/store";
 import { useConnectManualSession, useTargetApplications } from "@features/target-applications";
 import { env } from "@shared/config/env";
 import { ROUTES } from "@shared/config/routes";
-import { AlertCircle, Bug, CircleStop, ListChecks, MousePointerClick, Play, Power, Wifi, WifiOff } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Bug,
+  CheckCircle2,
+  CircleStop,
+  CornerDownRight,
+  ListChecks,
+  LoaderCircle,
+  MousePointerClick,
+  Play,
+  Power,
+  RotateCcw,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -64,8 +79,59 @@ type RecordedEvent = {
   text?: string;
   accessibleName?: string;
   pageUrl?: string;
+  value?: string | null;
+  inputType?: string;
+  key?: string;
+  fromUrl?: string;
   x?: number;
   y?: number;
+};
+
+type RecordedAction = {
+  id?: string;
+  type?: string;
+  selector?: string;
+  value?: string;
+  description?: string;
+};
+
+type RecordedStep = {
+  id?: string;
+  stepId?: string;
+  index?: number;
+  flowRevision?: number;
+  transitionId?: string;
+  sourceStateHash?: string;
+  targetStateHash?: string;
+  sourceUrl?: string;
+  targetUrl?: string;
+  pageUrl?: string;
+  title?: string;
+  timestamp?: string;
+  description?: string;
+  action?: string;
+  selector?: string;
+  value?: string;
+  events?: RecordedEvent[];
+  actions?: RecordedAction[];
+};
+
+type VisibleStepItem = {
+  key: string;
+  index: string;
+  label: string;
+  detail: string;
+  pending: boolean;
+  finalizedEvent: boolean;
+  canContinue: boolean;
+  step: RecordedStep | null;
+};
+
+type ManualAction = "start" | "reset" | "continue" | "finish" | "bug" | "disconnect";
+
+type ActionFeedback = {
+  kind: "pending" | "success" | "error";
+  message: string;
 };
 
 type WsPayload = {
@@ -77,6 +143,17 @@ type WsPayload = {
   pageUrl?: string;
   title?: string;
   timestamp?: string;
+  flowId?: string;
+  checkpointHash?: string;
+  transitionIds?: string[];
+  testFlowType?: string;
+  stepCount?: number;
+  flowRevision?: number;
+  steps?: RecordedStep[];
+  step?: RecordedStep;
+  keptStepIds?: string[];
+  removedStepIds?: string[];
+  stateHash?: string;
   viewport?: {
     width?: number;
     height?: number;
@@ -153,10 +230,56 @@ function buildWsUrl(sessionId: string, ticket: string) {
   return `${base}/ws/manual-recordings/${encodeURIComponent(sessionId)}?ticket=${encodeURIComponent(ticket)}`;
 }
 
-function stepLabel(event: RecordedEvent) {
+function stepLabel(step: RecordedStep) {
+  if (step.description?.trim()) return step.description.trim();
+
+  const action = step.action || step.actions?.[0]?.type || "step";
+  const firstEvent = step.events?.[0];
+  const target =
+    firstEvent?.accessibleName ||
+    firstEvent?.text ||
+    step.selector ||
+    step.actions?.[0]?.selector ||
+    "page";
+
+  if (action === "type" || action === "input" || action === "change") {
+    const value = step.value ? `: ${step.value}` : "";
+    return `type: ${target}${value}`;
+  }
+  if (action === "press") return `press: ${step.value || firstEvent?.key || target}`;
+  if (action === "navigate") return `navigate: ${step.targetUrl || step.pageUrl || target}`;
+  return `${action}: ${target}`;
+}
+
+function eventKey(event: RecordedEvent) {
+  return event.id ?? `${event.timestamp ?? ""}:${event.action ?? ""}:${event.selector ?? ""}:${event.key ?? ""}`;
+}
+
+function eventLabel(event: RecordedEvent) {
   const action = event.action || "event";
   const target = event.accessibleName || event.text || event.selector || event.tag || "page";
+
+  if (action === "type" || action === "input" || action === "change") {
+    const value = event.value ? `: ${event.value}` : "";
+    return `type: ${target}${value}`;
+  }
+
+  if (action === "press") return `press: ${event.key || target}`;
+  if (action === "navigate") return `navigate: ${event.pageUrl || target}`;
   return `${action}: ${target}`;
+}
+
+function stepEventKeys(step: RecordedStep) {
+  return new Set((step.events ?? []).map(eventKey).filter(Boolean));
+}
+
+function stepKey(step: RecordedStep) {
+  return step.id ?? step.stepId ?? "";
+}
+
+function numericRevision(value: unknown) {
+  const revision = Number(value);
+  return Number.isFinite(revision) ? revision : null;
 }
 
 function manualSessionRoute(projectId: string, applicationId: string, versionId: string, sessionId: string) {
@@ -177,6 +300,9 @@ function ManualSession() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const disconnectedByUserRef = useRef(false);
+  const disconnectNavigateRef = useRef<"start" | "applications" | null>(null);
+  const flowRevisionRef = useRef(0);
+  const pendingActionRef = useRef<ManualAction | null>(null);
   const state = (location.state ?? {}) as LocationState;
   const typedApplications = useMemo(() => applications as ApplicationView[], [applications]);
 
@@ -198,11 +324,14 @@ function ManualSession() {
   const [hasFrame, setHasFrame] = useState(false);
   const [flowStarted, setFlowStarted] = useState(false);
   const [flowMarker, setFlowMarker] = useState<string | null>(null);
-  const [steps, setSteps] = useState<RecordedEvent[]>([]);
+  const [lastFlowMessage, setLastFlowMessage] = useState<string | null>(null);
+  const [steps, setSteps] = useState<RecordedStep[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<RecordedEvent[]>([]);
   const [bugSummary, setBugSummary] = useState("");
   const [bugSeverity, setBugSeverity] = useState("medium");
-  const [includeScreenshot, setIncludeScreenshot] = useState(true);
-  const [includeSteps, setIncludeSteps] = useState(true);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [pendingAction, setPendingActionState] = useState<ManualAction | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
 
   const selectedApplication = typedApplications.find((application) => application.id === selectedApplicationId) ?? null;
   const availableVersions = selectedApplication?.versions ?? [];
@@ -213,6 +342,58 @@ function ManualSession() {
   const isLive = status === "running" || status === "crawler.ready" || Boolean(connectedAt && status !== "closed");
   const canSend = wsRef.current?.readyState === WebSocket.OPEN;
   const canConnect = Boolean(selectedProject?.id && selectedApplication?.id && selectedVersion?.id);
+  const hasRecordedSteps = steps.length > 0;
+  const canFinishFlow = Boolean(canSend && flowStarted && hasRecordedSteps);
+  const hasPendingAction = pendingAction !== null;
+  const visibleSteps = useMemo<VisibleStepItem[]>(
+    () => [
+      ...steps.flatMap((step, index) => {
+        const finalizedEvents = step.events ?? [];
+        const baseStepId = step.id ?? step.stepId ?? `${step.timestamp}-${index}`;
+        const baseIndex = step.index ?? index + 1;
+        const detail = `${step.targetUrl || step.pageUrl || currentUrl}${
+          step.transitionId ? ` / ${step.transitionId.slice(0, 8)}` : ""
+        }`;
+
+        if (finalizedEvents.length <= 1) {
+          return [
+            {
+              key: baseStepId,
+              index: String(baseIndex),
+              label: stepLabel(step),
+              detail,
+              pending: false,
+              finalizedEvent: false,
+              canContinue: true,
+              step,
+            },
+          ];
+        }
+
+        return finalizedEvents.map((event, eventIndex) => ({
+          key: `${baseStepId}-event-${eventKey(event) || eventIndex}`,
+          index: `${baseIndex}.${eventIndex + 1}`,
+          label: eventLabel(event),
+          detail: event.pageUrl || detail,
+          pending: false,
+          finalizedEvent: true,
+          canContinue: eventIndex === finalizedEvents.length - 1,
+          step: eventIndex === finalizedEvents.length - 1 ? step : null,
+        }));
+      }),
+      ...pendingEvents.map((event, index) => ({
+        key: `pending-${eventKey(event) || index}`,
+        index: String(steps.length + index + 1),
+        label: eventLabel(event),
+        detail: event.pageUrl || currentUrl || "Waiting for finalized step...",
+        pending: true,
+        finalizedEvent: false,
+        canContinue: false,
+        step: null,
+      })),
+    ],
+    [currentUrl, pendingEvents, steps],
+  );
 
   useEffect(() => {
     if (params.applicationId) {
@@ -260,10 +441,67 @@ function ManualSession() {
     image.src = dataUrl;
   }, []);
 
+  const setPendingAction = useCallback((action: ManualAction | null) => {
+    pendingActionRef.current = action;
+    setPendingActionState(action);
+  }, []);
+
+  const startAction = useCallback(
+    (action: ManualAction, message: string) => {
+      setPendingAction(action);
+      setActionFeedback({ kind: "pending", message });
+      setError(null);
+    },
+    [setPendingAction],
+  );
+
+  const completeAction = useCallback(
+    (message: string) => {
+      setPendingAction(null);
+      setActionFeedback({ kind: "success", message });
+    },
+    [setPendingAction],
+  );
+
+  const failAction = useCallback(
+    (message: string) => {
+      setPendingAction(null);
+      setActionFeedback({ kind: "error", message });
+    },
+    [setPendingAction],
+  );
+
+  const resetSessionState = useCallback(() => {
+    wsRef.current = null;
+    setConnectedAt(null);
+    setElapsedSeconds(0);
+    setFlowStarted(false);
+    setFlowMarker(null);
+    setLastFlowMessage(null);
+    setSteps([]);
+    setPendingEvents([]);
+    setHasFrame(false);
+    setCurrentTitle("");
+    setError(null);
+    setConfirmLeaveOpen(false);
+    setStatus("closed");
+  }, []);
+
+  const finishDisconnect = useCallback(() => {
+    const target = disconnectNavigateRef.current;
+    if (!target) return;
+
+    disconnectNavigateRef.current = null;
+    resetSessionState();
+    completeAction("Session disconnected.");
+    navigate(target === "applications" ? ROUTES.APPLICATIONS : ROUTES.MANUAL_RECORDINGS, { replace: true });
+  }, [completeAction, navigate, resetSessionState]);
+
   const send = useCallback((payload: Record<string, unknown>) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
     ws.send(JSON.stringify(payload));
+    return true;
   }, []);
 
   const updateViewport = useCallback((payload: WsPayload) => {
@@ -298,37 +536,128 @@ function ManualSession() {
       }
 
       if (payload.type === "flow.started") {
+        const revision = numericRevision(payload.flowRevision) ?? flowRevisionRef.current + 1;
+        flowRevisionRef.current = revision;
         setFlowStarted(true);
         setFlowMarker(payload.timestamp ?? new Date().toISOString());
+        setLastFlowMessage(null);
+        completeAction("Flow started.");
+        setPendingEvents([]);
+        setSteps((payload.steps ?? []).map((step) => ({ ...step, flowRevision: step.flowRevision ?? revision })));
         setCurrentUrl((value) => payload.pageUrl ?? payload.url ?? value);
         setCurrentTitle((value) => payload.title ?? value);
       }
 
       if (payload.type === "recorded.event" && payload.event) {
-        setSteps((current) => [payload.event as RecordedEvent, ...current]);
+        setPendingEvents((current) => {
+          const nextEvent = payload.event as RecordedEvent;
+          const nextEventKey = eventKey(nextEvent);
+          if (nextEventKey && current.some((event) => eventKey(event) === nextEventKey)) return current;
+          return [...current, nextEvent];
+        });
+      }
+
+      if (payload.type === "recorded.step" && payload.step) {
+        const incomingRevision =
+          numericRevision(payload.step.flowRevision) ?? numericRevision(payload.flowRevision) ?? flowRevisionRef.current;
+        if (incomingRevision < flowRevisionRef.current) return;
+        if (incomingRevision > flowRevisionRef.current) {
+          flowRevisionRef.current = incomingRevision;
+        }
+
+        setSteps((current) => {
+          const nextStep = {
+            ...(payload.step as RecordedStep),
+            flowRevision: incomingRevision,
+          };
+          const nextStepId = stepKey(nextStep);
+          if (!nextStepId) return [...current, nextStep];
+          if (current.some((step) => stepKey(step) === nextStepId)) {
+            return current.map((step) => (stepKey(step) === nextStepId ? nextStep : step));
+          }
+          return [...current, nextStep];
+        });
+        setPendingEvents((current) => {
+          const finalizedEventKeys = stepEventKeys(payload.step as RecordedStep);
+          if (finalizedEventKeys.size === 0) return current;
+          return current.filter((event) => !finalizedEventKeys.has(eventKey(event)));
+        });
+      }
+
+      if (payload.type === "flow.rewound") {
+        const revision = numericRevision(payload.flowRevision) ?? flowRevisionRef.current + 1;
+        if (revision < flowRevisionRef.current) return;
+        flowRevisionRef.current = revision;
+        if (payload.steps) {
+          setSteps(payload.steps.map((step) => ({ ...step, flowRevision: step.flowRevision ?? revision })));
+        } else {
+          const kept = new Set(payload.keptStepIds ?? []);
+          setSteps((current) =>
+            payload.keptStepIds ? current.filter((step) => kept.has(stepKey(step))) : current,
+          );
+        }
+        setPendingEvents([]);
+        setCurrentUrl((value) => payload.pageUrl ?? payload.url ?? value);
+        setCurrentTitle((value) => payload.title ?? value);
+        const removedCount = payload.removedStepIds?.length ?? 0;
+        setLastFlowMessage(
+          removedCount > 0
+            ? `Continued from earlier step; removed ${removedCount} ${removedCount === 1 ? "step" : "steps"}.`
+            : "Returned to the selected step.",
+        );
+        completeAction(pendingActionRef.current === "continue" ? "Continued from selected step." : "Returned to checkpoint.");
+      }
+
+      if (payload.type === "flow.completed") {
+        setFlowStarted(false);
+        setPendingEvents([]);
+        const count = payload.stepCount ?? payload.transitionIds?.length ?? 0;
+        const message = `Manual flow queued with ${count} ${count === 1 ? "step" : "steps"}.`;
+        setLastFlowMessage(message);
+        completeAction(message);
+      }
+
+      if (payload.type === "bug.reported") {
+        setFlowStarted(false);
+        setPendingEvents([]);
+        const count = payload.stepCount ?? payload.transitionIds?.length ?? 0;
+        const message = `Bug flow queued with ${count} ${count === 1 ? "step" : "steps"}.`;
+        setLastFlowMessage(message);
+        completeAction(message);
       }
 
       if (payload.type === "session.closed") {
         setStatus(payload.status ?? "closed");
+        setPendingEvents([]);
+        finishDisconnect();
       }
 
       if (payload.type === "error") {
-        setError(payload.message ?? "Manual recording websocket error");
+        const message = payload.message ?? "Manual recording websocket error";
+        setError(message);
+        failAction(message);
       }
     },
-    [drawFrame, updateViewport],
+    [completeAction, drawFrame, failAction, finishDisconnect, updateViewport],
   );
 
   useEffect(() => {
     if (!sessionId) {
+      flowRevisionRef.current = 0;
+      setSteps([]);
+      setPendingEvents([]);
+      setPendingAction(null);
+      setActionFeedback(null);
       setStatus("idle");
       setError(null);
       return;
     }
 
     if (!ticket || !wsUrl) {
+      const message = "Manual recording ticket is missing or invalid.";
       setStatus("failed");
-      setError("Manual recording ticket is missing or invalid.");
+      setError(message);
+      failAction(message);
       return;
     }
 
@@ -345,13 +674,17 @@ function ManualSession() {
       try {
         handlePayload(JSON.parse(event.data) as WsPayload);
       } catch {
-        setError("Invalid websocket message received.");
+        const message = "Invalid websocket message received.";
+        setError(message);
+        failAction(message);
       }
     };
 
     ws.onerror = () => {
+      const message = "Manual recording websocket failed.";
       setStatus("failed");
-      setError("Manual recording websocket failed.");
+      setError(message);
+      failAction(message);
     };
 
     ws.onclose = () => {
@@ -361,12 +694,19 @@ function ManualSession() {
       setStatus((current) =>
         disconnectedByUserRef.current ? "closed" : current === "failed" ? current : "disconnected",
       );
+      if (disconnectNavigateRef.current) {
+        finishDisconnect();
+        return;
+      }
+      if (pendingActionRef.current) {
+        failAction("Manual recording websocket disconnected.");
+      }
     };
 
     return () => {
       releaseConnection(connectionKey);
     };
-  }, [connectionKey, handlePayload, sessionId, ticket, wsUrl]);
+  }, [connectionKey, failAction, finishDisconnect, handlePayload, sessionId, setPendingAction, ticket, wsUrl]);
 
   useEffect(() => {
     if (!connectedAt) {
@@ -451,11 +791,72 @@ function ManualSession() {
   );
 
   const handleStartFlow = () => {
-    send({ type: "flow.start" });
+    if (hasPendingAction) return;
+    startAction("start", "Starting flow...");
+    setPendingEvents([]);
+    if (!send({ type: "flow.start" })) {
+      failAction("Crawler connection is not ready.");
+    }
+  };
+
+  const handleFinishFlow = () => {
+    if (hasPendingAction) return;
+    startAction("finish", "Finishing flow...");
+    setPendingEvents([]);
+    if (!send({ type: "flow.finish" })) {
+      failAction("Crawler connection is not ready.");
+    }
+  };
+
+  const handleRewindToCheckpoint = () => {
+    if (hasPendingAction) return;
+    startAction("reset", "Resetting to checkpoint...");
+    setPendingEvents([]);
+    if (!send({
+      type: "flow.rewind",
+      rewind: {
+        stepId: null,
+      },
+    })) {
+      failAction("Crawler connection is not ready.");
+    }
+  };
+
+  const handleContinueFromStep = (step: RecordedStep) => {
+    if (hasPendingAction) return;
+    const stepId = step.id ?? step.stepId;
+    if (!stepId) return;
+    startAction("continue", "Continuing from selected step...");
+    if (!send({
+      type: "flow.rewind",
+      rewind: {
+        stepId,
+      },
+    })) {
+      failAction("Crawler connection is not ready.");
+    }
+  };
+
+  const handleReportBug = () => {
+    if (!bugSummary.trim() || hasPendingAction) return;
+    startAction("bug", "Queueing bug flow...");
+    setPendingEvents([]);
+    if (!send({
+      type: "bug.report",
+      bug: {
+        summary: bugSummary.trim(),
+        severity: bugSeverity,
+        includeScreenshot: false,
+        includeSteps: true,
+      },
+    })) {
+      failAction("Crawler connection is not ready.");
+    }
   };
 
   const handleConnect = () => {
     if (!selectedProject?.id || !selectedApplication?.id || !selectedVersion?.id) return;
+    disconnectedByUserRef.current = false;
 
     connectManualSession.mutate(
       {
@@ -480,23 +881,52 @@ function ManualSession() {
     );
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = (target: "start" | "applications" = "start") => {
+    if (hasPendingAction && pendingAction !== "disconnect") return;
+    startAction("disconnect", "Disconnecting session...");
+    disconnectNavigateRef.current = target;
     disconnectedByUserRef.current = true;
-    send({ type: "session.disconnect" });
+    const sent = send({ type: "session.disconnect" });
     releaseConnection(connectionKey, true);
-    setStatus("closed");
+    if (!sent) {
+      finishDisconnect();
+    }
   };
 
   const handleBack = () => {
+    if (hasLiveSession && status !== "closed") {
+      setConfirmLeaveOpen(true);
+      return;
+    }
     navigate(ROUTES.APPLICATIONS);
+  };
+
+  const handleConfirmLeave = () => {
+    handleDisconnect("applications");
+  };
+
+  const handleConnectionAction = () => {
+    if (hasLiveSession && status !== "closed") {
+      handleDisconnect();
+      return;
+    }
+    handleConnect();
   };
 
   return (
     <main className={styles.shell}>
       <header className={styles.statusBar}>
-        <div className={styles.recordingTitle}>
-          <strong>Manual Recording</strong>
-          <span>{sessionId}</span>
+        <div className={styles.headerIdentity}>
+          <button type="button" className={styles.headerBackButton} onClick={handleBack} aria-label="Back to applications">
+            <ArrowLeft className={styles.buttonIcon} />
+          </button>
+          <div className={styles.recordingTitle}>
+            <strong>Manual Recording</strong>
+            <span>
+              {appName} / {versionName}
+              {sessionId ? ` / ${sessionId}` : ""}
+            </span>
+          </div>
         </div>
 
         <div className={styles.statusCluster}>
@@ -592,17 +1022,27 @@ function ManualSession() {
               </select>
             </label>
 
-            {!hasLiveSession && (
-              <button
-                type="button"
-                className={styles.connectButton}
-                onClick={handleConnect}
-                disabled={!canConnect || connectManualSession.isPending}
-              >
+            <button
+              type="button"
+              className={hasLiveSession && status !== "closed" ? styles.dangerButton : styles.connectButton}
+              onClick={handleConnectionAction}
+              disabled={(!hasLiveSession && !canConnect) || connectManualSession.isPending || hasPendingAction}
+            >
+              {connectManualSession.isPending || pendingAction === "disconnect" ? (
+                <LoaderCircle className={styles.spinnerIcon} />
+              ) : hasLiveSession && status !== "closed" ? (
+                <Power className={styles.buttonIcon} />
+              ) : (
                 <Play className={styles.buttonIcon} />
-                {connectManualSession.isPending ? "Connecting..." : "Connect"}
-              </button>
-            )}
+              )}
+              {hasLiveSession && status !== "closed"
+                ? pendingAction === "disconnect"
+                  ? "Disconnecting..."
+                  : "Disconnect"
+                : connectManualSession.isPending
+                  ? "Connecting..."
+                  : "Connect"}
+            </button>
 
             <div className={styles.currentPage}>
               <span className={styles.selectLabel}>Current Page</span>
@@ -629,27 +1069,74 @@ function ManualSession() {
             </button>
           </div>
 
+          {actionFeedback && (
+            <div
+              className={
+                actionFeedback.kind === "error"
+                  ? styles.actionFeedbackError
+                  : actionFeedback.kind === "success"
+                    ? styles.actionFeedbackSuccess
+                    : styles.actionFeedbackPending
+              }
+            >
+              {actionFeedback.kind === "pending" ? (
+                <LoaderCircle className={styles.spinnerIcon} />
+              ) : actionFeedback.kind === "error" ? (
+                <AlertCircle className={styles.feedbackIcon} />
+              ) : (
+                <CheckCircle2 className={styles.feedbackIcon} />
+              )}
+              <span>{actionFeedback.message}</span>
+            </div>
+          )}
+
           {activeTab === "record" ? (
             <div className={styles.tabContent}>
               <div className={styles.controls}>
-                <button type="button" className={styles.dangerButton} onClick={handleDisconnect}>
-                  <Power className={styles.buttonIcon} />
-                  Disconnect
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={handleRewindToCheckpoint}
+                  disabled={!canSend || !flowStarted || hasPendingAction}
+                >
+                  {pendingAction === "reset" ? (
+                    <LoaderCircle className={styles.spinnerIcon} />
+                  ) : (
+                    <RotateCcw className={styles.buttonIcon} />
+                  )}
+                  {pendingAction === "reset" ? "Resetting..." : "Reset"}
                 </button>
                 <button
                   type="button"
                   className={styles.primaryButton}
                   onClick={handleStartFlow}
-                  disabled={!canSend || flowStarted}
+                  disabled={!canSend || flowStarted || hasPendingAction}
                 >
-                  <Play className={styles.buttonIcon} />
-                  {flowStarted ? "Flow Started" : "Start Flow"}
+                  {pendingAction === "start" ? (
+                    <LoaderCircle className={styles.spinnerIcon} />
+                  ) : (
+                    <Play className={styles.buttonIcon} />
+                  )}
+                  {pendingAction === "start" ? "Starting..." : flowStarted ? "Started" : "Start"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={handleFinishFlow}
+                  disabled={!canFinishFlow || hasPendingAction}
+                >
+                  {pendingAction === "finish" ? (
+                    <LoaderCircle className={styles.spinnerIcon} />
+                  ) : (
+                    <CheckCircle2 className={styles.buttonIcon} />
+                  )}
+                  {pendingAction === "finish" ? "Finishing..." : "Finish"}
                 </button>
               </div>
 
               <div className={styles.stepsHeader}>
                 <span>Recorded Steps</span>
-                <span className={styles.stepCount}>{steps.length}</span>
+                <span className={styles.stepCount}>{visibleSteps.length}</span>
               </div>
 
               {flowMarker && (
@@ -659,19 +1146,46 @@ function ManualSession() {
                 </div>
               )}
 
+              {lastFlowMessage && (
+                <div className={styles.flowMarker}>
+                  <CheckCircle2 className={styles.markerIcon} />
+                  <span>{lastFlowMessage}</span>
+                </div>
+              )}
+
               <ol className={styles.stepList}>
-                {steps.map((event, index) => (
-                  <li key={event.id ?? `${event.timestamp}-${index}`} className={styles.step}>
-                    <span className={styles.stepIndex}>{steps.length - index}</span>
+                {visibleSteps.map((item) => (
+                  <li
+                    key={item.key}
+                    className={item.pending ? styles.stepPending : item.finalizedEvent ? styles.stepEvent : styles.step}
+                  >
+                    <span className={styles.stepIndex}>{item.index}</span>
                     <span className={styles.stepBody}>
-                      <strong>{stepLabel(event)}</strong>
+                      <strong>{item.label}</strong>
                       <span>
-                        {event.pageUrl || currentUrl}
-                        {typeof event.x === "number" && typeof event.y === "number"
-                          ? ` at ${Math.round(event.x)}, ${Math.round(event.y)}`
-                          : ""}
+                        {item.detail}
+                        {item.pending ? " / pending" : ""}
                       </span>
                     </span>
+                    {item.canContinue && item.step ? (
+                      <button
+                        type="button"
+                        className={styles.stepActionButton}
+                        onClick={() => handleContinueFromStep(item.step as RecordedStep)}
+                        disabled={!canSend || !flowStarted || hasPendingAction}
+                      >
+                        {pendingAction === "continue" ? (
+                          <LoaderCircle className={styles.spinnerIcon} />
+                        ) : (
+                          <CornerDownRight className={styles.stepActionIcon} />
+                        )}
+                        {pendingAction === "continue" ? "Continuing..." : "Continue"}
+                      </button>
+                    ) : (
+                      <span className={item.pending ? styles.pendingBadge : styles.recordedBadge}>
+                        {item.pending ? "Pending" : "Recorded"}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -693,26 +1207,14 @@ function ManualSession() {
                 </select>
               </label>
 
-              <label className={styles.checkboxRow}>
-                <input
-                  type="checkbox"
-                  checked={includeScreenshot}
-                  onChange={(event) => setIncludeScreenshot(event.target.checked)}
-                />
-                <span>Screenshot</span>
-              </label>
-
-              <label className={styles.checkboxRow}>
-                <input
-                  type="checkbox"
-                  checked={includeSteps}
-                  onChange={(event) => setIncludeSteps(event.target.checked)}
-                />
-                <span>Recorded steps</span>
-              </label>
-
-              <button type="button" className={styles.reportButton} disabled={!bugSummary.trim()}>
-                Save Local Draft
+              <button
+                type="button"
+                className={styles.reportButton}
+                disabled={!bugSummary.trim() || !canFinishFlow || hasPendingAction}
+                onClick={handleReportBug}
+              >
+                {pendingAction === "bug" && <LoaderCircle className={styles.spinnerIcon} />}
+                {pendingAction === "bug" ? "Queueing..." : "Queue Bug Flow"}
               </button>
             </form>
           )}
@@ -722,6 +1224,45 @@ function ManualSession() {
           </button>
         </aside>
       </section>
+
+      {confirmLeaveOpen && (
+        <div className={styles.dialogOverlay} onMouseDown={() => setConfirmLeaveOpen(false)}>
+          <section
+            className={styles.confirmDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Disconnect manual session"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className={styles.confirmHeader}>
+              <AlertCircle className={styles.confirmIcon} />
+              <div>
+                <strong>Disconnect this session?</strong>
+                <span>The browser session will be closed before returning to Applications.</span>
+              </div>
+            </div>
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => setConfirmLeaveOpen(false)}
+                disabled={hasPendingAction}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={handleConfirmLeave}
+                disabled={hasPendingAction}
+              >
+                {pendingAction === "disconnect" && <LoaderCircle className={styles.spinnerIcon} />}
+                {pendingAction === "disconnect" ? "Disconnecting..." : "Disconnect"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

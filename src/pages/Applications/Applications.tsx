@@ -29,6 +29,7 @@ import {
   useDeleteTargetApplication,
   useDeleteTargetApplicationVersion,
   useRegressionConfig,
+  useReattachManualSession,
   useRotateTargetApplicationApiKey,
   useSaveCrawlSchedule,
   useSaveRegressionCodebaseConfig,
@@ -38,6 +39,7 @@ import {
   useUpdateTargetApplication,
 } from "@features/target-applications";
 import { GRADIENTS } from "@shared/constants/gradients";
+import { ROUTES } from "@shared/config/routes";
 import { Badge, Button, Card, Input } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import type { LucideIcon } from "lucide-react";
@@ -65,6 +67,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import styles from "./Applications.module.scss";
 import {
   AddApplicationModal,
@@ -175,6 +178,17 @@ function getStatusIcon(status: CrawlSessionStatus) {
   if (status === "failed") return XCircle;
   if (status === "running") return LoaderCircle;
   return Clock;
+}
+
+function isActiveSession(status: CrawlSessionStatus) {
+  return status === "running" || status === "in_progress";
+}
+
+function manualSessionRoute(projectId: string, applicationId: string, versionId: string, sessionId: string) {
+  return ROUTES.MANUAL_RECORDING.replace(":projectId", projectId)
+    .replace(":applicationId", applicationId)
+    .replace(":versionId", versionId)
+    .replace(":sessionId", sessionId);
 }
 
 function createEmptyRegressionConfig(): RegressionCodebaseConfig {
@@ -419,7 +433,7 @@ function SessionsTable({
               {sessions.map((session) => {
                 const StatusIcon = getStatusIcon(session.status);
                 const statusClass = getStatusClass(session.status);
-                const isRunning = session.status === "running";
+                const isRunning = isActiveSession(session.status);
                 return (
                   <tr key={session.id}>
                     <td>
@@ -591,17 +605,22 @@ function SessionDetailsPanel({
   selectedVersionName,
   onClose,
   onRerun,
+  onReattach,
+  reattaching,
 }: {
   session: CrawlSession;
   appName: string;
   selectedVersionName?: string;
   onClose: () => void;
   onRerun: (session: CrawlSession) => void;
+  onReattach: (session: CrawlSession) => void;
+  reattaching: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const StatusIcon = getStatusIcon(session.status);
   const statusClass = getStatusClass(session.status);
-  const isInProgress = session.status === "in_progress";
+  const isInProgress = isActiveSession(session.status);
+  const canReattach = session.trigger === "manual" && isActiveSession(session.status);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(session.applicationBaseUrl);
@@ -695,9 +714,9 @@ function SessionDetailsPanel({
         )}
 
         <div className={styles.detailsFooter}>
-          <Button onClick={() => onRerun(session)}>
+          <Button onClick={() => (canReattach ? onReattach(session) : onRerun(session))} disabled={reattaching}>
             <Play className={styles.iconSmall} />
-            Re-run Crawl
+            {canReattach ? (reattaching ? "Reattaching..." : "Reattach") : "Re-run Crawl"}
           </Button>
         </div>
       </aside>
@@ -711,6 +730,7 @@ function LabelText({ children }: { children: ReactNode }) {
 
 const Applications = () => {
   const selectedProject = useUIStore((s) => s.selectedProject);
+  const navigate = useNavigate();
   const { data: applications = [], isLoading, isError } = useTargetApplications(selectedProject?.id ?? null);
   const createTargetApplication = useCreateTargetApplication();
   const updateTargetApplication = useUpdateTargetApplication();
@@ -721,6 +741,7 @@ const Applications = () => {
   const saveRegressionCodebaseConfig = useSaveRegressionCodebaseConfig();
   const createCrawlSession = useCreateCrawlSession();
   const startCrawlSession = useStartCrawlSession();
+  const reattachManualSession = useReattachManualSession();
   const saveCrawlSchedule = useSaveCrawlSchedule();
   const toggleCrawlSchedule = useToggleCrawlSchedule();
   const deleteCrawlSchedule = useDeleteCrawlSchedule();
@@ -1106,6 +1127,34 @@ const Applications = () => {
     setSelectedSessionId(null);
   };
 
+  const handleReattach = (session: CrawlSession) => {
+    if (!selectedProject || !selectedApplication || !selectedVersion) return;
+
+    reattachManualSession.mutate(
+      {
+        projectId: selectedProject.id,
+        applicationId: selectedApplication.id,
+        versionId: selectedVersion.id,
+        sessionId: session.id,
+      },
+      {
+        onSuccess: ({ sessionId, wsTicket }) => {
+          navigate(
+            `${manualSessionRoute(selectedProject.id, selectedApplication.id, selectedVersion.id, sessionId)}?ticket=${encodeURIComponent(wsTicket)}`,
+            {
+              state: {
+                applicationName: selectedApplication.name,
+                applicationBaseUrl: selectedApplication.baseUrl ?? "",
+                versionName: selectedVersion.version,
+              },
+            },
+          );
+          setSelectedSessionId(null);
+        },
+      },
+    );
+  };
+
   return (
     <div className={styles.container}>
       {/* Left Panel - Applications List */}
@@ -1415,6 +1464,8 @@ const Applications = () => {
           selectedVersionName={selectedVersion?.version}
           onClose={() => setSelectedSessionId(null)}
           onRerun={handleRerun}
+          onReattach={handleReattach}
+          reattaching={reattachManualSession.variables?.sessionId === selectedSession.id && reattachManualSession.isPending}
         />
       )}
 

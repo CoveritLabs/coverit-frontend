@@ -125,6 +125,20 @@ export function useConnectManualSession() {
   });
 }
 
+export function useReattachManualSession() {
+  return useMutation<
+    ManualSessionConnectResponse,
+    Error,
+    { projectId: string; applicationId: string; versionId: string; sessionId: string }
+  >({
+    mutationFn: ({ projectId, applicationId, versionId, sessionId }) =>
+      applicationDetailsService.reattachManualSession({ projectId, applicationId, versionId, sessionId }),
+    onError: (error) => {
+      toast.error("Failed to reattach manual recording", error.message);
+    },
+  });
+}
+
 export function useSaveCrawlSchedule() {
   const queryClient = useQueryClient();
 

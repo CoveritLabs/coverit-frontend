@@ -71,4 +71,26 @@
   --sidebar-accent-foreground: #e6edf3;
   --sidebar-border: #2d333b;
   --sidebar-ring: #4fc3c6;
+
+  /* Manual Session */
+  --manual-session-bg: #0d1117;
+  --manual-session-text: #e6edf3;
+  --manual-session-muted: #8b949e;
+  --manual-session-panel: #161b22;
+  --manual-session-control: #0d1117;
+  --manual-session-border: #21262d;
+  --manual-session-border-strong: #30363d;
+  --manual-session-viewport-shell: #000000;
+  --manual-session-viewport-bg: #0a0c10;
+  --manual-session-grid: rgb(255 255 255 / 0.025);
+  --manual-session-accent: #00e5a0;
+  --manual-session-accent-foreground: #0d1117;
+  --manual-session-accent-glow: rgb(0 229 160 / 0.2);
+  --manual-session-warning: #d29922;
+  --manual-session-warning-glow: rgb(210 153 34 / 0.18);
+  --manual-session-danger: #f85149;
+  --manual-session-danger-foreground: #ffffff;
+  --manual-session-step-index-bg: #21262d;
+  --manual-session-event-bg: #111820;
+  --manual-session-pending-bg: #111820;
 }
