@@ -1,0 +1,520 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+.shell {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+  padding: 0.625rem 1rem;
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+}
+
+.statusCluster,
+.statusGroup {
+  display: flex;
+  align-items: center;
+}
+
+.recordingTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+
+  strong {
+    color: #e6edf3;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  span {
+    max-width: min(38vw, 30rem);
+    overflow: hidden;
+    color: #8b949e;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.selectGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.selectLabel {
+  font-size: 0.75rem;
+  color: #8b949e;
+  text-transform: uppercase;
+}
+
+.selectGroup select,
+.field select {
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  color: #e6edf3;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.statusCluster {
+  justify-content: flex-end;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.urlText {
+  max-width: min(38vw, 42rem);
+  overflow: hidden;
+  color: #8b949e;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusGroup {
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.statusIcon {
+  width: 1rem;
+  height: 1rem;
+  color: #8b949e;
+}
+
+.statusDotLive,
+.statusDotIdle {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.statusDotLive {
+  background: #00e5a0;
+  box-shadow: 0 0 0 3px rgb(0 229 160 / 0.2);
+}
+
+.statusDotIdle {
+  background: #d29922;
+  box-shadow: 0 0 0 3px rgb(210 153 34 / 0.18);
+}
+
+.statusText {
+  color: #8b949e;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.timer {
+  color: #e6edf3;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  min-height: 0;
+}
+
+.viewportWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 1rem;
+  background: #000;
+}
+
+.viewportFrame {
+  position: relative;
+  aspect-ratio: 1365 / 768;
+  width: 100%;
+  max-height: 100%;
+  max-width: calc((100vh - 5.5rem) * 1365 / 768);
+  overflow: hidden;
+  border: 1px solid #21262d;
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.025) 25%, transparent 25%),
+    linear-gradient(225deg, rgb(255 255 255 / 0.025) 25%, transparent 25%),
+    #0a0c10;
+  background-size: 20px 20px;
+}
+
+.browserCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: default;
+}
+
+.viewportEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #8b949e;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #161b22;
+  border-left: 1px solid #21262d;
+}
+
+.sidebarContext {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-bottom: 1px solid #21262d;
+}
+
+.sidebarContextHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  strong {
+    color: #e6edf3;
+    font-size: 0.875rem;
+  }
+}
+
+.contextEyebrow {
+  color: #8b949e;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.targetSummary {
+  min-width: 0;
+  overflow: hidden;
+  color: #8b949e;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentPage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+
+  span:last-child {
+    overflow: hidden;
+    color: #e6edf3;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid #21262d;
+}
+
+.tabButton,
+.tabButtonActive {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  color: #8b949e;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabButtonActive {
+  color: #00e5a0;
+  border-bottom-color: #00e5a0;
+}
+
+.tabIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.tabContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.primaryButton,
+.dangerButton,
+.connectButton,
+.reportButton,
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  color: #0d1117;
+  background: #00e5a0;
+  border: 1px solid transparent;
+}
+
+.connectButton {
+  width: 100%;
+  color: #0d1117;
+  background: #00e5a0;
+  border: 1px solid transparent;
+}
+
+.dangerButton {
+  color: #f85149;
+  background: #0d1117;
+  border: 1px solid #f85149;
+}
+
+.reportButton {
+  color: #fff;
+  background: #f85149;
+  border: 1px solid transparent;
+}
+
+.backButton {
+  margin: 0 1rem 1rem;
+  color: #8b949e;
+  background: #0d1117;
+  border: 1px solid #21262d;
+}
+
+.primaryButton:disabled,
+.connectButton:disabled,
+.reportButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.buttonIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.stepsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #8b949e;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.stepCount {
+  min-width: 1.5rem;
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  color: #e6edf3;
+  background: #0d1117;
+  text-align: center;
+}
+
+.flowMarker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  color: #8b949e;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.markerIcon {
+  width: 1rem;
+  height: 1rem;
+  color: #00e5a0;
+}
+
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.625rem;
+  border-radius: 0.375rem;
+  background: #0d1117;
+}
+
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.375rem;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  color: #8b949e;
+  background: #21262d;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+
+  strong,
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #e6edf3;
+    font-weight: 600;
+  }
+
+  span {
+    color: #8b949e;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  color: #8b949e;
+  font-size: 0.8125rem;
+}
+
+.field textarea {
+  min-height: 7rem;
+  resize: vertical;
+  color: #e6edf3;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+  font: inherit;
+}
+
+.checkboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e6edf3;
+  font-size: 0.8125rem;
+
+  input {
+    accent-color: #00e5a0;
+  }
+}
+
+@media (max-width: 960px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 22rem;
+  }
+
+  .panel {
+    border-left: 0;
+    border-top: 1px solid #21262d;
+  }
+
+  .statusBar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recordingTitle span {
+    max-width: 100%;
+  }
+
+  .statusCluster {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
