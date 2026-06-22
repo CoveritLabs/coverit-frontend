@@ -33,7 +33,7 @@ export function formatRelativeTime(value?: string) {
 }
 
 export function formatDuration(durationMs?: number) {
-  if (!durationMs || durationMs <= 0) return "In progress";
+  if (durationMs === null || durationMs === undefined || durationMs < 0) return "In progress";
   if (durationMs < 1000) return `${durationMs} ms`;
   const totalSeconds = Math.round(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);

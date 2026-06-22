@@ -4,10 +4,15 @@
 
 export { testFlowService } from "./api/testFlowService";
 export { default as TestFlows } from "./ui/TestFlows";
-export { useTestFlows } from "./model/queries/useTestFlows";
+export { useGenerateTestFlow, useRegressionCodebases, useTestFlows } from "./model/queries/useTestFlows";
 export type {
+  GenerateTestFlowRequest,
+  GenerateTestFlowResponse,
   ListTestFlowsRequest,
   ListTestFlowsResponse,
+  RegressionCodebaseOption,
   TestFlow,
-  TestFlowClippedFilter,
+  TestFlowStatus,
+  TestFlowType,
+  TestFlowTypeFilter,
 } from "./model/types/test-flows.types";

@@ -276,13 +276,12 @@ function mapSession(
   };
 }
 
-function getStats(versionCount: number, sessions: CrawlSession[]): ApplicationDetailStats {
+function getStats(sessions: CrawlSession[]): ApplicationDetailStats {
   const crawledSessions = sessions.filter((session) => session.status === "success");
   const lastSession = [...sessions].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   const statesDiscovered = crawledSessions.reduce((total, session) => total + (session.statesDiscovered ?? 0), 0);
 
   return {
-    versionCount,
     crawledCount: crawledSessions.length,
     statesDiscovered: statesDiscovered,
     lastCrawlDate: lastSession?.startedAt.slice(0, 10) ?? "—",
@@ -328,7 +327,7 @@ export const applicationDetailsService = {
     ]);
 
     return {
-      stats: getStats(params.versionCount, sessions),
+      stats: getStats(sessions),
       regressionConfig,
       sessions,
       schedules,
@@ -428,6 +427,18 @@ export const applicationDetailsService = {
   }): Promise<ManualSessionConnectResponse> {
     const response = await apiClient.post<ManualSessionConnectResponse>(
       `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/manual-recordings/connect`,
+    );
+    return response.data;
+  },
+
+  async reattachManualSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+    sessionId: string;
+  }): Promise<ManualSessionConnectResponse> {
+    const response = await apiClient.post<ManualSessionConnectResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/manual-recordings/${params.sessionId}/reattach`,
     );
     return response.data;
   },

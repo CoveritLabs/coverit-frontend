@@ -2,4 +2,4 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-export { default } from "@features/manual-session/ui/ManualSession";
+export { default as ManualSession } from "./ui/ManualSession";

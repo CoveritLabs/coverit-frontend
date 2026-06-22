@@ -585,9 +585,9 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const [coveragePercentage, setCoveragePercentage] = useState(
     String(initialData?.crawlConfig.testFlowGeneration?.coveragePercentage ?? 100),
   );
-  const [numOfTf, setNumOfTf] = useState(String(initialData?.crawlConfig.testFlowGeneration?.numOfTf ?? 1));
+  const [numOfTf, setNumOfTf] = useState(String(initialData?.crawlConfig.testFlowGeneration?.numOfTf ?? 3));
   const [numOfStates, setNumOfStates] = useState(
-    String(initialData?.crawlConfig.testFlowGeneration?.numOfStates ?? 20),
+    String(initialData?.crawlConfig.testFlowGeneration?.numOfStates ?? 10),
   );
   const [minNumOfStatesPerTf, setMinNumOfStatesPerTf] = useState(
     String(initialData?.crawlConfig.testFlowGeneration?.minNumOfStatesPerTf ?? 3),
@@ -638,10 +638,7 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const handleConfirm = () => {
     if (!canSave) return;
     const fieldPatterns = inputDefaultRowsToRecord(fieldPatternRows);
-    const inputDefaults =
-      Object.keys(fieldPatterns).length > 0
-        ? { fieldPatterns, typeFallbacks: {} }
-        : undefined;
+    const inputDefaults = Object.keys(fieldPatterns).length > 0 ? { fieldPatterns, typeFallbacks: {} } : undefined;
     const codegenConfig =
       codegenBranch.trim().length > 0 && prTargetBranch.trim().length > 0
         ? {
@@ -716,7 +713,9 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
               size="sm"
               variant="ghost"
               className={styles.iconButton}
-              onClick={() => setRows(rows.length > 1 ? rows.filter((item) => item.id !== row.id) : [createInputDefaultRow()])}
+              onClick={() =>
+                setRows(rows.length > 1 ? rows.filter((item) => item.id !== row.id) : [createInputDefaultRow()])
+              }
               aria-label={`Remove ${label}`}
             >
               <Trash2 className={styles.iconSmall} />
@@ -845,7 +844,9 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
 
           <div className={styles.modalSectionTitle}>Input Defaults</div>
           {renderInputDefaultRows("Field Patterns", fieldPatternRows, setFieldPatternRows)}
-          {inputDefaultsInvalid && <p className={styles.applicationError}>Each input default needs both a key and a value.</p>}
+          {inputDefaultsInvalid && (
+            <p className={styles.applicationError}>Each input default needs both a key and a value.</p>
+          )}
           {inputDefaultsDuplicated && <p className={styles.applicationError}>Input default keys must be unique.</p>}
 
           <div className={styles.modalSectionTitle}>Codegen Config</div>

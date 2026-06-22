@@ -24,6 +24,9 @@ function invalidateApplicationDetails(
     queryKey: queryKeys.targetApplications.regressionConfig(projectId, applicationId),
   });
   queryClient.invalidateQueries({
+    queryKey: queryKeys.targetApplications.regressionCodebases(projectId, applicationId),
+  });
+  queryClient.invalidateQueries({
     queryKey: queryKeys.targetApplications.crawlSchedules(projectId, applicationId),
   });
 
@@ -121,6 +124,20 @@ export function useConnectManualSession() {
       applicationDetailsService.connectManualSession({ projectId, applicationId, versionId }),
     onError: (error) => {
       toast.error("Failed to connect manual recording", error.message);
+    },
+  });
+}
+
+export function useReattachManualSession() {
+  return useMutation<
+    ManualSessionConnectResponse,
+    Error,
+    { projectId: string; applicationId: string; versionId: string; sessionId: string }
+  >({
+    mutationFn: ({ projectId, applicationId, versionId, sessionId }) =>
+      applicationDetailsService.reattachManualSession({ projectId, applicationId, versionId, sessionId }),
+    onError: (error) => {
+      toast.error("Failed to reattach manual recording", error.message);
     },
   });
 }

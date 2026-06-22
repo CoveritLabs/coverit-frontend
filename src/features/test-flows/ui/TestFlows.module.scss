@@ -123,6 +123,57 @@
   white-space: nowrap;
 }
 
+.flowIdCell,
+.sessionCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+
+  span {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  code {
+    width: fit-content;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0.1rem 0.25rem;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--muted) 55%, transparent);
+    color: var(--text-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.74rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.sessionCell {
+  span {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: lowercase;
+  }
+}
+
+.versionText {
+  display: block;
+  max-width: 9rem;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hashText {
   padding: 0.1rem 0.25rem;
   border-radius: 4px;
@@ -151,16 +202,40 @@
   font-weight: 600;
 }
 
-.completeBadge {
+.typeBadge {
   border-color: color-mix(in oklab, var(--success) 35%, var(--border));
   background: color-mix(in oklab, var(--success) 12%, transparent);
   color: var(--success);
 }
 
-.clippedBadge {
-  border-color: color-mix(in oklab, var(--warning) 35%, var(--border));
-  background: color-mix(in oklab, var(--warning) 12%, transparent);
+.statusBadge {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusNEEDS_GENERATION {
+  border-color: color-mix(in oklab, var(--warning) 42%, var(--border));
+  background: color-mix(in oklab, var(--warning) 13%, transparent);
   color: var(--warning);
+}
+
+.statusSTALE {
+  border-color: color-mix(in oklab, var(--destructive) 38%, var(--border));
+  background: color-mix(in oklab, var(--destructive) 11%, transparent);
+  color: var(--destructive);
+}
+
+.statusGENERATED {
+  border-color: color-mix(in oklab, var(--success) 35%, var(--border));
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.generateButton {
+  gap: 0.4rem;
+  white-space: nowrap;
 }
 
 .dateText {
@@ -271,6 +346,92 @@
   color: var(--text-secondary);
 }
 
+.modalOverlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in oklab, var(--background) 68%, transparent);
+}
+
+.generateModal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(42rem, 100%);
+  max-height: min(44rem, calc(100vh - 2rem));
+  overflow: auto;
+  padding: 1rem;
+}
+
+.modalHeader,
+.modalActions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalHeader {
+  h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+}
+
+.generateForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.modalGridTwo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.modalTextarea {
+  min-height: 6rem;
+  resize: vertical;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.modalCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.modalActions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 1024px) {
   .filtersRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -302,6 +463,10 @@
   .tableFooter {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .modalGridTwo {
+    grid-template-columns: 1fr;
   }
 
   .paginationControls {
