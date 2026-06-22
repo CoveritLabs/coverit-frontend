@@ -464,7 +464,7 @@ function SessionsTable({
                     </td>
                     <td>
                       <span className={styles.durationCell}>
-                        {session.durationMinutes ? (
+                        {session.durationMinutes !== null && session.durationMinutes !== undefined ? (
                           <>
                             <Clock className={styles.iconTinyMuted} />
                             {session.durationMinutes}m
@@ -662,7 +662,11 @@ function SessionDetailsPanel({
           </span>
           <span>
             <small>DURATION</small>
-            <strong>{session.durationMinutes ? `${session.durationMinutes}m` : "In progress"}</strong>
+            <strong>
+              {session.durationMinutes !== null && session.durationMinutes !== undefined
+                ? `${session.durationMinutes}m`
+                : "In progress"}
+            </strong>
           </span>
           <span>
             <small>TRIGGER</small>
@@ -1485,7 +1489,9 @@ const Applications = () => {
           onClose={() => setSelectedSessionId(null)}
           onRerun={handleRerun}
           onReattach={handleReattach}
-          reattaching={reattachManualSession.variables?.sessionId === selectedSession.id && reattachManualSession.isPending}
+          reattaching={
+            reattachManualSession.variables?.sessionId === selectedSession.id && reattachManualSession.isPending
+          }
         />
       )}
 
