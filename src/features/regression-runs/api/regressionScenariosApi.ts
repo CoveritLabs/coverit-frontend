@@ -3,15 +3,12 @@
 // See LICENSE file in the project root for full license information.
 
 import { apiClient } from "@shared/api/client";
-import type {
-  ListRegressionEventsRequest,
-  ListRegressionEventsResponse,
-  ListRegressionScenariosResponse,
-} from "@coveritlabs/contracts";
+import type { ListRegressionEventsRequest, ListRegressionEventsResponse } from "@coveritlabs/contracts";
 import type { Payload } from "@shared/types/common";
 import type {
   CreateScenarioIntegrationReportRequest,
   CreateScenarioIntegrationReportResponse,
+  ListRegressionScenariosWithReportsResponse,
   RegressionScenarioWithReports,
 } from "../model/types/regression-runs.types";
 
@@ -19,8 +16,8 @@ export async function listScenarios(
   projectId: string,
   applicationId: string,
   runId: string,
-): Promise<ListRegressionScenariosResponse> {
-  const res = await apiClient.get<ListRegressionScenariosResponse>(
+): Promise<ListRegressionScenariosWithReportsResponse> {
+  const res = await apiClient.get<ListRegressionScenariosWithReportsResponse>(
     `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios`,
   );
   return res.data;

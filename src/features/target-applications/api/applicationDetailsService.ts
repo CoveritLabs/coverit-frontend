@@ -106,11 +106,18 @@ const SCHEDULE_MODE_TO_API = {
 
 const DEFAULT_CRAWL_CONFIG: CrawlConfigInput = {
   maxStates: 1000,
-  maxDepth: 10,
-  includeUrlPatterns: [],
-  excludeUrlPatterns: [],
-  enableSemanticDecisions: false,
   timeoutSeconds: 3600,
+  generateTestFlows: true,
+  testFlowGeneration: {
+    coveragePercentage: 100,
+    numOfTf: 1,
+    numOfStates: 20,
+    minNumOfStatesPerTf: 3,
+  },
+  crawlerSettings: {
+    maxTransitions: 5000,
+    useSemanticDiversity: true,
+  },
 };
 
 const DEFAULT_CODEGEN_CONFIG: CodegenConfigInput = {
@@ -395,7 +402,7 @@ export const applicationDetailsService = {
         triggerType: TRIGGER_TO_API[params.data.trigger],
         crawlConfig: params.data.crawlConfig,
         regressionCodebaseId: params.regressionCodebaseId,
-        codegenConfig: buildCodegenPayload(params.data.codegenConfig),
+        codegenConfig: params.data.codegenConfig ? buildCodegenPayload(params.data.codegenConfig) : undefined,
       },
     );
 

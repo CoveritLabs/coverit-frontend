@@ -25,11 +25,22 @@ export interface RegressionCodebaseConfig {
 
 export interface CrawlConfigInput {
   maxStates: number;
-  maxDepth: number;
-  includeUrlPatterns: string[];
-  excludeUrlPatterns: string[];
-  enableSemanticDecisions: boolean;
   timeoutSeconds: number;
+  generateTestFlows: boolean;
+  testFlowGeneration?: {
+    coveragePercentage?: number;
+    numOfTf?: number;
+    numOfStates?: number;
+    minNumOfStatesPerTf?: number;
+  };
+  crawlerSettings?: {
+    maxTransitions?: number;
+    useSemanticDiversity?: boolean;
+  };
+  inputDefaults?: {
+    fieldPatterns: Record<string, string>;
+    typeFallbacks: Record<string, string>;
+  };
 }
 
 export interface CodegenConfigInput {
@@ -43,7 +54,7 @@ export interface CodegenConfigInput {
 export interface CreateCrawlSessionInput {
   trigger: CrawlSessionTrigger;
   crawlConfig: CrawlConfigInput;
-  codegenConfig: CodegenConfigInput;
+  codegenConfig?: CodegenConfigInput;
 }
 
 export interface CrawlSchedule {
