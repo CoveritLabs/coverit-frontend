@@ -24,6 +24,9 @@ function invalidateApplicationDetails(
     queryKey: queryKeys.targetApplications.regressionConfig(projectId, applicationId),
   });
   queryClient.invalidateQueries({
+    queryKey: queryKeys.targetApplications.regressionCodebases(projectId, applicationId),
+  });
+  queryClient.invalidateQueries({
     queryKey: queryKeys.targetApplications.crawlSchedules(projectId, applicationId),
   });
 

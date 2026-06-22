@@ -44,7 +44,7 @@ export function useRegressionCodebases(projectId: string | null, applicationId: 
   const safeApplicationId = applicationId ?? "__missing__";
 
   return useQuery<RegressionCodebaseOption[]>({
-    queryKey: queryKeys.targetApplications.regressionConfig(safeProjectId, safeApplicationId),
+    queryKey: queryKeys.targetApplications.regressionCodebases(safeProjectId, safeApplicationId),
     queryFn: () => testFlowService.listRegressionCodebases(safeProjectId, safeApplicationId),
     enabled: Boolean(projectId) && Boolean(applicationId),
     placeholderData: [],

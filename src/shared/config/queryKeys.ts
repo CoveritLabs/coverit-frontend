@@ -22,6 +22,8 @@ const targetApplicationKeys = {
     [...targetApplicationKeys.all, "crawl-session", projectId, applicationId, versionId, sessionId] as const,
   regressionConfig: (projectId: string, applicationId: string) =>
     [...targetApplicationKeys.all, "regression-config", projectId, applicationId] as const,
+  regressionCodebases: (projectId: string, applicationId: string) =>
+    [...targetApplicationKeys.all, "regression-codebases", projectId, applicationId] as const,
   crawlSchedules: (projectId: string, applicationId: string) =>
     [...targetApplicationKeys.all, "crawl-schedules", projectId, applicationId] as const,
 };

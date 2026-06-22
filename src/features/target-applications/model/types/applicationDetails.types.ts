@@ -10,7 +10,6 @@ export type ApplicationDetailTab = "crawl-sessions" | "schedules";
 export type ScheduleFrequency = "daily" | "weekly" | "monthly";
 
 export interface ApplicationDetailStats {
-  versionCount: number;
   crawledCount: number;
   statesDiscovered: number;
   lastCrawlDate: string;
