@@ -6,9 +6,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import {
   ArrowRight,
   BookOpen,
+  Copy,
   Flag,
-  Hash,
-  Info,
   Layers,
   LoaderCircle,
   MapPin,
@@ -23,14 +22,12 @@ import type { RichSelectOption } from "@shared/ui";
 import {
   useGenerateUserGuide,
   useUserGuideApplications,
-  useUserGuideSessions,
   useUserGuideStates,
   useUserGuideVersions,
 } from "../model/queries/useUserGuides";
 import type {
   GenerateGuideParams,
   UserGuideApplication,
-  UserGuideSession,
   UserGuideState,
   UserGuideStateKind,
   UserGuideVersion,
@@ -40,6 +37,8 @@ import styles from "./UserGuides.module.scss";
 
 type StateOption = RichSelectOption & {
   path: string;
+  displayLabel: string;
+  displayPath: string;
   kind?: UserGuideStateKind;
 };
 
@@ -57,31 +56,27 @@ function slugify(value: string) {
 function getProgressValue({
   applicationId,
   versionId,
-  sessionId,
   startStateId,
   endStateId,
 }: {
   applicationId: string | null;
   versionId: string | null;
-  sessionId: string | null;
   startStateId: string | null;
   endStateId: string | null;
 }) {
-  return [applicationId, versionId, sessionId, startStateId, endStateId].filter(Boolean).length;
+  return [applicationId, versionId, startStateId, endStateId].filter(Boolean).length;
 }
 
 function getEmptyStateMessage({
   applicationId,
   versionId,
-  sessionId,
   startStateId,
 }: {
   applicationId: string | null;
   versionId: string | null;
-  sessionId: string | null;
   startStateId: string | null;
 }) {
-  if (!applicationId || !versionId || !sessionId) return "Select an application to get started";
+  if (!applicationId || !versionId) return "Select an application to get started";
   if (!startStateId) return "Pick a start state from the left";
   return "Pick an end state from the right";
 }
@@ -107,10 +102,24 @@ function FieldBlock({
 function StatePath({ state }: { state: UserGuideState | null }) {
   if (!state) return null;
 
+  const copyValue = state.copyUrl || state.url || state.path;
+
   return (
     <span className={styles.statePathLine}>
       {state.kind ? <Badge className={styles.kindBadge}>{state.kind}</Badge> : null}
-      <code>{state.path}</code>
+      <code title={copyValue}>{state.displayPath}</code>
+      <Button
+        size="icon"
+        variant="ghost"
+        className={styles.copyPathButton}
+        aria-label="Copy state URL"
+        title="Copy state URL"
+        onClick={() => {
+          void navigator.clipboard?.writeText(copyValue);
+        }}
+      >
+        <Copy size={12} strokeWidth={1.8} />
+      </Button>
     </span>
   );
 }
@@ -120,9 +129,9 @@ function StateOptionRow({ option }: { option: StateOption }) {
     <span className={styles.stateOption}>
       <span className={styles.stateOptionMain}>
         <Navigation size={13} strokeWidth={1.75} />
-        <strong>{option.label}</strong>
+        <strong title={option.label}>{option.displayLabel}</strong>
       </span>
-      <code>{option.path}</code>
+      <code title={option.path}>{option.displayPath}</code>
     </span>
   );
 }
@@ -130,14 +139,11 @@ function StateOptionRow({ option }: { option: StateOption }) {
 function PageHeader() {
   return (
     <header className={styles.header}>
-      <div className={styles.headerIcon}>
-        <BookOpen size={20} strokeWidth={1.8} />
-      </div>
       <div>
         <h1>User Guides</h1>
         <p>
-          Select an application, version, and crawl session to generate a step-by-step navigation guide between any two
-          discovered states.
+          Select an application and version to generate a step-by-step navigation guide between any two discovered
+          states.
         </p>
       </div>
     </header>
@@ -190,7 +196,6 @@ function UserGuides() {
   const projectId = selectedProject?.id ?? null;
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedStartStateId, setSelectedStartStateId] = useState<string | null>(null);
   const [selectedEndStateId, setSelectedEndStateId] = useState<string | null>(null);
   const [activeGuideKey, setActiveGuideKey] = useState<string | null>(null);
@@ -198,8 +203,7 @@ function UserGuides() {
 
   const applicationsQuery = useUserGuideApplications(projectId);
   const versionsQuery = useUserGuideVersions(projectId, selectedApplicationId);
-  const sessionsQuery = useUserGuideSessions(projectId, selectedApplicationId, selectedVersionId);
-  const statesQuery = useUserGuideStates(projectId, selectedApplicationId, selectedVersionId, selectedSessionId);
+  const statesQuery = useUserGuideStates(projectId, selectedApplicationId, selectedVersionId);
   const {
     mutate: generateGuide,
     reset: resetGenerateGuide,
@@ -208,22 +212,19 @@ function UserGuides() {
 
   const applications = useMemo(() => applicationsQuery.data ?? [], [applicationsQuery.data]);
   const versions = useMemo(() => versionsQuery.data ?? [], [versionsQuery.data]);
-  const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
   const states = useMemo(() => statesQuery.data ?? [], [statesQuery.data]);
 
   const selectedApplication = findById<UserGuideApplication>(applications, selectedApplicationId);
   const selectedVersion = findById<UserGuideVersion>(versions, selectedVersionId);
-  const selectedSession = findById<UserGuideSession>(sessions, selectedSessionId);
   const selectedStartState = findStateByHash(states, selectedStartStateId);
   const selectedEndState = findStateByHash(states, selectedEndStateId);
-  const contextComplete = Boolean(selectedApplication && selectedVersion && selectedSession);
+  const contextComplete = Boolean(selectedApplication && selectedVersion);
   const pathComplete = Boolean(
     selectedStartState && selectedEndState && selectedStartState.stateHash !== selectedEndState.stateHash,
   );
   const progressValue = getProgressValue({
     applicationId: selectedApplicationId,
     versionId: selectedVersionId,
-    sessionId: selectedSessionId,
     startStateId: selectedStartStateId,
     endStateId: selectedEndStateId,
   });
@@ -236,20 +237,12 @@ function UserGuides() {
 
   const resetFromApplication = useCallback(() => {
     setSelectedVersionId(null);
-    setSelectedSessionId(null);
     setSelectedStartStateId(null);
     setSelectedEndStateId(null);
     resetGuideOutput();
   }, [resetGuideOutput]);
 
   const resetFromVersion = useCallback(() => {
-    setSelectedSessionId(null);
-    setSelectedStartStateId(null);
-    setSelectedEndStateId(null);
-    resetGuideOutput();
-  }, [resetGuideOutput]);
-
-  const resetFromSession = useCallback(() => {
     setSelectedStartStateId(null);
     setSelectedEndStateId(null);
     resetGuideOutput();
@@ -275,14 +268,6 @@ function UserGuides() {
       resetFromVersion();
     }
   }, [resetFromVersion, selectedVersionId, versions, versionsQuery.isFetching]);
-
-  useEffect(() => {
-    if (!selectedSessionId || sessionsQuery.isFetching || sessions.length === 0) return;
-    if (!sessions.some((session) => session.id === selectedSessionId)) {
-      setSelectedSessionId(null);
-      resetFromSession();
-    }
-  }, [resetFromSession, selectedSessionId, sessions, sessionsQuery.isFetching]);
 
   useEffect(() => {
     if (!selectedStartStateId || statesQuery.isFetching || states.length === 0) return;
@@ -311,17 +296,14 @@ function UserGuides() {
     [versions],
   );
 
-  const sessionOptions = useMemo<RichSelectOption[]>(
-    () => sessions.map((session) => ({ value: session.id, label: session.displayName })),
-    [sessions],
-  );
-
   const startStateOptions = useMemo<StateOption[]>(
     () =>
       states.map((state) => ({
         value: state.stateHash,
         label: state.label,
         path: state.path,
+        displayLabel: state.displayLabel,
+        displayPath: state.displayPath,
         kind: state.kind,
         disabled: state.stateHash === selectedEndStateId,
       })),
@@ -334,6 +316,8 @@ function UserGuides() {
         value: state.stateHash,
         label: state.label,
         path: state.path,
+        displayLabel: state.displayLabel,
+        displayPath: state.displayPath,
         kind: state.kind,
         disabled: state.stateHash === selectedStartStateId,
       })),
@@ -341,13 +325,12 @@ function UserGuides() {
   );
 
   const guideRequest = useMemo<GenerateGuideParams | null>(() => {
-    if (!projectId || !selectedApplicationId || !selectedVersionId || !selectedSessionId || !pathComplete) return null;
+    if (!projectId || !selectedApplicationId || !selectedVersionId || !pathComplete) return null;
 
     return {
       projectId,
       applicationId: selectedApplicationId,
       versionId: selectedVersionId,
-      sessionId: selectedSessionId,
       startStateHash: selectedStartStateId ?? "",
       endStateHash: selectedEndStateId ?? "",
     };
@@ -356,7 +339,6 @@ function UserGuides() {
     projectId,
     selectedApplicationId,
     selectedEndStateId,
-    selectedSessionId,
     selectedStartStateId,
     selectedVersionId,
   ]);
@@ -367,7 +349,6 @@ function UserGuides() {
       guideRequest.projectId,
       guideRequest.applicationId,
       guideRequest.versionId,
-      guideRequest.sessionId,
       guideRequest.startStateHash,
       guideRequest.endStateHash,
     ].join(":");
@@ -400,7 +381,6 @@ function UserGuides() {
   const emptyStateMessage = getEmptyStateMessage({
     applicationId: selectedApplicationId,
     versionId: selectedVersionId,
-    sessionId: selectedSessionId,
     startStateId: selectedStartStateId,
   });
 
@@ -414,15 +394,7 @@ function UserGuides() {
         ) : (
           <>
             <Card className={styles.contextCard}>
-              <SectionHeading
-                title="SELECT CONTEXT"
-                helper={
-                  <>
-                    <Info size={13} strokeWidth={1.8} />
-                    Sessions ordered by creation time, newest first
-                  </>
-                }
-              />
+              <SectionHeading title="SELECT CONTEXT" />
 
               <div className={styles.contextGrid}>
                 <FieldBlock label="APPLICATION">
@@ -455,28 +427,14 @@ function UserGuides() {
                   />
                 </FieldBlock>
 
-                <FieldBlock label="SESSION">
-                  <RichSelect
-                    options={sessionOptions}
-                    value={selectedSessionId}
-                    placeholder={sessionsQuery.isFetching ? "Loading sessions..." : "Choose session..."}
-                    leadingIcon={<Hash />}
-                    onChange={(value) => {
-                      setSelectedSessionId(value);
-                      resetFromSession();
-                    }}
-                    disabled={!selectedVersionId || sessionsQuery.isFetching || sessionsQuery.isError}
-                    emptyLabel="No sessions found"
-                  />
-                </FieldBlock>
               </div>
 
-              <SegmentedProgress className={styles.progress} value={progressValue} />
+              <SegmentedProgress className={styles.progress} value={progressValue} total={4} />
             </Card>
 
             {contextComplete ? (
               <Card className={styles.pathCard}>
-                <SectionHeading title="DEFINE PATH" helper={`${states.length} states discovered in this session`} />
+                <SectionHeading title="DEFINE PATH" helper={`${states.length} states discovered for this version`} />
 
                 <div className={styles.pathGrid}>
                   <FieldBlock label="START STATE" meta={<StatePath state={selectedStartState} />}>
@@ -568,7 +526,7 @@ function UserGuides() {
                   )
                 }
                 footerLeft={`${currentLine}/${totalLines} lines`}
-                footerRight={`${selectedApplication?.name} · ${selectedVersion?.name} · ${selectedSession?.displayName}`}
+                footerRight={`${selectedApplication?.name} · ${selectedVersion?.name}`}
               >
                 <div className={styles.commandLine}>
                   <span>&gt;</span> {terminalCommand}

@@ -5,28 +5,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@shared/config/queryKeys";
 import { userGuidesApi } from "../../api/userGuidesApi";
-import type {
-  GenerateGuideParams,
-  GenerateGuideResult,
-  RawUserGuideSession,
-  UserGuideSession,
-} from "../types/user-guides.types";
-
-function toDisplaySessions(sessions: RawUserGuideSession[]): UserGuideSession[] {
-  const chronological = [...sessions].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const sessionNumbers = new Map(chronological.map((session, index) => [session.id, index + 1]));
-
-  return [...sessions]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .map((session) => {
-      const sessionNumber = sessionNumbers.get(session.id) ?? 0;
-      return {
-        ...session,
-        sessionNumber,
-        displayName: `Session #${sessionNumber}${session.label ? ` — ${session.label}` : ""}`,
-      };
-    });
-}
+import type { GenerateGuideParams, GenerateGuideResult } from "../types/user-guides.types";
 
 export function useUserGuideApplications(projectId: string | null) {
   const safeProjectId = projectId ?? "__missing__";
@@ -51,39 +30,19 @@ export function useUserGuideVersions(projectId: string | null, applicationId: st
   });
 }
 
-export function useUserGuideSessions(
-  projectId: string | null,
-  applicationId: string | null,
-  versionId: string | null,
-) {
-  const safeProjectId = projectId ?? "__missing__";
-  const safeApplicationId = applicationId ?? "__missing__";
-  const safeVersionId = versionId ?? "__missing__";
-
-  return useQuery({
-    queryKey: queryKeys.userGuides.sessions(safeProjectId, safeApplicationId, safeVersionId),
-    queryFn: () => userGuidesApi.getSessions(safeProjectId, safeApplicationId, safeVersionId),
-    enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(versionId),
-    placeholderData: [],
-    select: toDisplaySessions,
-  });
-}
-
 export function useUserGuideStates(
   projectId: string | null,
   applicationId: string | null,
   versionId: string | null,
-  sessionId: string | null,
 ) {
   const safeProjectId = projectId ?? "__missing__";
   const safeApplicationId = applicationId ?? "__missing__";
   const safeVersionId = versionId ?? "__missing__";
-  const safeSessionId = sessionId ?? "__missing__";
 
   return useQuery({
-    queryKey: queryKeys.userGuides.states(safeProjectId, safeApplicationId, safeVersionId, safeSessionId),
-    queryFn: () => userGuidesApi.getStates(safeProjectId, safeApplicationId, safeVersionId, safeSessionId),
-    enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(versionId) && Boolean(sessionId),
+    queryKey: queryKeys.userGuides.states(safeProjectId, safeApplicationId, safeVersionId),
+    queryFn: () => userGuidesApi.getStates(safeProjectId, safeApplicationId, safeVersionId),
+    enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(versionId),
     placeholderData: [],
   });
 }

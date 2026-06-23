@@ -12,23 +12,15 @@ export interface UserGuideVersion {
   name: string;
 }
 
-export interface RawUserGuideSession {
-  id: string;
-  createdAt: string;
-  label?: string;
-}
-
-export interface UserGuideSession extends RawUserGuideSession {
-  displayName: string;
-  sessionNumber: number;
-}
-
 export type UserGuideStateKind = "PAGE" | "DRAWER" | "FLOW";
 
 export interface UserGuideState {
   stateHash: string;
   label: string;
   path: string;
+  displayLabel: string;
+  displayPath: string;
+  copyUrl: string;
   url?: string;
   title?: string;
   kind?: UserGuideStateKind;
@@ -38,7 +30,6 @@ export interface GenerateGuideParams {
   projectId: string;
   applicationId: string;
   versionId: string;
-  sessionId: string;
   startStateHash: string;
   endStateHash: string;
 }

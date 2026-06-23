@@ -136,10 +136,10 @@
 
 .contextGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $space-4;
   align-items: start;
-  padding-right: 10rem;
+  padding-right: 14rem;
 }
 
 .fieldBlock {
@@ -187,6 +187,7 @@
   align-items: center;
   gap: $space-2;
   min-width: 0;
+  max-width: 100%;
   color: var(--text-secondary);
 
   code {
@@ -196,6 +197,17 @@
     font-size: 0.72rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+.copyPathButton {
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  color: var(--text-secondary);
+
+  &:hover {
+    color: var(--primary);
   }
 }
 
@@ -215,7 +227,7 @@
 
 .stateOption {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(0, 1fr) minmax(5rem, 10rem);
   gap: $space-3;
   align-items: center;
   min-width: 0;
@@ -243,9 +255,13 @@
 }
 
 .stateOption code {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-secondary);
   font-family: $font-mono;
   font-size: 0.72rem;
+  text-align: right;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

@@ -7,24 +7,11 @@ import { targetApplicationService } from "@features/target-applications/api/targ
 import type {
   GenerateGuideParams,
   GenerateGuideResult,
-  RawUserGuideSession,
   UserGuideApplication,
   UserGuideState,
   UserGuideStateKind,
   UserGuideVersion,
 } from "../model/types/user-guides.types";
-
-type ApiTrigger = number | string;
-
-interface ApiCrawlSession {
-  id: string;
-  createdAt: string;
-  triggerType?: ApiTrigger;
-}
-
-interface ApiCrawlSessionListResponse {
-  sessions: ApiCrawlSession[];
-}
 
 interface ApiUserGuideState {
   stateHash: string;
@@ -44,20 +31,6 @@ interface ApiGenerateUserGuideResponse {
   error?: string;
 }
 
-function normalizeTrigger(trigger?: ApiTrigger): string | undefined {
-  if (trigger === undefined || trigger === null) return undefined;
-  return typeof trigger === "number" ? String(trigger) : trigger.toUpperCase();
-}
-
-function getSessionLabel(trigger?: ApiTrigger): string | undefined {
-  const value = normalizeTrigger(trigger);
-  if (!value || value === "0" || value === "UNSPECIFIED") return undefined;
-  if (value === "1" || value === "MANUAL") return "Manual crawl";
-  if (value === "2" || value === "SCHEDULED") return "Scheduled crawl";
-  if (value === "5" || value === "ON_DEMAND") return "On-demand crawl";
-  return undefined;
-}
-
 function getPathFromUrl(url?: string): string | undefined {
   if (!url) return undefined;
 
@@ -69,6 +42,16 @@ function getPathFromUrl(url?: string): string | undefined {
   }
 }
 
+function shortenTail(value: string, maxLength = 34): string {
+  if (value.length <= maxLength) return value;
+  return `...${value.slice(-(maxLength - 3))}`;
+}
+
+function truncateEnd(value: string, maxLength = 38): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 3)}...`;
+}
+
 function inferStateKind(path: string): UserGuideStateKind {
   const normalized = path.toLowerCase();
   if (/(drawer|panel|modal|filter=.*open|open=true)/.test(normalized)) return "DRAWER";
@@ -77,11 +60,16 @@ function inferStateKind(path: string): UserGuideStateKind {
 
 function mapState(state: ApiUserGuideState): UserGuideState {
   const path = state.path ?? getPathFromUrl(state.url) ?? "/";
+  const label = state.label || state.title || state.url || state.stateHash.slice(0, 12);
+  const copyUrl = state.url ?? path;
 
   return {
     stateHash: state.stateHash,
-    label: state.label || state.title || state.url || state.stateHash.slice(0, 12),
+    label,
     path,
+    displayLabel: truncateEnd(label),
+    displayPath: shortenTail(path),
+    copyUrl,
     url: state.url,
     title: state.title,
     kind: inferStateKind(path),
@@ -110,27 +98,9 @@ export const userGuidesApi = {
     }));
   },
 
-  async getSessions(projectId: string, applicationId: string, versionId: string): Promise<RawUserGuideSession[]> {
-    const response = await apiClient.get<ApiCrawlSessionListResponse>(
-      `projects/${projectId}/target-applications/${applicationId}/versions/${versionId}/crawl-sessions`,
-      { params: { page: 1, pageSize: 100 } },
-    );
-
-    return response.data.sessions.map((session) => ({
-      id: session.id,
-      createdAt: session.createdAt,
-      label: getSessionLabel(session.triggerType),
-    }));
-  },
-
-  async getStates(
-    projectId: string,
-    applicationId: string,
-    versionId: string,
-    sessionId: string,
-  ): Promise<UserGuideState[]> {
+  async getStates(projectId: string, applicationId: string, versionId: string): Promise<UserGuideState[]> {
     const response = await apiClient.get<ApiUserGuideStatesResponse>(
-      `projects/${projectId}/target-applications/${applicationId}/versions/${versionId}/crawl-sessions/${sessionId}/states`,
+      `projects/${projectId}/target-applications/${applicationId}/versions/${versionId}/user-guide-states`,
     );
 
     return response.data.states.map(mapState);
@@ -138,7 +108,7 @@ export const userGuidesApi = {
 
   async generateGuide(params: GenerateGuideParams): Promise<GenerateGuideResult> {
     const response = await apiClient.post<ApiGenerateUserGuideResponse>(
-      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/crawl-sessions/${params.sessionId}/generate`,
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/generate-user-guide`,
       {
         startStateHash: params.startStateHash,
         endStateHash: params.endStateHash,
