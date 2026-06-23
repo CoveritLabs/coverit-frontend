@@ -4,17 +4,43 @@
 
 import type { PendingRecordedEvent, RecordedEvent, RecordedStep } from "../model/types/manual-session.types";
 
-export function stepLabel(step: RecordedStep) {
-  if (step.description?.trim()) return step.description.trim();
+const textEntryInputTypes = new Set(["", "email", "number", "password", "search", "tel", "text", "url"]);
+const nonFocusClickInputTypes = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "date",
+  "datetime-local",
+  "file",
+  "hidden",
+  "image",
+  "month",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+  "time",
+  "week",
+]);
+const explicitClickRoles = new Set(["button", "combobox", "link", "listbox", "menuitem", "option"]);
 
+export function stepLabel(step: RecordedStep) {
   const action = step.action || step.actions?.[0]?.type || "step";
   const firstEvent = step.events?.[0];
   const target =
+    firstEvent?.label ||
     firstEvent?.accessibleName ||
     firstEvent?.text ||
     step.selector ||
     step.actions?.[0]?.selector ||
     "page";
+
+  if (action === "select") {
+    const value = firstEvent?.optionText || step.value || "";
+    return `select: ${target}${value ? `: ${value}` : ""}`;
+  }
+
+  if (step.description?.trim()) return step.description.trim();
 
   if (action === "type" || action === "input" || action === "change") {
     const value = step.value ? `: ${step.value}` : "";
@@ -31,6 +57,22 @@ export function eventKey(event: RecordedEvent) {
 
 function eventAction(event: RecordedEvent) {
   return event.action ?? "";
+}
+
+function eventString(event: RecordedEvent, ...keys: string[]) {
+  const source = event as Record<string, unknown>;
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) return value.trim().toLowerCase();
+  }
+  return "";
+}
+
+function eventRoles(event: RecordedEvent) {
+  return [
+    eventString(event, "role"),
+    eventString(event, "targetRole", "target_role"),
+  ].filter(Boolean);
 }
 
 function addSelector(selectors: Set<string>, value: unknown) {
@@ -57,7 +99,37 @@ function eventSelectors(event: RecordedEvent) {
 }
 
 function isInputEvent(event: RecordedEvent) {
-  return ["input", "change"].includes(eventAction(event));
+  return ["input", "change", "select"].includes(eventAction(event));
+}
+
+function isExplicitClickControl(event: RecordedEvent) {
+  const tag = eventString(event, "tag");
+  const targetTag = eventString(event, "targetTag", "target_tag");
+  const inputType = eventString(event, "inputType", "input_type");
+  const href = eventString(event, "href");
+
+  if (href) return true;
+  if (tag === "a" || tag === "button" || targetTag === "a" || targetTag === "button") return true;
+  if (eventRoles(event).some((role) => explicitClickRoles.has(role))) return true;
+  if (tag === "input" && nonFocusClickInputTypes.has(inputType)) return true;
+  return false;
+}
+
+function isEditableValueControl(event: RecordedEvent) {
+  const tag = eventString(event, "tag");
+  const inputType = eventString(event, "inputType", "input_type");
+
+  if (tag === "select" || tag === "textarea") return true;
+  if (tag === "input") return textEntryInputTypes.has(inputType);
+  return false;
+}
+
+function isFocusClickForValueChange(clickEvent: RecordedEvent, valueEvent: RecordedEvent) {
+  if (eventAction(clickEvent) !== "click") return false;
+  if (!isInputEvent(valueEvent)) return false;
+  if (!selectorSetsIntersect(eventSelectors(clickEvent), eventSelectors(valueEvent))) return false;
+  if (isExplicitClickControl(clickEvent)) return false;
+  return isEditableValueControl(clickEvent);
 }
 
 function selectorSetsIntersect(left: Set<string>, right: Set<string>) {
@@ -83,7 +155,9 @@ export function isGroupedPendingEvent(event: RecordedEvent, step: RecordedStep) 
   if (!selectors.size || !finalizedSelectors.size) return false;
   if (!selectorSetsIntersect(selectors, finalizedSelectors)) return false;
 
-  return isInputEvent(event) || eventAction(event) === "click";
+  if (isInputEvent(event)) return true;
+  if (eventAction(event) !== "click") return false;
+  return (step.events ?? []).some((stepEvent) => isFocusClickForValueChange(event, stepEvent));
 }
 
 export function clearPendingEventsForStep(current: PendingRecordedEvent[], finalizedStep: RecordedStep) {
@@ -124,7 +198,7 @@ export function mergePendingEvent<T extends RecordedEvent>(current: T[], nextEve
   let replaced = false;
   const next = current.flatMap((event) => {
     if (!selectorSetsIntersect(eventSelectors(event), nextSelectors)) return [event];
-    if (eventAction(event) === "click") return [];
+    if (isFocusClickForValueChange(event, nextEvent)) return [];
     if (isInputEvent(event)) {
       if (replaced) return [];
       replaced = true;
@@ -139,7 +213,12 @@ export function mergePendingEvent<T extends RecordedEvent>(current: T[], nextEve
 
 export function eventLabel(event: RecordedEvent) {
   const action = event.action || "event";
-  const target = event.accessibleName || event.text || event.selector || event.tag || "page";
+  const target = event.label || event.accessibleName || event.text || event.selector || event.tag || "page";
+
+  if (action === "select") {
+    const value = event.optionText || event.value || "";
+    return `select: ${target}${value ? `: ${value}` : ""}`;
+  }
 
   if (action === "type" || action === "input" || action === "change") {
     const value = event.value ? `: ${event.value}` : "";

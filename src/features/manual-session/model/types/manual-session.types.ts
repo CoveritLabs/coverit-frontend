@@ -42,6 +42,7 @@ export type RecordedEvent = {
   tag?: string | null;
   role?: string;
   targetRole?: string;
+  label?: string;
   text?: string;
   accessibleName?: string;
   pageUrl?: string;
@@ -57,6 +58,31 @@ export type RecordedEvent = {
 
 export type PendingRecordedEvent = RecordedEvent & {
   receivedAt: number;
+};
+
+export type BrowserSelectOption = {
+  value: string;
+  text: string;
+  disabled?: boolean;
+};
+
+export type BrowserSelectPayload = {
+  selector: string;
+  selectorCandidates?: string[];
+  value?: string;
+  label?: string;
+  optionText?: string;
+  options: BrowserSelectOption[];
+  elementBox?: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  };
+  viewport?: {
+    width?: number;
+    height?: number;
+  };
 };
 
 export type RecordedAction = {
@@ -126,6 +152,7 @@ export type WsPayload = {
   events?: RecordedEvent[];
   steps?: RecordedStep[];
   step?: RecordedStep;
+  select?: BrowserSelectPayload;
   keptStepIds?: string[];
   removedStepIds?: string[];
   stateHash?: string;

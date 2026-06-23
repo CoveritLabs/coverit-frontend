@@ -218,6 +218,57 @@
   cursor: default;
 }
 
+.selectOverlayDismiss {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 0;
+  background: transparent;
+}
+
+.selectOverlayMenu {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  max-width: min(22rem, 92%);
+  max-height: 16rem;
+  overflow: auto;
+  border: 1px solid var(--manual-session-strong-border);
+  border-radius: 0.375rem;
+  background: var(--card);
+  box-shadow: 0 1rem 2rem rgb(0 0 0 / 20%);
+}
+
+.selectOverlayOption,
+.selectOverlayOptionSelected {
+  display: block;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.5rem 0.75rem;
+  overflow: hidden;
+  border: 0;
+  color: var(--foreground);
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.selectOverlayOption:hover,
+.selectOverlayOptionSelected {
+  background: var(--muted);
+}
+
+.selectOverlayOption:disabled,
+.selectOverlayOptionSelected:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .viewportEmpty {
   position: absolute;
   inset: 0;

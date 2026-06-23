@@ -40,6 +40,8 @@ import {
 import type {
   ActionFeedback,
   ApplicationView,
+  BrowserSelectOption,
+  BrowserSelectPayload,
   LocationState,
   ManualAction,
   PendingRecordedEvent,
@@ -127,6 +129,7 @@ function ManualSession() {
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [pendingAction, setPendingActionState] = useState<ManualAction | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+  const [selectOverlay, setSelectOverlay] = useState<BrowserSelectPayload | null>(null);
 
   const selectedApplication = useMemo(
     () => typedApplications.find((application) => application.id === selectedApplicationId) ?? null,
@@ -357,6 +360,7 @@ function ManualSession() {
     setCurrentTitle("");
     setError(null);
     setConfirmation(null);
+    setSelectOverlay(null);
     setStatus("closed");
   }, [clearActionTimeout, clearCanvas, setPendingAction]);
 
@@ -432,6 +436,12 @@ function ManualSession() {
       if (payload.type === "browser.navigation") {
         setCurrentUrl(payload.url ?? "");
         setCurrentTitle(payload.title ?? "");
+        setSelectOverlay(null);
+      }
+
+      if (payload.type === "browser.select.options" && payload.select) {
+        updateViewport(payload);
+        setSelectOverlay(payload.select);
       }
 
       if (payload.type === "flow.started") {
@@ -442,6 +452,7 @@ function ManualSession() {
         setLastFlowMessage(null);
         completeAction("Flow started.");
         setPendingEvents([]);
+        setSelectOverlay(null);
         setSteps((payload.steps ?? []).map((step) => ({ ...step, flowRevision: step.flowRevision ?? revision })));
         setCurrentUrl((value) => payload.pageUrl ?? payload.url ?? value);
         setCurrentTitle((value) => payload.title ?? value);
@@ -505,6 +516,7 @@ function ManualSession() {
           );
         }
         setPendingEvents([]);
+        setSelectOverlay(null);
         setCurrentUrl((value) => payload.pageUrl ?? payload.url ?? value);
         setCurrentTitle((value) => payload.title ?? value);
         const removedCount = payload.removedStepIds?.length ?? 0;
@@ -518,6 +530,7 @@ function ManualSession() {
 
       if (payload.type === "flow.completed") {
         setFlowStarted(false);
+        setSelectOverlay(null);
         setPendingEvents([]);
         const count = payload.stepCount ?? payload.transitionIds?.length ?? 0;
         const message = `Manual flow queued with ${count} ${count === 1 ? "step" : "steps"}.`;
@@ -709,6 +722,11 @@ function ManualSession() {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLCanvasElement>) => {
       if (!canSend) return;
+      if (selectOverlay && event.key === "Escape") {
+        event.preventDefault();
+        setSelectOverlay(null);
+        return;
+      }
       if (["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(event.key)) return;
 
       event.preventDefault();
@@ -724,13 +742,33 @@ function ManualSession() {
         },
       });
     },
-    [canSend, send],
+    [canSend, selectOverlay, send],
+  );
+
+  const handleSelectOption = useCallback(
+    (option: BrowserSelectOption) => {
+      if (!canSend || !selectOverlay || option.disabled) return;
+      send({
+        type: "browser.input",
+        input: {
+          kind: "select",
+          selector: selectOverlay.selector,
+          selectorCandidates: selectOverlay.selectorCandidates ?? [],
+          value: option.value,
+          optionText: option.text,
+          label: selectOverlay.label ?? "",
+        },
+      });
+      setSelectOverlay(null);
+    },
+    [canSend, selectOverlay, send],
   );
 
   const handleStartFlow = () => {
     if (hasPendingAction) return;
     startAction("start", "Starting flow...");
     setPendingEvents([]);
+    setSelectOverlay(null);
     const sent = send({ type: "flow.start" });
     if (!sent) {
       cancelActionSilently();
@@ -743,6 +781,7 @@ function ManualSession() {
     if (!canFinishFlow || hasPendingAction || hasStalePendingEvents) return;
     startAction("finish", "Finishing flow...");
     setPendingEvents([]);
+    setSelectOverlay(null);
     const sent = send({ type: "flow.finish" });
     if (!sent) {
       cancelActionSilently();
@@ -755,6 +794,7 @@ function ManualSession() {
     if (hasPendingAction) return;
     startAction("reset", "Resetting to checkpoint...");
     setPendingEvents([]);
+    setSelectOverlay(null);
     const sent = send({
       type: "flow.rewind",
       rewind: {
@@ -773,6 +813,7 @@ function ManualSession() {
     const stepId = step.id ?? step.stepId;
     if (!stepId) return;
     startAction("continue", "Continuing from selected step...");
+    setSelectOverlay(null);
     const sent = send({
       type: "flow.rewind",
       rewind: {
@@ -913,11 +954,14 @@ function ManualSession() {
           error={error}
           hasLiveSession={hasLiveSession}
           status={status}
+          selectOverlay={selectOverlay}
           onMouseMove={(event) => sendMouse(event, "move")}
           onMouseDown={(event) => sendMouse(event, "down")}
           onMouseUp={(event) => sendMouse(event, "up")}
           onWheel={handleWheel}
           onKeyDown={handleKeyDown}
+          onDismissSelect={() => setSelectOverlay(null)}
+          onSelectOption={handleSelectOption}
         />
 
         <ManualSessionPanel
