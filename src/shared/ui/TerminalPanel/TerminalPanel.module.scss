@@ -1,0 +1,117 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+@use "@shared/styles/mixins" as *;
+
+.terminal {
+  display: flex;
+  flex-direction: column;
+  min-height: 24rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 86%, var(--primary));
+  border-radius: $radius-lg;
+  background: #070b11;
+  color: var(--text-primary);
+}
+
+.titleBar,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  min-height: 2.55rem;
+  padding: 0 $space-4;
+  background: color-mix(in oklab, var(--card) 70%, #070b11);
+}
+
+.titleBar {
+  border-bottom: 1px solid var(--border);
+}
+
+.titleLeft {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  min-width: 0;
+}
+
+.dots {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+
+  span {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: $radius-full;
+  }
+}
+
+.dotRed {
+  background: #f85149;
+}
+
+.dotYellow {
+  background: #d29922;
+}
+
+.dotGreen {
+  background: #00a86b;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: $space-2;
+  color: var(--primary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: $space-5;
+  color: var(--text-primary);
+  font-family: $font-mono;
+  font-size: 0.83rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+
+  @include custom-scrollbar;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  color: color-mix(in oklab, var(--text-secondary) 78%, transparent);
+  font-family: $font-mono;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 760px) {
+  .titleBar,
+  .footer {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: $space-2;
+    padding-bottom: $space-2;
+  }
+}

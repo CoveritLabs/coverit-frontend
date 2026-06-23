@@ -13,6 +13,7 @@ import {
   LazyAdministration,
   LazyRegressionRuns,
   LazyTestFlows,
+  LazyUserGuides,
   LazyForgotPasswordPage,
   LazyLoginPage,
   LazyNotFound,
@@ -35,6 +36,7 @@ const Applications = withSuspense(LazyApplications);
 const ManualSession = withSuspense(LazyManualSession);
 const RegressionRuns = withSuspense(LazyRegressionRuns);
 const TestFlows = withSuspense(LazyTestFlows);
+const UserGuides = withSuspense(LazyUserGuides);
 const Administration = withSuspense(LazyAdministration);
 const NotFound = withSuspense(LazyNotFound);
 
@@ -57,6 +59,7 @@ const router = createBrowserRouter([
           { path: ROUTES.PROJECT_INTEGRATIONS, element: <Administration /> },
           { path: ROUTES.REGRESSION_RUNS, element: <RegressionRuns /> },
           { path: ROUTES.TEST_FLOWS, element: <TestFlows /> },
+          { path: ROUTES.USER_GUIDES, element: <UserGuides /> },
         ],
       },
     ],

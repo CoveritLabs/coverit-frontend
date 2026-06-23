@@ -1,0 +1,455 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+@use "@shared/styles/mixins" as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  overflow: auto;
+  background: var(--background);
+  color: var(--text-primary);
+
+  @include custom-scrollbar;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  min-height: 4.6rem;
+  padding: $space-4 $space-7;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+
+  h1,
+  p {
+    margin: 0;
+  }
+
+  h1 {
+    color: var(--text-primary);
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    line-height: 1.2;
+  }
+
+  p {
+    margin-top: 0.22rem;
+    color: var(--text-secondary);
+    font-size: $font-size-sm;
+  }
+}
+
+.headerIcon,
+.emptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in oklab, var(--primary) 70%, var(--border));
+  border-radius: $radius-lg;
+  background: color-mix(in oklab, var(--primary) 13%, transparent);
+  color: var(--primary);
+}
+
+.headerIcon {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  width: 100%;
+  padding: $space-6 $space-5 $space-10;
+}
+
+.contextCard,
+.pathCard,
+.terminal {
+  width: min(100%, 52.5rem);
+}
+
+.contextCard,
+.pathCard {
+  padding: $space-5;
+  background: color-mix(in oklab, var(--card) 96%, var(--background));
+}
+
+.contextCard {
+  min-height: 9.65rem;
+}
+
+.pathCard {
+  min-height: 8.7rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  margin-bottom: $space-4;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: $space-2;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0;
+  text-transform: uppercase;
+
+  &::after {
+    content: "";
+    flex: 1;
+    min-width: 3rem;
+    height: 1px;
+    background: var(--border);
+  }
+}
+
+.cardHelper {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: var(--text-secondary);
+  font-size: $font-size-xs;
+  white-space: nowrap;
+
+  svg {
+    color: var(--primary);
+  }
+}
+
+.contextGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-4;
+  align-items: start;
+  padding-right: 14rem;
+}
+
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+}
+
+.fieldLabel {
+  color: var(--text-secondary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.fieldMeta {
+  min-height: 1.2rem;
+}
+
+.progress {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: $space-4;
+}
+
+.pathGrid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 13.2rem) minmax(11rem, 1fr) minmax(12rem, 13.2rem);
+  gap: $space-4;
+  align-items: center;
+}
+
+.startIcon {
+  color: var(--success);
+}
+
+.endIcon {
+  color: var(--destructive);
+}
+
+.statePathLine {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-secondary);
+
+  code {
+    min-width: 0;
+    overflow: hidden;
+    font-family: $font-mono;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.copyPathButton {
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  color: var(--text-secondary);
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.kindBadge {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 42%, var(--border));
+  border-radius: $radius-sm;
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: 0.62rem;
+}
+
+.stateMenu {
+  min-width: 17.5rem;
+}
+
+.stateOption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(5rem, 10rem);
+  gap: $space-3;
+  align-items: center;
+  min-width: 0;
+}
+
+.stateOptionMain {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  min-width: 0;
+
+  svg {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+  }
+
+  strong {
+    min-width: 0;
+    overflow: hidden;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.stateOption code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: $font-mono;
+  font-size: 0.72rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: $space-2;
+  min-height: 3.25rem;
+  padding-top: $space-5;
+  color: var(--text-secondary);
+}
+
+.connectorTrack {
+  display: grid;
+  grid-template-columns: minmax(2.5rem, 1fr) auto minmax(2.5rem, 1fr);
+  align-items: center;
+  gap: $space-2;
+  width: 100%;
+
+  span {
+    height: 1px;
+    background: var(--border);
+  }
+}
+
+.readyBadge {
+  border: 1px solid color-mix(in oklab, var(--primary) 62%, var(--border));
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-family: $font-mono;
+}
+
+.connectorSummary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-1;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyState,
+.projectEmptyState {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: $space-3;
+  width: min(100%, 52.5rem);
+  min-height: 18.5rem;
+  padding: $space-6;
+  text-align: center;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    color: var(--text-secondary);
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+  }
+
+  p {
+    max-width: 26rem;
+    color: color-mix(in oklab, var(--text-secondary) 78%, transparent);
+    font-size: $font-size-xs;
+    line-height: 1.45;
+  }
+}
+
+.projectEmptyState {
+  border-style: dashed;
+}
+
+.emptyIcon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-color: var(--border);
+  background: color-mix(in oklab, var(--muted) 62%, transparent);
+  color: var(--text-secondary);
+}
+
+.terminal {
+  min-height: 26.2rem;
+}
+
+.spinIcon {
+  animation: spin 1s linear infinite;
+}
+
+.refreshButton {
+  width: 1.8rem;
+  height: 1.8rem;
+  color: var(--primary);
+}
+
+.commandLine {
+  color: var(--text-secondary);
+
+  span {
+    color: var(--success);
+    font-weight: $font-weight-bold;
+  }
+}
+
+.typedOutput {
+  min-height: 2rem;
+  color: var(--text-primary);
+}
+
+.cursor {
+  display: inline-block;
+  width: 0.6rem;
+  height: 1rem;
+  margin-left: 0.15rem;
+  transform: translateY(0.15rem);
+  border-radius: 0.12rem;
+  background: var(--primary);
+  animation: cursor-blink 1s steps(2, start) infinite;
+}
+
+@media (max-width: 1040px) {
+  .contextGrid {
+    grid-template-columns: 1fr;
+    padding-right: 0;
+  }
+
+  .pathGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .connector {
+    min-height: auto;
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    align-items: flex-start;
+    padding: $space-4;
+  }
+
+  .content {
+    padding: $space-4;
+  }
+
+  .cardHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cardTitle {
+    width: 100%;
+  }
+
+  .cardHelper {
+    white-space: normal;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cursor-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
