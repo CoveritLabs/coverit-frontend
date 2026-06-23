@@ -1,0 +1,40 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+
+.progress {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+}
+
+.segments {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.segment {
+  width: 1.35rem;
+  height: 0.28rem;
+  border-radius: $radius-full;
+  background: color-mix(in oklab, var(--muted) 72%, var(--background));
+  transition:
+    background-color $transition-fast,
+    opacity $transition-fast;
+}
+
+.segmentFilled {
+  background: var(--primary);
+  box-shadow: 0 0 12px rgba(var(--ring-rgb), 0.2);
+}
+
+.counter {
+  min-width: 1.75rem;
+  color: var(--text-secondary);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}

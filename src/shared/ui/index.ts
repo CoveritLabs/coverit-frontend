@@ -11,5 +11,8 @@ export * from "./Label";
 export * from "./Divider";
 export * from "./Field";
 export * from "./Select";
+export * from "./RichSelect";
+export * from "./SegmentedProgress";
+export * from "./TerminalPanel";
 export * from "./Table";
 export * from "./Toast";

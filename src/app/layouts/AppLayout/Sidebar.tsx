@@ -14,6 +14,7 @@ import {
   ListChecks,
   MonitorPlay,
   Workflow,
+  BookOpen,
 } from "lucide-react";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useProjects } from "@features/projects";
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { label: "Test Flows", to: ROUTES.TEST_FLOWS, icon: Workflow },
   { label: "Manual Recording", to: ROUTES.MANUAL_RECORDINGS, icon: MonitorPlay },
   { label: "Regression Runs", to: ROUTES.REGRESSION_RUNS, icon: ListChecks },
+  { label: "User Guides", to: ROUTES.USER_GUIDES, icon: BookOpen },
 ];
 
 const PROFILE_ITEMS = [

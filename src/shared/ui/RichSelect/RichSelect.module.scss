@@ -1,0 +1,184 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+@use "@shared/styles/mixins" as *;
+
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  width: 100%;
+  min-height: $space-9;
+  padding: $space-2 $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: color-mix(in oklab, var(--background) 42%, var(--card));
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast,
+    box-shadow $transition-fast,
+    opacity $transition-fast;
+
+  &:hover {
+    border-color: color-mix(in oklab, var(--ring) 48%, var(--border));
+    background: color-mix(in oklab, var(--muted) 70%, transparent);
+  }
+
+  &:focus-visible {
+    @include focus-ring(var(--ring));
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+}
+
+.open .trigger {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(var(--ring-rgb), 0.16);
+}
+
+.valueGroup,
+.actions,
+.leadingIcon,
+.clearButton {
+  display: inline-flex;
+  align-items: center;
+}
+
+.valueGroup {
+  gap: $space-2;
+  min-width: 0;
+}
+
+.leadingIcon {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.value {
+  min-width: 0;
+  overflow: hidden;
+  font-size: $font-size-sm;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filled .value {
+  color: var(--text-primary);
+  font-weight: $font-weight-semibold;
+}
+
+.placeholder {
+  color: var(--text-secondary);
+  font-weight: $font-weight-normal;
+}
+
+.actions {
+  flex: 0 0 auto;
+  gap: $space-1;
+  color: var(--text-secondary);
+}
+
+.clearButton {
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: $radius-sm;
+  color: var(--text-secondary);
+  transition:
+    background-color $transition-fast,
+    color $transition-fast;
+
+  &:hover {
+    background: color-mix(in oklab, var(--muted) 70%, transparent);
+    color: var(--text-primary);
+  }
+}
+
+.chevron {
+  transition: transform $transition-fast;
+}
+
+.open .chevron {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  z-index: $z-dropdown;
+  top: calc(100% + #{$space-1});
+  right: 0;
+  left: 0;
+  max-height: 15rem;
+  margin: 0;
+  padding: $space-1;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--popover);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+  list-style: none;
+  outline: none;
+
+  @include custom-scrollbar;
+}
+
+.option {
+  min-width: 0;
+  padding: $space-2 $space-3;
+  border-radius: $radius-sm;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: $font-size-sm;
+  transition:
+    background-color $transition-fast,
+    color $transition-fast,
+    opacity $transition-fast;
+
+  &:hover {
+    background: color-mix(in oklab, var(--muted) 72%, transparent);
+  }
+}
+
+.highlighted {
+  background: color-mix(in oklab, var(--muted) 82%, transparent);
+}
+
+.selected {
+  background: color-mix(in oklab, var(--ring) 16%, var(--muted));
+}
+
+.disabledOption {
+  cursor: not-allowed;
+  opacity: 0.45;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+.emptyOption {
+  padding: $space-3;
+  color: var(--text-secondary);
+  font-size: $font-size-sm;
+  text-align: center;
+}

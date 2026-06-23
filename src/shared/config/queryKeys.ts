@@ -67,6 +67,17 @@ const testFlowKeys = {
     [...testFlowKeys.lists(projectId, applicationId), filters] as const,
 };
 
+const userGuideKeys = {
+  all: ["user-guides"] as const,
+  applications: (projectId: string) => [...userGuideKeys.all, "applications", projectId] as const,
+  versions: (projectId: string, applicationId: string) =>
+    [...userGuideKeys.all, "versions", projectId, applicationId] as const,
+  sessions: (projectId: string, applicationId: string, versionId: string) =>
+    [...userGuideKeys.all, "sessions", projectId, applicationId, versionId] as const,
+  states: (projectId: string, applicationId: string, versionId: string, sessionId: string) =>
+    [...userGuideKeys.all, "states", projectId, applicationId, versionId, sessionId] as const,
+};
+
 const integrationKeys = {
   all: ["integrations"] as const,
   status: (projectId: string, provider: string) => [...integrationKeys.all, "status", projectId, provider] as const,
@@ -84,6 +95,7 @@ export const queryKeys = {
   targetApplications: targetApplicationKeys,
   regressionRuns: regressionRunKeys,
   testFlows: testFlowKeys,
+  userGuides: userGuideKeys,
   integrations: integrationKeys,
   dashboard: dashboardKeys,
 };

@@ -17,6 +17,7 @@ export const LazyApplications = lazy(() => import("@pages/Applications/Applicati
 export const LazyManualSession = lazy(() => import("@pages/ManualSession/ManualSession"));
 export const LazyRegressionRuns = lazy(() => import("@pages/RegressionRuns/RegressionRuns"));
 export const LazyTestFlows = lazy(() => import("@pages/TestFlows/TestFlows"));
+export const LazyUserGuides = lazy(() => import("@pages/UserGuides/UserGuides"));
 export const LazyAdministration = lazy(() => import("@pages/Administration/Administration"));
 export const LazyNotFound = lazy(() => import("@pages/NotFound/NotFound"));
 
