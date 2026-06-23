@@ -40,10 +40,14 @@ export type RecordedEvent = {
   targetSelector?: string;
   target_selector?: string;
   tag?: string | null;
+  role?: string;
+  targetRole?: string;
   text?: string;
   accessibleName?: string;
   pageUrl?: string;
   value?: string | null;
+  optionValue?: string;
+  optionText?: string;
   inputType?: string;
   key?: string;
   fromUrl?: string;
@@ -117,6 +121,9 @@ export type WsPayload = {
   testFlowType?: string;
   stepCount?: number;
   flowRevision?: number;
+  eventIds?: string[];
+  reason?: string;
+  events?: RecordedEvent[];
   steps?: RecordedStep[];
   step?: RecordedStep;
   keptStepIds?: string[];

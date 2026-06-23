@@ -22,12 +22,12 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import { manualSessionRoute } from "../lib/manual-session-route";
 import { acquireConnection, forgetConnection, releaseConnection } from "../lib/manual-session-connection";
 import {
+  clearPendingEventsForStep,
+  discardPendingEvents,
   eventKey,
   eventLabel,
-  isGroupedPendingEvent,
   mergePendingEvent,
   numericRevision,
-  stepEventKeys,
   stepKey,
   stepLabel,
 } from "../lib/recorded-step-utils";
@@ -66,6 +66,17 @@ function buildWsUrl(sessionId: string, ticket: string) {
   const base = env.wsUrl?.replace(/\/$/, "");
   if (!base) return "";
   return `${base}/ws/manual-recordings/${encodeURIComponent(sessionId)}?ticket=${encodeURIComponent(ticket)}`;
+}
+
+function discardedEventMessage(count: number, reason?: string) {
+  const eventNoun = count === 1 ? "browser event" : "browser events";
+  const reasonText =
+    reason === "selector_unresolved"
+      ? "because the selector could not be replayed"
+      : reason === "unsupported_event"
+        ? "because the interaction is not supported by the recorder"
+        : "because it could not be converted into a replayable step";
+  return `Ignored ${count} ${eventNoun} ${reasonText}.`;
 }
 
 function ManualSession() {
@@ -467,14 +478,18 @@ function ManualSession() {
         });
         setPendingEvents((current) => {
           const finalizedStep = payload.step as RecordedStep;
-          const finalizedEventKeys = stepEventKeys(finalizedStep);
-          return current.filter((event) => {
-            const key = eventKey(event);
-            if (key && finalizedEventKeys.has(key)) return false;
-            if (isGroupedPendingEvent(event, finalizedStep)) return false;
-            return true;
-          });
+          return clearPendingEventsForStep(current, finalizedStep);
         });
+      }
+
+      if (payload.type === "recorded.events.discarded") {
+        const eventIds = payload.eventIds ?? [];
+        const discardedEvents = payload.events ?? [];
+        const announcedCount = Math.max(eventIds.length, discardedEvents.length);
+        setPendingEvents((current) => discardPendingEvents(current, eventIds, discardedEvents));
+        if (announcedCount > 0) {
+          setLastFlowMessage(discardedEventMessage(announcedCount, payload.reason));
+        }
       }
 
       if (payload.type === "flow.rewound") {

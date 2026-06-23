@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import type { RecordedEvent, RecordedStep } from "../model/types/manual-session.types";
+import type { PendingRecordedEvent, RecordedEvent, RecordedStep } from "../model/types/manual-session.types";
 
 export function stepLabel(step: RecordedStep) {
   if (step.description?.trim()) return step.description.trim();
@@ -84,6 +84,35 @@ export function isGroupedPendingEvent(event: RecordedEvent, step: RecordedStep) 
   if (!selectorSetsIntersect(selectors, finalizedSelectors)) return false;
 
   return isInputEvent(event) || eventAction(event) === "click";
+}
+
+export function clearPendingEventsForStep(current: PendingRecordedEvent[], finalizedStep: RecordedStep) {
+  const finalizedEventKeys = stepEventKeys(finalizedStep);
+  return current.filter((event) => {
+    const key = eventKey(event);
+    if (key && finalizedEventKeys.has(key)) return false;
+    if (isGroupedPendingEvent(event, finalizedStep)) return false;
+    return true;
+  });
+}
+
+export function discardPendingEvents(
+  current: PendingRecordedEvent[],
+  eventIds: string[] = [],
+  discardedEvents: RecordedEvent[] = [],
+) {
+  const discardedKeys = new Set(eventIds.filter(Boolean));
+  discardedEvents.forEach((event) => {
+    const key = eventKey(event);
+    if (key) discardedKeys.add(key);
+  });
+
+  if (!discardedKeys.size) return current;
+
+  return current.filter((event) => {
+    const key = eventKey(event);
+    return !key || !discardedKeys.has(key);
+  });
 }
 
 export function mergePendingEvent<T extends RecordedEvent>(current: T[], nextEvent: T): T[] {
