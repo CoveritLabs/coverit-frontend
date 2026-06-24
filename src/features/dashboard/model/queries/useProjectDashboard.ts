@@ -3,9 +3,9 @@
 // See LICENSE file in the project root for full license information.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProjectDashboardResponse } from "@coveritlabs/contracts";
 import { queryKeys } from "@shared/config/queryKeys";
 import { dashboardService } from "../../api/dashboardService";
+import type { ProjectDashboardResponse } from "../types/dashboard.types";
 
 export function useProjectDashboard(projectId: string | null, versionId?: string) {
   const queryClient = useQueryClient();

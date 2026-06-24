@@ -4,3 +4,13 @@
 
 export { dashboardService } from "./api/dashboardService";
 export { useProjectDashboard } from "./model/queries/useProjectDashboard";
+export type {
+  ProjectActivity,
+  ProjectCoverageSummary,
+  ProjectDashboardResponse,
+  ProjectDashboardVersionRef,
+  ProjectLatestCrawlSession,
+  ProjectLatestRun,
+  ProjectLatestTestFlow,
+  ProjectRunStatistics,
+} from "./model/types/dashboard.types";

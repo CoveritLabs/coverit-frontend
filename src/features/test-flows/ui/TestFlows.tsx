@@ -199,6 +199,8 @@ function TestFlows() {
     data: applications = [],
     isLoading: applicationsLoading,
     isError: applicationsError,
+    isFetching: applicationsQueryFetching,
+    refetch: refetchApplicationsQuery,
   } = useTargetApplications(selectedProject?.id ?? null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchText, setSearchText] = useState("");
@@ -315,6 +317,15 @@ function TestFlows() {
   const latestFlowAt = getLatestFlowAt(filteredFlows);
   const nextCursor = flowsQuery.data?.nextCursor ?? null;
   const currentPage = cursorStack.length + 1;
+  const isRefreshing =
+    applicationsLoading ||
+    applicationsQueryFetching ||
+    flowsQuery.isFetching ||
+    regressionCodebasesQuery.isFetching;
+
+  const handleRefresh = () => {
+    void Promise.all([refetchApplicationsQuery(), flowsQuery.refetch(), regressionCodebasesQuery.refetch()]);
+  };
 
   const resetPagination = () => {
     setCursor(null);
@@ -361,6 +372,8 @@ function TestFlows() {
         applicationName={activeApplication?.name ?? null}
         flowCount={filteredFlows.length}
         latestFlowAt={latestFlowAt ? formatDateTime(latestFlowAt) : undefined}
+        isRefreshing={isRefreshing}
+        onRefresh={handleRefresh}
       />
 
       <TestFlowsFilters

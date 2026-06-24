@@ -26,10 +26,11 @@ import {
   useCreateTargetApplication,
   useCreateTargetApplicationVersion,
   useDeleteCrawlSchedule,
+  useDeleteCrawlSession,
   useDeleteTargetApplication,
   useDeleteTargetApplicationVersion,
-  useRegressionConfig,
   useReattachManualSession,
+  useRegressionConfig,
   useRotateTargetApplicationApiKey,
   useSaveCrawlSchedule,
   useSaveRegressionCodebaseConfig,
@@ -38,8 +39,8 @@ import {
   useToggleCrawlSchedule,
   useUpdateTargetApplication,
 } from "@features/target-applications";
-import { GRADIENTS } from "@shared/constants/gradients";
 import { ROUTES } from "@shared/config/routes";
+import { GRADIENTS } from "@shared/constants/gradients";
 import { Badge, Button, Card, Input } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import type { LucideIcon } from "lucide-react";
@@ -59,6 +60,7 @@ import {
   Network,
   Play,
   Plus,
+  RefreshCw,
   Search,
   Tag,
   Trash2,
@@ -74,6 +76,7 @@ import {
   AddVersionModal,
   CreateCrawlSessionModal,
   DeleteApplicationModal,
+  DeleteCrawlSessionModal,
   DeleteScheduleModal,
   DeleteVersionModal,
   EditApplicationModal,
@@ -93,7 +96,8 @@ type ModalState =
   | { type: "regressionConfig" }
   | { type: "createSession" }
   | { type: "scheduleConfig" }
-  | { type: "deleteSchedule" };
+  | { type: "deleteSchedule" }
+  | { type: "deleteSession" };
 
 type ModalAction = { type: ModalState["type"] };
 
@@ -126,6 +130,7 @@ const TRIGGER_FILTERS: Array<{ value: CrawlSessionTriggerFilter; label: string }
   { value: "all", label: "All Triggers" },
   { value: "manual", label: "Manual" },
   { value: "scheduled", label: "Scheduled" },
+  { value: "on_demand", label: "On Demand" },
 ];
 
 const DEFAULT_STATS: ApplicationDetailStats = {
@@ -333,9 +338,12 @@ function SessionsTable({
   onCreate,
   canCreate,
   createDisabledReason,
+  canDelete,
   onView,
   onStart,
+  onDelete,
   startingSessionId,
+  deletingSessionId,
 }: {
   sessions: CrawlSession[];
   totalSessions: number;
@@ -346,9 +354,12 @@ function SessionsTable({
   onCreate: () => void;
   canCreate: boolean;
   createDisabledReason?: string;
+  canDelete: boolean;
   onView: (sessionId: string) => void;
   onStart: (sessionId: string) => void;
+  onDelete: (session: CrawlSession) => void;
   startingSessionId?: string | null;
+  deletingSessionId?: string | null;
 }) {
   return (
     <Card className={styles.sessionsPanel}>
@@ -496,6 +507,19 @@ function SessionsTable({
                         >
                           <ChevronRight className={styles.iconSmall} />
                         </Button>
+                        {canDelete && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className={cn(styles.iconButton, styles.dangerButton)}
+                            onClick={() => onDelete(session)}
+                            disabled={deletingSessionId === session.id}
+                            aria-label={`Delete session ${session.id}`}
+                            title="Delete"
+                          >
+                            <Trash2 className={styles.iconSmall} />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -734,7 +758,13 @@ function LabelText({ children }: { children: ReactNode }) {
 const Applications = () => {
   const selectedProject = useUIStore((s) => s.selectedProject);
   const navigate = useNavigate();
-  const { data: applications = [], isLoading, isError } = useTargetApplications(selectedProject?.id ?? null);
+  const {
+    data: applications = [],
+    isLoading,
+    isError,
+    isFetching: applicationsFetching,
+    refetch: refetchApplications,
+  } = useTargetApplications(selectedProject?.id ?? null);
   const createTargetApplication = useCreateTargetApplication();
   const updateTargetApplication = useUpdateTargetApplication();
   const deleteTargetApplication = useDeleteTargetApplication();
@@ -744,6 +774,7 @@ const Applications = () => {
   const saveRegressionCodebaseConfig = useSaveRegressionCodebaseConfig();
   const createCrawlSession = useCreateCrawlSession();
   const startCrawlSession = useStartCrawlSession();
+  const deleteCrawlSession = useDeleteCrawlSession();
   const reattachManualSession = useReattachManualSession();
   const saveCrawlSchedule = useSaveCrawlSchedule();
   const toggleCrawlSchedule = useToggleCrawlSchedule();
@@ -760,8 +791,10 @@ const Applications = () => {
   const [triggerFilter, setTriggerFilter] = useState<CrawlSessionTriggerFilter>("all");
   const [editingSchedule, setEditingSchedule] = useState<CrawlSchedule | null>(null);
   const [scheduleToDelete, setScheduleToDelete] = useState<CrawlSchedule | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<CrawlSession | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [sessionFormInitialData, setSessionFormInitialData] = useState<CreateCrawlSessionInput | undefined>(undefined);
+  const [savedRegressionApiKeys, setSavedRegressionApiKeys] = useState<Record<string, string>>({});
 
   const closeModal = () => dispatchModal({ type: "none" });
   const typedApplications = useMemo(() => applications as ApplicationView[], [applications]);
@@ -802,7 +835,11 @@ const Applications = () => {
   const isAdmin = userRole === "ADMIN";
   const isMember = userRole === "ADMIN" || userRole === "MEMBER";
 
-  const { data: applicationDetails } = useApplicationDetails(
+  const {
+    data: applicationDetails,
+    isFetching: applicationDetailsFetching,
+    refetch: refetchApplicationDetails,
+  } = useApplicationDetails(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -811,7 +848,11 @@ const Applications = () => {
     selectedApplication?.baseUrl ?? "",
     selectedVersion?.version,
   );
-  const { data: queriedSessions = [] } = useCrawlSessions(
+  const {
+    data: queriedSessions = [],
+    isFetching: sessionsFetching,
+    refetch: refetchSessions,
+  } = useCrawlSessions(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -819,14 +860,16 @@ const Applications = () => {
     selectedApplication?.baseUrl ?? "",
     selectedVersion?.version,
   );
-  const { data: queriedRegressionConfig } = useRegressionConfig(
-    selectedProject?.id ?? null,
-    selectedApplication?.id ?? null,
-  );
-  const { data: queriedSchedules = [] } = useCrawlSchedules(
-    selectedProject?.id ?? null,
-    selectedApplication?.id ?? null,
-  );
+  const {
+    data: queriedRegressionConfig,
+    isFetching: regressionConfigFetching,
+    refetch: refetchRegressionConfig,
+  } = useRegressionConfig(selectedProject?.id ?? null, selectedApplication?.id ?? null);
+  const {
+    data: queriedSchedules = [],
+    isFetching: schedulesFetching,
+    refetch: refetchSchedules,
+  } = useCrawlSchedules(selectedProject?.id ?? null, selectedApplication?.id ?? null);
   const { data: detailedSelectedSession } = useCrawlSession(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
@@ -836,7 +879,11 @@ const Applications = () => {
     selectedApplication?.baseUrl ?? "",
     selectedVersion?.version,
   );
-  const regressionConfig = queriedRegressionConfig;
+  const regressionConfig = useMemo(() => {
+    if (!queriedRegressionConfig) return queriedRegressionConfig;
+    const savedApiKey = savedRegressionApiKeys[queriedRegressionConfig.id ?? ""];
+    return savedApiKey ? { ...queriedRegressionConfig, apiKey: savedApiKey } : queriedRegressionConfig;
+  }, [queriedRegressionConfig, savedRegressionApiKeys]);
   const schedules = queriedSchedules;
 
   useEffect(() => {
@@ -890,6 +937,23 @@ const Applications = () => {
       }),
     [queriedSessions, statusFilter, triggerFilter],
   );
+
+  const isRefreshing =
+    applicationsFetching ||
+    applicationDetailsFetching ||
+    sessionsFetching ||
+    regressionConfigFetching ||
+    schedulesFetching;
+
+  const handleRefresh = () => {
+    void Promise.all([
+      refetchApplications(),
+      refetchApplicationDetails(),
+      refetchSessions(),
+      refetchRegressionConfig(),
+      refetchSchedules(),
+    ]);
+  };
 
   const isApplicationNameDuplicate = (name: string, ignoreId?: string) => {
     const normalized = name.trim().toLowerCase();
@@ -995,7 +1059,14 @@ const Applications = () => {
         versionId: selectedVersion?.id,
         config,
       },
-      { onSuccess: closeModal },
+      {
+        onSuccess: (savedConfig) => {
+          if (config.apiKey && savedConfig.id) {
+            setSavedRegressionApiKeys((keys) => ({ ...keys, [savedConfig.id!]: config.apiKey! }));
+          }
+          closeModal();
+        },
+      },
     );
   };
 
@@ -1033,6 +1104,31 @@ const Applications = () => {
       versionId: selectedVersion.id,
       sessionId,
     });
+  };
+
+  const handleOpenDeleteSession = (session: CrawlSession) => {
+    setSessionToDelete(session);
+    dispatchModal({ type: "deleteSession" });
+  };
+
+  const handleConfirmDeleteSession = () => {
+    if (!selectedProject || !selectedApplication || !selectedVersion || !sessionToDelete) return;
+
+    deleteCrawlSession.mutate(
+      {
+        projectId: selectedProject.id,
+        applicationId: selectedApplication.id,
+        versionId: selectedVersion.id,
+        sessionId: sessionToDelete.id,
+      },
+      {
+        onSuccess: () => {
+          if (selectedSessionId === sessionToDelete.id) setSelectedSessionId(null);
+          setSessionToDelete(null);
+          closeModal();
+        },
+      },
+    );
   };
 
   const handleOpenAddSchedule = () => {
@@ -1187,16 +1283,31 @@ const Applications = () => {
             <div className={styles.sidebarTitle}>
               <h2 className={styles.sidebarHeading}>Applications</h2>
             </div>
-            {isAdmin && (
+
+            <div className={styles.actionButtons}>
               <Button
                 size="sm"
                 variant="ghost"
                 className={styles.iconButton}
-                onClick={() => dispatchModal({ type: "addApplication" })}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                aria-label="Refresh applications"
+                title="Refresh"
               >
-                <Plus className={styles.iconSmall} />
+                <RefreshCw className={cn(styles.iconSmall, isRefreshing && styles.spinIcon)} />
               </Button>
-            )}
+
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={styles.iconButton}
+                  onClick={() => dispatchModal({ type: "addApplication" })}
+                >
+                  <Plus className={styles.iconSmall} />
+                </Button>
+              )}
+            </div>
           </div>
           <div className={styles.applicationSearch}>
             <Search className={styles.searchIcon} />
@@ -1415,9 +1526,12 @@ const Applications = () => {
                           ? "Select a version before creating a session."
                           : "Configure a codebase first."
                       }
+                      canDelete={isAdmin}
                       onView={setSelectedSessionId}
                       onStart={handleStartSession}
+                      onDelete={handleOpenDeleteSession}
                       startingSessionId={startCrawlSession.variables?.sessionId ?? null}
+                      deletingSessionId={deleteCrawlSession.variables?.sessionId ?? null}
                     />
                   ) : (
                     <SchedulesPanel
@@ -1586,6 +1700,19 @@ const Applications = () => {
           onConfirm={handleConfirmDeleteSchedule}
           onClose={() => {
             setScheduleToDelete(null);
+            closeModal();
+          }}
+        />
+      )}
+
+      {modal.type === "deleteSession" && sessionToDelete && (
+        <DeleteCrawlSessionModal
+          sessionId={sessionToDelete.id}
+          isDeleting={deleteCrawlSession.isPending}
+          onConfirm={handleConfirmDeleteSession}
+          onClose={() => {
+            if (deleteCrawlSession.isPending) return;
+            setSessionToDelete(null);
             closeModal();
           }}
         />

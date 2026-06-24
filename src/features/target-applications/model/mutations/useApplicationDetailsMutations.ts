@@ -37,6 +37,9 @@ function invalidateApplicationDetails(
     queryClient.invalidateQueries({
       queryKey: queryKeys.targetApplications.crawlSessions(projectId, applicationId, versionId),
     });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.dashboard.all,
+    });
   }
 }
 
@@ -110,6 +113,34 @@ export function useStartCrawlSession() {
     },
     onError: (error) => {
       toast.error("Failed to start crawl session", error.message);
+    },
+  });
+}
+
+export function useDeleteCrawlSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    unknown,
+    Error,
+    { projectId: string; applicationId: string; versionId: string; sessionId: string }
+  >({
+    mutationFn: ({ projectId, applicationId, versionId, sessionId }) =>
+      applicationDetailsService.deleteCrawlSession({ projectId, applicationId, versionId, sessionId }),
+    onSuccess: (_data, variables) => {
+      toast.success("Crawl session deleted");
+      invalidateApplicationDetails(queryClient, variables.projectId, variables.applicationId, variables.versionId);
+      queryClient.removeQueries({
+        queryKey: queryKeys.targetApplications.crawlSession(
+          variables.projectId,
+          variables.applicationId,
+          variables.versionId,
+          variables.sessionId,
+        ),
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to delete crawl session", error.message);
     },
   });
 }

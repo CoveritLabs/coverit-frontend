@@ -247,6 +247,24 @@
   white-space: nowrap;
 }
 
+.refreshButton {
+  min-height: 1.9rem;
+}
+
+.spinIcon {
+  animation: regression-runs-spin 1s linear infinite;
+}
+
+@keyframes regression-runs-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .runTimestamp {
   color: var(--text-secondary);
   font-size: 0.84rem;

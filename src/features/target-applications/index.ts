@@ -9,6 +9,7 @@ export {
   useCreateCrawlSession,
   useConnectManualSession,
   useDeleteCrawlSchedule,
+  useDeleteCrawlSession,
   useReattachManualSession,
   useSaveCrawlSchedule,
   useSaveRegressionCodebaseConfig,
