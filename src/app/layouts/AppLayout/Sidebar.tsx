@@ -15,7 +15,11 @@ import {
   MonitorPlay,
   Workflow,
   BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
+import logoImage from "@/assets/logo.png";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useProjects } from "@features/projects";
 import { ROUTES } from "@shared/config/routes";
@@ -44,7 +48,12 @@ const PROFILE_ITEMS = [
 export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
+  const projectPopoverRef = useRef<HTMLDivElement>(null);
+
   const { data: projects = [], isLoading, isError } = useProjects();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -55,6 +64,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const isDark = theme === "dark";
 
+  // Auto-select first project if none selected
   useEffect(() => {
     if (isLoading) return;
     if (!projects.length) {
@@ -71,6 +81,17 @@ export function Sidebar() {
     }
   }, [isLoading, projects, selectedProject, setSelectedProject, setUserRole, user?.id]);
 
+  useEffect(() => {
+    if (!projectPopoverOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (projectPopoverRef.current && !projectPopoverRef.current.contains(e.target as Node)) {
+        setProjectPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [projectPopoverOpen]);
+
   const selectPlaceholder = isLoading
     ? "Loading projects..."
     : isError
@@ -80,35 +101,104 @@ export function Sidebar() {
         : "No projects yet";
   const selectDisabled = isLoading || isError || projects.length === 0;
 
+  const handleProjectChange = (id: string | null) => {
+    const proj = id ? (projects.find((p) => p.id === id) ?? null) : null;
+    setSelectedProject(proj);
+    setUserRole(getProjectUserRole(proj, user?.id));
+    setProjectPopoverOpen(false);
+  };
+
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ""}`}>
+      {/* Collapse toggle */}
+      <button
+        className={styles.collapseToggle}
+        onClick={() => {
+          setIsCollapsed((c) => !c);
+          setProfileOpen(false);
+          setProjectPopoverOpen(false);
+        }}
+        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {isCollapsed ? <ChevronRight size={14} strokeWidth={1.75} /> : <ChevronLeft size={14} strokeWidth={1.75} />}
+      </button>
+
       {/* Brand */}
       <div className={styles.brand}>
-        {/* TODO: Use logo */}
-        <span className={styles.brandMark}>CI</span>
-        <div>
-          <p className={styles.brandName}>CoverIt</p>
-          <p className={styles.brandSub}>QA Test Automation</p>
-        </div>
+        <img src={logoImage} alt="cover it" className={styles.brandLogo} />
+        {!isCollapsed && (
+          <motion.div
+            key="brand-text"
+            className={styles.animatedText}
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: "auto" }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <p className={styles.brandName}>CoverIt</p>
+            <p className={styles.brandSub}>QA Test Automation</p>
+          </motion.div>
+        )}
       </div>
 
       {/* Project selector */}
-      <div className={styles.projectSelect}>
-        <Select
-          options={projects.map((p) => ({ value: p.id, label: p.name }))}
-          value={selectedProject?.id ?? null}
-          onChange={(id) => {
-            const proj = projects.find((p) => p.id === id) ?? null;
-            setSelectedProject(proj);
-            setUserRole(getProjectUserRole(proj, user?.id));
-          }}
-          placeholder={selectPlaceholder}
-          disabled={selectDisabled}
-        />
-        {!isLoading && !isError && projects.length === 0 && (
-          <button type="button" className={styles.createProject} onClick={() => navigate(ROUTES.ADMINISTRATE)}>
-            Create project
-          </button>
+      <div className={styles.projectSection}>
+        {isCollapsed ? (
+          <div ref={projectPopoverRef} className={styles.projectAvatarWrap}>
+            <button
+              className={styles.projectAvatar}
+              onClick={() => setProjectPopoverOpen((o) => !o)}
+              aria-label={selectedProject?.name ?? "Select project"}
+              data-tooltip={selectedProject?.name ?? "Select project"}
+            >
+              {selectedProject ? getInitials(selectedProject.name) : <Layers size={15} strokeWidth={1.75} />}
+            </button>
+
+            {projectPopoverOpen && (
+              <motion.div
+                className={styles.projectPopover}
+                initial={{ opacity: 0, x: -8, scaleX: 0.9 }}
+                animate={{ opacity: 1, x: 0, scaleX: 1 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <p className={styles.projectPopoverLabel}>Switch project</p>
+                <Select
+                  options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                  value={selectedProject?.id ?? null}
+                  onChange={handleProjectChange}
+                  placeholder={selectPlaceholder}
+                  disabled={selectDisabled}
+                />
+                {!isLoading && !isError && projects.length === 0 && (
+                  <button
+                    type="button"
+                    className={styles.createProject}
+                    onClick={() => {
+                      setProjectPopoverOpen(false);
+                      navigate(ROUTES.ADMINISTRATE);
+                    }}
+                  >
+                    Create project
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.projectSelect}>
+            <Select
+              options={projects.map((p) => ({ value: p.id, label: p.name }))}
+              value={selectedProject?.id ?? null}
+              onChange={handleProjectChange}
+              placeholder={selectPlaceholder}
+              disabled={selectDisabled}
+            />
+            {!isLoading && !isError && projects.length === 0 && (
+              <button type="button" className={styles.createProject} onClick={() => navigate(ROUTES.ADMINISTRATE)}>
+                Create project
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -118,37 +208,73 @@ export function Sidebar() {
           <NavLink
             key={to}
             to={to}
-            className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
+            className={({ isActive }) =>
+              `${styles.navItem} ${isActive ? styles.navItemActive : ""} ${isCollapsed ? styles.navItemCollapsed : ""}`
+            }
+            data-tooltip={label}
           >
-            <Icon size={18} strokeWidth={1.75} />
-            <span>{label}</span>
+            <Icon size={18} strokeWidth={1.75} className={styles.navIcon} />
+            {!isCollapsed && (
+              <motion.span
+                key="label"
+                className={styles.animatedText}
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {label}
+              </motion.span>
+            )}
           </NavLink>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className={styles.footer}>
+      <div className={`${styles.footer} ${isCollapsed ? styles.footerCollapsed : ""}`}>
         {/* Theme toggle */}
         <button
-          className={styles.themeToggle}
+          className={`${styles.themeToggle} ${isCollapsed ? styles.themeToggleCollapsed : ""}`}
           onClick={() => setTheme(isDark ? "light" : "dark")}
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          data-tooltip={isDark ? "Light Mode" : "Dark Mode"}
         >
           {isDark ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
-          <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+          {!isCollapsed && (
+            <motion.span
+              key="theme-label"
+              className={styles.animatedText}
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {isDark ? "Light Mode" : "Dark Mode"}
+            </motion.span>
+          )}
         </button>
 
         {/* User profile */}
-        <div className={styles.profile} onClick={() => setProfileOpen((open) => !open)}>
+        <div
+          className={`${styles.profile} ${isCollapsed ? styles.profileCollapsed : ""}`}
+          onClick={() => setProfileOpen((open) => !open)}
+          data-tooltip={isCollapsed ? user?.name || "Account" : undefined}
+        >
           <div className={styles.avatar} aria-hidden="true">
             {getInitials(user?.name || "U")}
           </div>
-          <div className={styles.profileInfo}>
-            <p className={styles.profileName}>{user?.name || "Unknown User"}</p>
-            <p className={styles.profileRole}>
-              {userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase() : "-"}
-            </p>
-          </div>
+          {!isCollapsed && (
+            <motion.div
+              key="profile-info"
+              className={`${styles.profileInfo} ${styles.animatedText}`}
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <p className={styles.profileName}>{user?.name || "Unknown User"}</p>
+              <p className={styles.profileRole}>
+                {userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase() : "-"}
+              </p>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -160,9 +286,7 @@ export function Sidebar() {
             animate={{ opacity: 1, x: 0, scaleX: 1 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={styles.menuPanel}
-            style={{ transformOrigin: "left center" }}
           >
-            {/* Menu items */}
             <div className={styles.menuItems}>
               {PROFILE_ITEMS.map((item) => {
                 const Icon = item.icon;
@@ -187,7 +311,6 @@ export function Sidebar() {
               })}
             </div>
 
-            {/* Logout */}
             <div className={styles.logoutSection}>
               <button
                 onClick={() => {

@@ -116,6 +116,8 @@ const DEFAULT_CRAWL_CONFIG: CrawlConfigInput = {
   },
   crawlerSettings: {
     maxTransitions: 5000,
+    maxElementsPerState: 50,
+    maxActionRepeatsPerUrl: 10,
     useSemanticDiversity: true,
   },
 };

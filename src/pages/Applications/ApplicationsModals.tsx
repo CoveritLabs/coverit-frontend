@@ -610,6 +610,12 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const [maxTransitions, setMaxTransitions] = useState(
     String(initialData?.crawlConfig.crawlerSettings?.maxTransitions ?? 5000),
   );
+  const [maxElementsPerState, setMaxElementsPerState] = useState(
+    String(initialData?.crawlConfig.crawlerSettings?.maxElementsPerState ?? 50),
+  );
+  const [maxActionRepeatsPerUrl, setMaxActionRepeatsPerUrl] = useState(
+    String(initialData?.crawlConfig.crawlerSettings?.maxActionRepeatsPerUrl ?? 10),
+  );
   const [useSemanticDiversity, setUseSemanticDiversity] = useState(
     initialData?.crawlConfig.crawlerSettings?.useSemanticDiversity ?? true,
   );
@@ -629,6 +635,8 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const parsedNumOfStates = Number(numOfStates);
   const parsedMinNumOfStatesPerTf = Number(minNumOfStatesPerTf);
   const parsedMaxTransitions = Number(maxTransitions);
+  const parsedMaxElementsPerState = Number(maxElementsPerState);
+  const parsedMaxActionRepeatsPerUrl = Number(maxActionRepeatsPerUrl);
   const inputDefaultsInvalid = hasInvalidInputDefaultRows(fieldPatternRows);
   const inputDefaultsDuplicated = hasDuplicateInputDefaultKeys(fieldPatternRows);
   const canSave =
@@ -647,6 +655,10 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
     parsedMinNumOfStatesPerTf > 0 &&
     Number.isInteger(parsedMaxTransitions) &&
     parsedMaxTransitions > 0 &&
+    Number.isInteger(parsedMaxElementsPerState) &&
+    parsedMaxElementsPerState > 0 &&
+    Number.isInteger(parsedMaxActionRepeatsPerUrl) &&
+    parsedMaxActionRepeatsPerUrl >= 0 &&
     !inputDefaultsInvalid &&
     !inputDefaultsDuplicated;
 
@@ -679,6 +691,8 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
         },
         crawlerSettings: {
           maxTransitions: parsedMaxTransitions,
+          maxElementsPerState: parsedMaxElementsPerState,
+          maxActionRepeatsPerUrl: parsedMaxActionRepeatsPerUrl,
           useSemanticDiversity,
         },
         inputDefaults,
@@ -790,6 +804,26 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
                 min={1}
                 value={maxTransitions}
                 onChange={(event) => setMaxTransitions(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="crawl-max-elements">Max Elements per State</Label>
+              <Input
+                id="crawl-max-elements"
+                type="number"
+                min={1}
+                value={maxElementsPerState}
+                onChange={(event) => setMaxElementsPerState(event.target.value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <Label htmlFor="crawl-action-repeats">Action Repeats per URL</Label>
+              <Input
+                id="crawl-action-repeats"
+                type="number"
+                min={0}
+                value={maxActionRepeatsPerUrl}
+                onChange={(event) => setMaxActionRepeatsPerUrl(event.target.value)}
               />
             </div>
           </div>

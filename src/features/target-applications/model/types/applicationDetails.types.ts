@@ -35,6 +35,8 @@ export interface CrawlConfigInput {
   };
   crawlerSettings?: {
     maxTransitions?: number;
+    maxElementsPerState?: number;
+    maxActionRepeatsPerUrl?: number;
     useSemanticDiversity?: boolean;
   };
   inputDefaults?: {

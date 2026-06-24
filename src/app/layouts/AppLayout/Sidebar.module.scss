@@ -3,42 +3,212 @@
  * See LICENSE file in the project root for full license information.
  */
 
-// Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
-// Proprietary and confidential. Unauthorized use is strictly prohibited.
-// See LICENSE file in the project root for full license information.
-
 @use "@shared/styles/tokens" as *;
 @use "@shared/styles/mixins" as *;
 
-// Sidebar
+// ─── Width tokens ──────────────────────────────────────────────────────────────
+// Expose as CSS custom properties so absolutely-positioned children
+// can reference them via var(--sidebar-width) / var(--sidebar-collapsed-width)
+// without needing SCSS variable access.
+:root {
+  --sidebar-width: #{$sidebar-width};
+  --sidebar-collapsed-width: 60px;
+}
+
+// ─── Sidebar shell ─────────────────────────────────────────────────────────────
 .sidebar {
+  position: relative; // needed for .collapseToggle absolute positioning
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  --csw: var(--sidebar-width);
   width: $sidebar-width;
   height: 100vh;
   background-color: var(--sidebar);
   border-right: 1px solid var(--sidebar-border);
   overflow: visible;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &.collapsed {
+    --csw: var(--sidebar-collapsed-width);
+    width: var(--sidebar-collapsed-width);
+  }
 }
 
-// Header
+// ─── Collapse toggle ───────────────────────────────────────────────────────────
+// Half-inset button on the right border; revealed on sidebar hover.
+.collapseToggle {
+  @include flex-center;
+  position: absolute;
+  top: 22px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: $radius-full;
+  background-color: var(--background);
+  border: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  z-index: 20;
+  opacity: 0;
+  transition:
+    opacity $transition-fast,
+    color $transition-fast;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 50%;
+    border: 1px solid var(--border);
+    border-left: 0;
+    border-radius: 0 $radius-full $radius-full 0;
+    pointer-events: none;
+  }
+
+  // Show on sidebar hover
+  .sidebar:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    color: var(--sidebar-foreground);
+  }
+
+  &:focus-visible {
+    opacity: 1;
+    @include focus-ring(var(--ring));
+  }
+}
+
+// ─── Brand ─────────────────────────────────────────────────────────────────────
 .brand {
   @include flex-start;
   gap: $space-3;
-  padding: $space-6;
+  padding: $space-5 $space-4;
+  border-bottom: 1px solid var(--sidebar-border);
+  overflow: hidden;
+  min-height: 68px; // keep height stable during text fade
+
+  .collapsed & {
+    justify-content: center;
+    padding: $space-5 0;
+  }
+}
+
+.animatedText {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.brandLogo {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-md;
+  object-fit: cover;
+}
+
+.brandMark {
+  @include flex-center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-md;
+  background: linear-gradient(135deg, #2f6f8e 0%, #4fc3c6 100%);
+  color: var(--sidebar);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.03em;
+}
+
+.brandName {
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  color: var(--sidebar-foreground);
+  line-height: 1.4;
+}
+
+.brandSub {
+  font-size: $font-size-sm;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+// ─── Project section ───────────────────────────────────────────────────────────
+.projectSection {
   border-bottom: 1px solid var(--sidebar-border);
 }
 
+// Expanded inline select (existing layout)
 .projectSelect {
   padding: $space-3 $space-4;
-  border-bottom: 1px solid var(--sidebar-border);
   color: var(--sidebar-foreground);
   font-size: $font-size-sm;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: $space-2;
+}
+
+// Collapsed: centered avatar trigger
+.projectAvatarWrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: $space-3 0;
+}
+
+.projectAvatar {
+  @include flex-center;
+  width: 34px;
+  height: 34px;
+  border-radius: $radius-md;
+  background-color: var(--sidebar-primary);
+  color: var(--sidebar-primary-foreground);
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.04em;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color $transition-fast,
+    box-shadow $transition-fast;
+
+  &:hover {
+    background-color: color-mix(in oklab, var(--sidebar-primary) 80%, var(--sidebar-foreground) 20%);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--sidebar-primary) 25%, transparent);
+  }
+
+  &:focus-visible {
+    @include focus-ring(var(--ring));
+  }
+}
+
+// Popover that opens to the right in collapsed mode
+.projectPopover {
+  position: absolute;
+  left: calc(var(--sidebar-collapsed-width) + 4px);
+  top: 0;
+  min-width: 220px;
+  background-color: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.12);
+  padding: $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  z-index: 50;
+  transform-origin: left center;
+}
+
+.projectPopoverLabel {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 $space-1 $space-1;
 }
 
 .createProject {
@@ -69,47 +239,28 @@
   }
 }
 
-.brandMark {
-  @include flex-center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: $radius-md;
-  background: linear-gradient(135deg, #2f6f8e 0%, #4fc3c6 100%);
-  color: var(--sidebar);
-  font-size: $font-size-sm;
-  font-weight: $font-weight-bold;
-  letter-spacing: 0.03em;
-}
-
-.brandName {
-  font-size: $font-size-base;
-  font-weight: $font-weight-semibold;
-  color: var(--sidebar-foreground);
-  line-height: 1.4;
-}
-
-.brandSub {
-  font-size: $font-size-sm;
-  color: var(--muted-foreground);
-  line-height: 1.4;
-}
-
-// Navigation
+// ─── Navigation ────────────────────────────────────────────────────────────────
 .nav {
   @include flex-column;
   @include custom-scrollbar;
   flex: 1;
-  gap: $space-2;
-  padding: $space-4;
+  gap: $space-1;
+  padding: $space-4 $space-3;
   overflow-y: auto;
+
+  .collapsed & {
+    padding: $space-4 $space-2;
+    align-items: center;
+  }
 }
 
+// Shared nav item base
 .navItem {
   position: relative;
   @include flex-center;
   justify-content: flex-start;
   gap: $space-3;
+  width: 100%;
   padding: $space-2 $space-3;
   border-radius: $radius-md;
   font-size: $font-size-base;
@@ -125,6 +276,37 @@
   }
 }
 
+// Collapsed: icon only, centered, fixed square hit target, CSS tooltip
+.navItemCollapsed {
+  justify-content: center;
+  width: 40px;
+  padding: $space-2;
+
+  // CSS tooltip via data-tooltip attribute
+  &[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--popover);
+    color: var(--popover-foreground, var(--foreground));
+    border: 1px solid var(--border);
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+    padding: $space-1 $space-2;
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.1);
+    pointer-events: none;
+    z-index: 30;
+  }
+}
+
+.navIcon {
+  flex-shrink: 0;
+}
+
 .navItemActive {
   background-color: var(--sidebar-accent);
   color: var(--sidebar-accent-foreground);
@@ -135,14 +317,21 @@
   }
 }
 
-// Footer
+// ─── Footer ────────────────────────────────────────────────────────────────────
 .footer {
   @include flex-column;
-  gap: $space-3;
-  padding: $space-4;
+  gap: $space-2;
+  padding: $space-4 $space-3;
   border-top: 1px solid var(--sidebar-border);
+  overflow: hidden;
 }
 
+.footerCollapsed {
+  padding: $space-4 $space-2;
+  align-items: center;
+}
+
+// Theme toggle — expanded
 .themeToggle {
   @include flex-center;
   justify-content: flex-start;
@@ -159,6 +348,7 @@
     background-color $transition-fast,
     color $transition-fast,
     border-color $transition-fast;
+  overflow: hidden;
 
   &:hover {
     background-color: color-mix(in oklab, var(--sidebar-accent) 50%, transparent);
@@ -171,6 +361,39 @@
   }
 }
 
+// Theme toggle — collapsed: icon-only square, no border
+.themeToggleCollapsed {
+  justify-content: center;
+  width: 40px;
+  padding: $space-2;
+  border-color: transparent;
+
+  &:hover {
+    border-color: transparent;
+  }
+
+  // CSS tooltip
+  &[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(var(--sidebar-collapsed-width) + 10px);
+    top: auto;
+    transform: none;
+    background-color: var(--popover);
+    color: var(--popover-foreground, var(--foreground));
+    border: 1px solid var(--border);
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+    padding: $space-1 $space-2;
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.1);
+    pointer-events: none;
+    z-index: 30;
+  }
+}
+
+// Profile row — expanded
 .profile {
   display: flex;
   align-items: center;
@@ -179,9 +402,35 @@
   border-radius: $radius-md;
   transition: background-color $transition-fast;
   cursor: pointer;
+  overflow: hidden;
 
   &:hover {
     background-color: var(--sidebar-accent);
+  }
+}
+
+// Profile row — collapsed: just the avatar, centered, with tooltip
+.profileCollapsed {
+  justify-content: center;
+  padding: $space-2;
+
+  // CSS tooltip
+  &[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(var(--sidebar-collapsed-width) + 10px);
+    bottom: $space-4;
+    background-color: var(--popover);
+    color: var(--popover-foreground, var(--foreground));
+    border: 1px solid var(--border);
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+    padding: $space-1 $space-2;
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.1);
+    pointer-events: none;
+    z-index: 30;
   }
 }
 
@@ -205,8 +454,6 @@
 
 .profileName {
   @include truncate;
-  position: relative;
-
   font-weight: $font-weight-medium;
   color: var(--sidebar-foreground);
   line-height: 1.2;
@@ -218,13 +465,15 @@
   line-height: 1.2;
 }
 
+// ─── Profile menu ──────────────────────────────────────────────────────────────
 .profileMenu {
   position: relative;
 }
 
+// Uses --csw from .sidebar/.collapsed to reposition automatically.
 .menuPanel {
   position: absolute;
-  left: $sidebar-width;
+  left: var(--csw);
   min-width: 220px;
   bottom: 0;
   background-color: var(--popover);
@@ -233,10 +482,11 @@
   box-shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
   overflow: hidden;
   z-index: 50;
+  transform-origin: left center;
 }
 
 .menuItems {
-  padding: $space-1.5 0;
+  padding: $space-1 0;
 }
 
 .menuItem {
@@ -250,14 +500,14 @@
   border: none;
   cursor: pointer;
   transition: background-color $transition-fast;
-}
 
-.menuItem:hover {
-  background-color: color-mix(in oklab, var(--muted) 38%, transparent);
+  &:hover {
+    background-color: color-mix(in oklab, var(--muted) 38%, transparent);
 
-  .menuItemIcon {
-    background-color: var(--background);
-    color: var(--foreground);
+    .menuItemIcon {
+      background-color: var(--background);
+      color: var(--foreground);
+    }
   }
 }
 
@@ -292,7 +542,7 @@
 
 .logoutSection {
   border-top: 1px solid var(--border);
-  padding-top: $space-1.5;
+  padding-top: $space-1;
 
   &:hover {
     .menuItem {

@@ -1228,6 +1228,8 @@ const Applications = () => {
         },
         crawlerSettings: {
           maxTransitions: Number(crawlerSettings.maxTransitions ?? 5000),
+          maxElementsPerState: Number(crawlerSettings.maxElementsPerState ?? 50),
+          maxActionRepeatsPerUrl: Number(crawlerSettings.maxActionRepeatsPerUrl ?? 10),
           useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
         },
         inputDefaults,
