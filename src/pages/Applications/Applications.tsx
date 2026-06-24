@@ -126,6 +126,7 @@ const TRIGGER_FILTERS: Array<{ value: CrawlSessionTriggerFilter; label: string }
   { value: "all", label: "All Triggers" },
   { value: "manual", label: "Manual" },
   { value: "scheduled", label: "Scheduled" },
+  { value: "on_demand", label: "On Demand"}
 ];
 
 const DEFAULT_STATS: ApplicationDetailStats = {
