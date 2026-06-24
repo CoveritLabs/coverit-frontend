@@ -20,6 +20,7 @@
 .header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: $space-3;
   min-height: 4.6rem;
   padding: $space-4 $space-7;
@@ -43,6 +44,15 @@
     color: var(--text-secondary);
     font-size: $font-size-sm;
   }
+}
+
+.headerRefreshButton {
+  flex: 0 0 auto;
+}
+
+.headerRefreshIcon {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 
 .headerIcon,

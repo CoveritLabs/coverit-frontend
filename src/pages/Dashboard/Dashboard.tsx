@@ -3,22 +3,25 @@
 // See LICENSE file in the project root for full license information.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type {
-  ProjectActivity,
-  ProjectCoverageSummary,
-  ProjectLatestCrawlSession,
-  ProjectLatestRun,
-  ProjectLatestTestFlow,
-  ProjectRunStatistics,
-  TargetApplicationResponse,
-} from "@coveritlabs/contracts";
-import { Activity, AlertTriangle, CheckCircle2, Clock3, FlaskConical, XCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import type { TargetApplicationResponse } from "@coveritlabs/contracts";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, FlaskConical, RefreshCw, XCircle } from "lucide-react";
 import { useUIStore } from "@app/store";
-import { useProjectDashboard } from "@features/dashboard";
+import {
+  useProjectDashboard,
+  type ProjectActivity,
+  type ProjectCoverageSummary,
+  type ProjectLatestCrawlSession,
+  type ProjectLatestRun,
+  type ProjectLatestTestFlow,
+  type ProjectRunStatistics,
+} from "@features/dashboard";
+import { useProjects } from "@features/projects";
 import { useTargetApplications } from "@features/target-applications";
+import { ROUTES } from "@shared/config/routes";
 import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
-import { Badge, Card, Select } from "@shared/ui";
+import { Badge, Button, Card, Select } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import styles from "./Dashboard.module.scss";
 
@@ -82,13 +85,40 @@ function getActivityLabel(eventType: string) {
   return titleCase(eventType.replace(/\./g, " "));
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
+function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
   return (
     <Card className={styles.emptyState}>
       <Activity className={styles.emptyIcon} />
       <h3>{title}</h3>
       <p>{description}</p>
+      {action}
     </Card>
+  );
+}
+
+function PlainEmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className={styles.plainEmptyState}>
+      <h3>{title}</h3>
+      <p>{description}</p>
+      {action}
+    </div>
   );
 }
 
@@ -244,18 +274,32 @@ function buildVersionOptions(applications: TargetApplicationResponse[]): Version
 }
 
 function Dashboard() {
+  const navigate = useNavigate();
   const selectedProject = useUIStore((state) => state.selectedProject);
+  const setSelectedProject = useUIStore((state) => state.setSelectedProject);
+  const setUserRole = useUIStore((state) => state.setUserRole);
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
   const [selectedVersionId, setSelectedVersionId] = useState<string>(LATEST_VERSION_VALUE);
+  const selectedProjectExists = Boolean(
+    selectedProject && projects.some((project) => project.id === selectedProject.id),
+  );
+  const activeProject = projectsLoading || selectedProjectExists ? selectedProject : null;
   const {
     data: applications = [],
     isLoading: applicationsLoading,
     isError: applicationsError,
-  } = useTargetApplications(selectedProject?.id ?? null);
+    refetch: refetchApplications,
+  } = useTargetApplications(activeProject?.id ?? null);
 
   const versionOptions = useMemo(() => buildVersionOptions(applications), [applications]);
   const resolvedVersionId = selectedVersionId === LATEST_VERSION_VALUE ? undefined : selectedVersionId;
-  const dashboardQuery = useProjectDashboard(selectedProject?.id ?? null, resolvedVersionId);
+  const dashboardQuery = useProjectDashboard(activeProject?.id ?? null, resolvedVersionId);
   const dashboard = dashboardQuery.data;
+  const isRefreshing = applicationsLoading || dashboardQuery.isFetching;
+
+  const handleRefresh = () => {
+    void Promise.all([dashboardQuery.refetch(), refetchApplications()]);
+  };
 
   useEffect(() => {
     if (selectedVersionId === LATEST_VERSION_VALUE) return;
@@ -263,8 +307,30 @@ function Dashboard() {
     if (!versionExists) setSelectedVersionId(LATEST_VERSION_VALUE);
   }, [selectedVersionId, versionOptions]);
 
-  if (!selectedProject) {
-    return <EmptyState title="Choose a project" description="Select a project from the sidebar to view dashboard statistics." />;
+  useEffect(() => {
+    if (projectsLoading || !selectedProject || selectedProjectExists) return;
+    setSelectedProject(null);
+    setUserRole(null);
+  }, [projectsLoading, selectedProject, selectedProjectExists, setSelectedProject, setUserRole]);
+
+  if (!activeProject) {
+    if (!projectsLoading && projects.length === 0) {
+      return (
+        <PlainEmptyState
+          title="Create a project first"
+          description="Dashboard statistics appear after a project exists."
+          action={
+            <Button onClick={() => navigate(ROUTES.ADMINISTRATE)}>
+              Create Project
+            </Button>
+          }
+        />
+      );
+    }
+
+    return (
+      <EmptyState title="Choose a project" description="Select a project from the sidebar to view dashboard statistics." />
+    );
   }
 
   if (applicationsLoading && !dashboard) {
@@ -300,10 +366,21 @@ function Dashboard() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <h1>{selectedProject.name}</h1>
+          <h1>{activeProject.name}</h1>
           <p>Project scope dashboard</p>
         </div>
         <div className={styles.headerControls}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={styles.refreshButton}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh dashboard"
+            title="Refresh"
+          >
+            <RefreshCw className={cn(styles.refreshIcon, isRefreshing && styles.spinIcon)} />
+          </Button>
           <span className={styles.versionLabel}>Version</span>
           <Select
             options={versionOptions}

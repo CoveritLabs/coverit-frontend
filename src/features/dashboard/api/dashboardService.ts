@@ -2,8 +2,8 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import type { ProjectDashboardResponse } from "@coveritlabs/contracts";
 import { apiClient } from "@shared/api/client";
+import type { ProjectDashboardResponse } from "../model/types/dashboard.types";
 
 export const dashboardService = {
   async getProjectDashboard(projectId: string, versionId?: string): Promise<ProjectDashboardResponse> {

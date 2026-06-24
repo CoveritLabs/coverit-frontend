@@ -25,6 +25,7 @@ import {
   useUserGuideStates,
   useUserGuideVersions,
 } from "../model/queries/useUserGuides";
+import { cn } from "@shared/utils/cn";
 import type {
   GenerateGuideParams,
   UserGuideApplication,
@@ -136,7 +137,7 @@ function StateOptionRow({ option }: { option: StateOption }) {
   );
 }
 
-function PageHeader() {
+function PageHeader({ isRefreshing, onRefresh }: { isRefreshing: boolean; onRefresh: () => void }) {
   return (
     <header className={styles.header}>
       <div>
@@ -146,6 +147,17 @@ function PageHeader() {
           states.
         </p>
       </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        className={styles.headerRefreshButton}
+        onClick={onRefresh}
+        disabled={isRefreshing}
+        aria-label="Refresh user guide data"
+        title="Refresh"
+      >
+        <RefreshCw className={cn(styles.headerRefreshIcon, isRefreshing && styles.spinIcon)} size={14} />
+      </Button>
     </header>
   );
 }
@@ -213,6 +225,11 @@ function UserGuides() {
   const applications = useMemo(() => applicationsQuery.data ?? [], [applicationsQuery.data]);
   const versions = useMemo(() => versionsQuery.data ?? [], [versionsQuery.data]);
   const states = useMemo(() => statesQuery.data ?? [], [statesQuery.data]);
+  const isRefreshing = applicationsQuery.isFetching || versionsQuery.isFetching || statesQuery.isFetching;
+
+  const handleRefresh = () => {
+    void Promise.all([applicationsQuery.refetch(), versionsQuery.refetch(), statesQuery.refetch()]);
+  };
 
   const selectedApplication = findById<UserGuideApplication>(applications, selectedApplicationId);
   const selectedVersion = findById<UserGuideVersion>(versions, selectedVersionId);
@@ -386,7 +403,7 @@ function UserGuides() {
 
   return (
     <div className={styles.page}>
-      <PageHeader />
+      <PageHeader isRefreshing={isRefreshing} onRefresh={handleRefresh} />
 
       <main className={styles.content}>
         {!selectedProject ? (

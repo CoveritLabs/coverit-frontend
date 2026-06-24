@@ -56,13 +56,20 @@ export function Sidebar() {
   const isDark = theme === "dark";
 
   useEffect(() => {
-    if (!projects.length) return;
+    if (isLoading) return;
+    if (!projects.length) {
+      if (selectedProject) {
+        setSelectedProject(null);
+        setUserRole(null);
+      }
+      return;
+    }
     const selectedExists = selectedProject ? projects.some((project) => project.id === selectedProject.id) : false;
     if (!selectedExists) {
       setSelectedProject({ id: projects[0].id, name: projects[0].name });
       setUserRole(getProjectUserRole(projects[0], user?.id));
     }
-  }, [projects, selectedProject, setSelectedProject]);
+  }, [isLoading, projects, selectedProject, setSelectedProject, setUserRole, user?.id]);
 
   const selectPlaceholder = isLoading
     ? "Loading projects..."

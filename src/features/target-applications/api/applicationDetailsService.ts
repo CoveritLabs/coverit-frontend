@@ -282,6 +282,7 @@ function getStats(sessions: CrawlSession[]): ApplicationDetailStats {
   const statesDiscovered = crawledSessions.reduce((total, session) => total + (session.statesDiscovered ?? 0), 0);
 
   return {
+    versionCount: 0,
     crawledCount: crawledSessions.length,
     statesDiscovered: statesDiscovered,
     lastCrawlDate: lastSession?.startedAt.slice(0, 10) ?? "—",
@@ -420,6 +421,18 @@ export const applicationDetailsService = {
     return response.data;
   },
 
+  async deleteCrawlSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+    sessionId: string;
+  }): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/crawl-sessions/${params.sessionId}`,
+    );
+    return response.data;
+  },
+
   async connectManualSession(params: {
     projectId: string;
     applicationId: string;
@@ -455,11 +468,11 @@ export const applicationDetailsService = {
     applicationId: string;
     config: RegressionCodebaseConfig;
   }): Promise<RegressionCodebaseConfig> {
-    const body = {
+    const body: { frameworkName: string; repositoryUrl: string; apiKey?: string } = {
       frameworkName: "Playwright",
       repositoryUrl: params.config.repositoryUrl,
-      apiKey: params.config.apiKey,
     };
+    if (params.config.apiKey) body.apiKey = params.config.apiKey;
 
     if (params.config.id) {
       await apiClient.put<MessageResponse>(

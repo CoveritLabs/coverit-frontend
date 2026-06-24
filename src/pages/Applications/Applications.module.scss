@@ -549,6 +549,13 @@
   gap: $space-2;
 }
 
+.secretField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: $space-2;
+  align-items: center;
+}
+
 .modalActions {
   display: flex;
   justify-content: flex-end;
@@ -1170,6 +1177,10 @@
 }
 
 .sessionStatusAnimated {
+  animation: status-spin 1s linear infinite;
+}
+
+.spinIcon {
   animation: status-spin 1s linear infinite;
 }
 

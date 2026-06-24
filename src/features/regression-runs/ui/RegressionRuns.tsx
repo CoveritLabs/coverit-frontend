@@ -50,6 +50,8 @@ function RegressionRuns() {
     data: applications = [],
     isLoading: applicationsLoading,
     isError: applicationsError,
+    isFetching: applicationsFetching,
+    refetch: refetchApplications,
   } = useTargetApplications(selectedProject?.id ?? null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchText, setSearchText] = useState("");
@@ -318,6 +320,33 @@ function RegressionRuns() {
   );
 
   const latestRunAt = runs[0]?.createdAt;
+  const isRefreshing =
+    applicationsFetching ||
+    runsQuery.isFetching ||
+    runDetailsQuery.isFetching ||
+    scenariosQuery.isFetching ||
+    scenarioQuery.isFetching ||
+    runArtifactsQuery.isFetching ||
+    scenarioEventsQuery.isFetching ||
+    scenarioArtifactsQuery.isFetching ||
+    jiraStatusQuery.isFetching;
+
+  const handleRefresh = () => {
+    const refreshes: Array<Promise<unknown>> = [refetchApplications(), runsQuery.refetch(), jiraStatusQuery.refetch()];
+
+    if (runId) {
+      refreshes.push(runDetailsQuery.refetch(), scenariosQuery.refetch());
+      if (runTab === "artifacts") refreshes.push(runArtifactsQuery.refetch());
+    }
+
+    if (runId && scenarioId && runTab === "scenarios") {
+      refreshes.push(scenarioQuery.refetch());
+      if (scenarioTab === "events") refreshes.push(scenarioEventsQuery.refetch());
+      if (scenarioTab === "artifacts") refreshes.push(scenarioArtifactsQuery.refetch());
+    }
+
+    void Promise.all(refreshes);
+  };
 
   const clearFilters = () => {
     setSearchText("");
@@ -368,6 +397,8 @@ function RegressionRuns() {
         applicationName={activeApplication?.name ?? null}
         latestRunAt={latestRunAt}
         runCount={filteredRuns.length}
+        isRefreshing={isRefreshing}
+        onRefresh={handleRefresh}
       />
 
       <div className={styles.topLevelTabs}>

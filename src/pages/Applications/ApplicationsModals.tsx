@@ -3,7 +3,7 @@
 // See LICENSE file in the application root for full license information.
 
 import { type MouseEvent, useState } from "react";
-import { Check, Copy, Plus, Trash2, X } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, Label, Select } from "@shared/ui";
 import type {
   CreateCrawlSessionInput,
@@ -462,6 +462,7 @@ export const RegressionCodebaseConfigModal = ({
 }: RegressionCodebaseConfigModalProps) => {
   const [repositoryUrl, setRepositoryUrl] = useState(initialConfig.repositoryUrl);
   const [apiKey, setApiKey] = useState(initialConfig.apiKey ?? "");
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
 
   const canSave = repositoryUrl.trim().length > 0;
 
@@ -502,12 +503,26 @@ export const RegressionCodebaseConfigModal = ({
 
           <div className={styles.modalField}>
             <Label htmlFor="regression-api-key">API Key (optional)</Label>
-            <Input
-              id="regression-api-key"
-              type="password"
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-            />
+            <div className={styles.secretField}>
+              <Input
+                id="regression-api-key"
+                type={apiKeyVisible ? "text" : "password"}
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                placeholder={initialConfig.id && !initialConfig.apiKey ? "Leave blank to keep saved key" : undefined}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className={styles.iconButton}
+                onClick={() => setApiKeyVisible((visible) => !visible)}
+                aria-label={apiKeyVisible ? "Hide API key" : "Show API key"}
+                title={apiKeyVisible ? "Hide API key" : "Show API key"}
+              >
+                {apiKeyVisible ? <EyeOff className={styles.iconSmall} /> : <Eye className={styles.iconSmall} />}
+              </Button>
+            </div>
             <p className={styles.fieldHelp}>GitHub token or other auth credential for pushing generated tests</p>
           </div>
 
@@ -899,6 +914,45 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
     </div>
   );
 };
+
+interface DeleteCrawlSessionModalProps {
+  sessionId: string;
+  isDeleting: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+export const DeleteCrawlSessionModal = ({
+  sessionId,
+  isDeleting,
+  onConfirm,
+  onClose,
+}: DeleteCrawlSessionModalProps) => (
+  <div className={styles.modalOverlay} onMouseDown={(event) => closeOnBackdropMouseDown(event, onClose)}>
+    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.modalHeader}>
+        <h3 className={styles.modalTitle}>Delete Crawl Session</h3>
+        <Button size="sm" variant="ghost" className={styles.iconButton} onClick={onClose} disabled={isDeleting}>
+          <X className={styles.iconSmall} />
+        </Button>
+      </div>
+      <div className={styles.modalBody}>
+        <p className={styles.mutedText}>
+          Delete crawl session <strong>{sessionId}</strong>? Active sessions will be aborted before they
+          are removed.
+        </p>
+        <div className={styles.modalActions}>
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
+            {isDeleting ? "Deleting..." : "Delete Session"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 interface ScheduleConfigModalProps {
   initialSchedule?: CrawlSchedule | null;

@@ -62,6 +62,14 @@
   white-space: nowrap;
 }
 
+.refreshButton {
+  min-height: 1.9rem;
+}
+
+.spinIcon {
+  animation: test-flows-spin 1s linear infinite;
+}
+
 .filtersCard {
   padding: 0.75rem;
   border: 1px solid var(--border);
@@ -387,6 +395,16 @@
     margin: 0.25rem 0 0;
     color: var(--text-secondary);
     font-size: 0.8rem;
+  }
+}
+
+@keyframes test-flows-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 

@@ -2,39 +2,52 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { useSearchParams, useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { Users, Plus, Settings, ChevronRight, UserPlus, FolderKanban, Edit2, Trash2, LogOut, Plug } from "lucide-react";
-import { Button, toast } from "@shared/ui";
-import { cn } from "@shared/utils/cn";
-import { queryKeys } from "@shared/config/queryKeys";
-import { useProjects } from "@features/projects";
+import { useAuthStore, useUIStore } from "@app/store";
+import type { Member } from "@coveritlabs/contracts";
+import type { ProjectRole } from "@features/projects";
 import {
+  DEFAULT_PROJECT_ROLE,
+  getProjectUserRole,
+  normalizeProjectRole,
   useAddProjectMembers,
   useCreateProject,
   useDeleteProject,
   useLeaveProject,
+  useProjects,
   useRemoveProjectMembers,
   useUpdateProject,
   useUpdateProjectMember,
 } from "@features/projects";
-import type { ProjectRole } from "@features/projects";
-import { DEFAULT_PROJECT_ROLE } from "@features/projects";
-import { getProjectUserRole, normalizeProjectRole } from "@features/projects";
+import { queryKeys } from "@shared/config/queryKeys";
 import { GRADIENTS } from "@shared/constants/gradients";
-import styles from "./Administration.module.scss";
-import { AdministrationMembersTable } from "./AdministrationMembersTable";
-import { AdministrationIntegrations } from "./AdministrationIntegrations";
+import { Button, toast } from "@shared/ui";
+import { cn } from "@shared/utils/cn";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  AddProjectModal,
-  EditProjectModal,
-  DeleteProjectModal,
+  ChevronRight,
+  Edit2,
+  FolderKanban,
+  LogOut,
+  Plug,
+  Plus,
+  RefreshCw,
+  Settings,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import styles from "./Administration.module.scss";
+import { AdministrationIntegrations } from "./AdministrationIntegrations";
+import { AdministrationMembersTable } from "./AdministrationMembersTable";
+import {
   AddMemberModal,
+  AddProjectModal,
+  DeleteProjectModal,
+  EditProjectModal,
   LeaveProjectModal,
 } from "./AdministrationModals";
-import { useAuthStore, useUIStore } from "@app/store";
-import type { Member } from "@coveritlabs/contracts";
 
 type AdministrationTab = "members" | "integrations";
 
@@ -55,7 +68,7 @@ const Administration = () => {
   const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { data: projects = [], isLoading, isError } = useProjects();
+  const { data: projects = [], isLoading, isError, isFetching, refetch: refetchProjects } = useProjects();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -66,6 +79,7 @@ const Administration = () => {
   const user = useAuthStore((state) => state.user);
 
   const storeSelectedProject = useUIStore((s) => s.selectedProject);
+  const setStoreSelectedProject = useUIStore((s) => s.setSelectedProject);
   const setUserRole = useUIStore((s) => s.setUserRole);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
@@ -166,6 +180,13 @@ const Administration = () => {
     return projects.some((p) => p.id !== ignoreId && p.name.trim().toLowerCase() === normalized);
   };
 
+  const handleRefresh = () => {
+    void refetchProjects();
+    if (selectedProjectId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all });
+    }
+  };
+
   const handleAddProject = (name: string, description: string) => {
     createProject.mutate(
       { name, ...(description && { description }) },
@@ -190,6 +211,10 @@ const Administration = () => {
       {
         onSuccess: () => {
           closeModal();
+          if (storeSelectedProject?.id === selectedProject.id) {
+            setStoreSelectedProject(null);
+            setUserRole(null);
+          }
           setSelectedProjectId(null);
         },
       },
@@ -248,14 +273,27 @@ const Administration = () => {
               <Settings className={styles.iconPrimary} />
               <h2 className={styles.sidebarHeading}>Administration</h2>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className={styles.iconButton}
-              onClick={() => dispatchModal({ type: "addProject" })}
-            >
-              <Plus className={styles.iconSmall} />
-            </Button>
+            <div className={styles.actionButtons}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={styles.iconButton}
+                onClick={handleRefresh}
+                disabled={isFetching}
+                aria-label="Refresh administration"
+                title="Refresh"
+              >
+                <RefreshCw className={cn(styles.iconSmall, isFetching && styles.spinIcon)} />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={styles.iconButton}
+                onClick={() => dispatchModal({ type: "addProject" })}
+              >
+                <Plus className={styles.iconSmall} />
+              </Button>
+            </div>
           </div>
           <p className={styles.sidebarSubtitle}>Manage projects and team members</p>
         </div>
