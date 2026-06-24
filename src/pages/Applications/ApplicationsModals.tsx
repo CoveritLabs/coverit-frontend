@@ -551,6 +551,154 @@ const TRIGGER_OPTIONS: Array<{ value: CrawlSessionTrigger; label: string }> = [
   { value: "scheduled", label: "Scheduled" },
 ];
 
+type SessionConfigMode = "form" | "json";
+
+const DEFAULT_CREATE_SESSION_INPUT: CreateCrawlSessionInput = {
+  trigger: "on_demand",
+  crawlConfig: {
+    maxStates: 1000,
+    timeoutSeconds: 3600,
+    generateTestFlows: true,
+    generateTestCode: false,
+    testFlowGeneration: {
+      coveragePercentage: 100,
+      numOfTf: 1,
+      maxNumOfTf: 10000,
+      numOfStates: 20,
+      minNumOfStatesPerTf: 3,
+    },
+    crawlerSettings: {
+      maxTransitions: 5000,
+      maxElementsPerState: 50,
+      maxActionRepeatsPerUrl: 10,
+      useSemanticDiversity: true,
+    },
+  },
+  codegenConfig: {
+    codegenBranch: "auto-tests",
+    prTargetBranch: "main",
+    prTitle: "",
+    prBody: "",
+    prDraft: true,
+  },
+};
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function parsePositiveInteger(value: unknown, label: string) {
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue <= 0) {
+    throw new Error(`${label} must be a positive integer.`);
+  }
+  return numberValue;
+}
+
+function parseNonNegativeInteger(value: unknown, label: string) {
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 0) {
+    throw new Error(`${label} must be a non-negative integer.`);
+  }
+  return numberValue;
+}
+
+function parseCoveragePercentage(value: unknown) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue < 0 || numberValue > 100) {
+    throw new Error("Coverage Percentage must be between 0 and 100.");
+  }
+  return numberValue;
+}
+
+function normalizeInputDefaults(value: unknown): CreateCrawlSessionInput["crawlConfig"]["inputDefaults"] {
+  if (value === undefined) return undefined;
+  if (!isObjectRecord(value)) throw new Error("inputDefaults must be an object.");
+
+  const fieldPatterns = value.fieldPatterns;
+  const typeFallbacks = value.typeFallbacks;
+  if (!isObjectRecord(fieldPatterns) || !isObjectRecord(typeFallbacks)) {
+    throw new Error("inputDefaults must include fieldPatterns and typeFallbacks objects.");
+  }
+
+  return {
+    fieldPatterns: Object.fromEntries(Object.entries(fieldPatterns).map(([key, item]) => [key, String(item)])),
+    typeFallbacks: Object.fromEntries(Object.entries(typeFallbacks).map(([key, item]) => [key, String(item)])),
+  };
+}
+
+function normalizeCreateSessionInput(raw: unknown): CreateCrawlSessionInput {
+  if (!isObjectRecord(raw)) throw new Error("JSON must be an object.");
+  if (!["manual", "on_demand", "scheduled"].includes(String(raw.trigger))) {
+    throw new Error("trigger must be manual, on_demand, or scheduled.");
+  }
+  if (!isObjectRecord(raw.crawlConfig)) throw new Error("crawlConfig must be an object.");
+
+  const crawlConfig = raw.crawlConfig;
+  const testFlowGeneration = isObjectRecord(crawlConfig.testFlowGeneration) ? crawlConfig.testFlowGeneration : {};
+  const crawlerSettings = isObjectRecord(crawlConfig.crawlerSettings) ? crawlConfig.crawlerSettings : {};
+  const generateTestFlows = crawlConfig.generateTestFlows !== false;
+  const generateTestCode = generateTestFlows && crawlConfig.generateTestCode === true;
+
+  const normalized: CreateCrawlSessionInput = {
+    trigger: raw.trigger as CrawlSessionTrigger,
+    crawlConfig: {
+      maxStates: parsePositiveInteger(crawlConfig.maxStates, "Max States"),
+      timeoutSeconds: parsePositiveInteger(crawlConfig.timeoutSeconds, "Timeout Seconds"),
+      generateTestFlows,
+      generateTestCode,
+      testFlowGeneration: {
+        coveragePercentage: parseCoveragePercentage(testFlowGeneration.coveragePercentage ?? 100),
+        numOfTf: parsePositiveInteger(testFlowGeneration.numOfTf ?? 1, "Minimum Test Flows"),
+        maxNumOfTf: parsePositiveInteger(testFlowGeneration.maxNumOfTf ?? 10000, "Maximum Test Flows"),
+        numOfStates: parsePositiveInteger(testFlowGeneration.numOfStates ?? 20, "States per Test Flow"),
+        minNumOfStatesPerTf: parsePositiveInteger(
+          testFlowGeneration.minNumOfStatesPerTf ?? 3,
+          "Minimum States per Test Flow",
+        ),
+      },
+      crawlerSettings: {
+        maxTransitions: parsePositiveInteger(crawlerSettings.maxTransitions ?? 5000, "Max Transitions"),
+        maxElementsPerState: parsePositiveInteger(crawlerSettings.maxElementsPerState ?? 50, "Max Elements per State"),
+        maxActionRepeatsPerUrl: parseNonNegativeInteger(
+          crawlerSettings.maxActionRepeatsPerUrl ?? 10,
+          "Action Repeats per URL",
+        ),
+        useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
+      },
+      inputDefaults: normalizeInputDefaults(crawlConfig.inputDefaults),
+    },
+  };
+
+  if (generateTestCode) {
+    if (!isObjectRecord(raw.codegenConfig)) {
+      throw new Error("codegenConfig is required when generateTestCode is true.");
+    }
+    const codegenBranch = String(raw.codegenConfig.codegenBranch ?? "").trim();
+    const prTargetBranch = String(raw.codegenConfig.prTargetBranch ?? "").trim();
+    if (!codegenBranch || !prTargetBranch) {
+      throw new Error("Codegen branch and PR target branch are required when generateTestCode is true.");
+    }
+    normalized.codegenConfig = {
+      codegenBranch,
+      prTargetBranch,
+      prTitle: String(raw.codegenConfig.prTitle ?? "").trim(),
+      prBody: String(raw.codegenConfig.prBody ?? "").trim(),
+      prDraft: raw.codegenConfig.prDraft !== false,
+    };
+  }
+
+  return normalized;
+}
+
+function parseCreateSessionJson(value: string): { data?: CreateCrawlSessionInput; error?: string } {
+  try {
+    return { data: normalizeCreateSessionInput(JSON.parse(value)) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Invalid session config JSON." };
+  }
+}
+
 type InputDefaultRow = {
   id: string;
   key: string;
@@ -593,16 +741,23 @@ function hasDuplicateInputDefaultKeys(rows: InputDefaultRow[]) {
 }
 
 export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: CreateCrawlSessionModalProps) => {
+  const sessionDefaults = initialData ?? DEFAULT_CREATE_SESSION_INPUT;
+  const [configMode, setConfigMode] = useState<SessionConfigMode>("form");
+  const [sessionJson, setSessionJson] = useState(() => JSON.stringify(sessionDefaults, null, 2));
   const [trigger, setTrigger] = useState<CrawlSessionTrigger>(initialData?.trigger ?? "on_demand");
   const [maxStates, setMaxStates] = useState(String(initialData?.crawlConfig.maxStates ?? 1000));
   const [timeoutSeconds, setTimeoutSeconds] = useState(String(initialData?.crawlConfig.timeoutSeconds ?? 3600));
   const [generateTestFlows, setGenerateTestFlows] = useState(initialData?.crawlConfig.generateTestFlows ?? true);
+  const [generateTestCode, setGenerateTestCode] = useState(initialData?.crawlConfig.generateTestCode ?? false);
   const [coveragePercentage, setCoveragePercentage] = useState(
     String(initialData?.crawlConfig.testFlowGeneration?.coveragePercentage ?? 100),
   );
-  const [numOfTf, setNumOfTf] = useState(String(initialData?.crawlConfig.testFlowGeneration?.numOfTf ?? 3));
+  const [numOfTf, setNumOfTf] = useState(String(initialData?.crawlConfig.testFlowGeneration?.numOfTf ?? 1));
+  const [maxNumOfTf, setMaxNumOfTf] = useState(
+    String(initialData?.crawlConfig.testFlowGeneration?.maxNumOfTf ?? 10000),
+  );
   const [numOfStates, setNumOfStates] = useState(
-    String(initialData?.crawlConfig.testFlowGeneration?.numOfStates ?? 10),
+    String(initialData?.crawlConfig.testFlowGeneration?.numOfStates ?? 20),
   );
   const [minNumOfStatesPerTf, setMinNumOfStatesPerTf] = useState(
     String(initialData?.crawlConfig.testFlowGeneration?.minNumOfStatesPerTf ?? 3),
@@ -632,6 +787,7 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const parsedTimeoutSeconds = Number(timeoutSeconds);
   const parsedCoveragePercentage = Number(coveragePercentage);
   const parsedNumOfTf = Number(numOfTf);
+  const parsedMaxNumOfTf = Number(maxNumOfTf);
   const parsedNumOfStates = Number(numOfStates);
   const parsedMinNumOfStatesPerTf = Number(minNumOfStatesPerTf);
   const parsedMaxTransitions = Number(maxTransitions);
@@ -639,7 +795,9 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
   const parsedMaxActionRepeatsPerUrl = Number(maxActionRepeatsPerUrl);
   const inputDefaultsInvalid = hasInvalidInputDefaultRows(fieldPatternRows);
   const inputDefaultsDuplicated = hasDuplicateInputDefaultKeys(fieldPatternRows);
-  const canSave =
+  const jsonResult = parseCreateSessionJson(sessionJson);
+  const shouldGenerateTestCode = generateTestFlows && generateTestCode;
+  const formCanSave =
     Number.isInteger(parsedMaxStates) &&
     parsedMaxStates > 0 &&
     Number.isInteger(parsedTimeoutSeconds) &&
@@ -649,6 +807,8 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
     parsedCoveragePercentage <= 100 &&
     Number.isInteger(parsedNumOfTf) &&
     parsedNumOfTf > 0 &&
+    Number.isInteger(parsedMaxNumOfTf) &&
+    parsedMaxNumOfTf > 0 &&
     Number.isInteger(parsedNumOfStates) &&
     parsedNumOfStates > 0 &&
     Number.isInteger(parsedMinNumOfStatesPerTf) &&
@@ -659,15 +819,16 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
     parsedMaxElementsPerState > 0 &&
     Number.isInteger(parsedMaxActionRepeatsPerUrl) &&
     parsedMaxActionRepeatsPerUrl >= 0 &&
+    (!shouldGenerateTestCode || (codegenBranch.trim().length > 0 && prTargetBranch.trim().length > 0)) &&
     !inputDefaultsInvalid &&
     !inputDefaultsDuplicated;
+  const canSave = configMode === "json" ? Boolean(jsonResult.data) : formCanSave;
 
-  const handleConfirm = () => {
-    if (!canSave) return;
+  const buildFormInput = (): CreateCrawlSessionInput => {
     const fieldPatterns = inputDefaultRowsToRecord(fieldPatternRows);
     const inputDefaults = Object.keys(fieldPatterns).length > 0 ? { fieldPatterns, typeFallbacks: {} } : undefined;
     const codegenConfig =
-      codegenBranch.trim().length > 0 && prTargetBranch.trim().length > 0
+      shouldGenerateTestCode && codegenBranch.trim().length > 0 && prTargetBranch.trim().length > 0
         ? {
             codegenBranch: codegenBranch.trim(),
             prTargetBranch: prTargetBranch.trim(),
@@ -677,15 +838,17 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
           }
         : undefined;
 
-    onConfirm({
+    return {
       trigger,
       crawlConfig: {
         maxStates: parsedMaxStates,
         timeoutSeconds: parsedTimeoutSeconds,
         generateTestFlows,
+        generateTestCode: shouldGenerateTestCode,
         testFlowGeneration: {
           coveragePercentage: parsedCoveragePercentage,
           numOfTf: parsedNumOfTf,
+          maxNumOfTf: parsedMaxNumOfTf,
           numOfStates: parsedNumOfStates,
           minNumOfStatesPerTf: parsedMinNumOfStatesPerTf,
         },
@@ -698,7 +861,19 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
         inputDefaults,
       },
       codegenConfig,
-    });
+    };
+  };
+
+  const switchConfigMode = (mode: SessionConfigMode) => {
+    if (mode === "json") {
+      setSessionJson(JSON.stringify(buildFormInput(), null, 2));
+    }
+    setConfigMode(mode);
+  };
+
+  const handleConfirm = () => {
+    if (!canSave) return;
+    onConfirm(configMode === "json" && jsonResult.data ? jsonResult.data : buildFormInput());
   };
 
   const renderInputDefaultRows = (
@@ -765,175 +940,276 @@ export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: Cre
           </Button>
         </div>
         <div className={styles.modalBody}>
-          <div className={styles.modalField}>
-            <Label>Trigger</Label>
-            <Select
-              options={TRIGGER_OPTIONS}
-              value={trigger}
-              onChange={(value) => value && setTrigger(value as CrawlSessionTrigger)}
-            />
+          <div className={styles.configModeSwitch} role="group" aria-label="Session config mode">
+            <button
+              type="button"
+              className={configMode === "form" ? styles.configModeButtonActive : styles.configModeButton}
+              onClick={() => switchConfigMode("form")}
+            >
+              Form
+            </button>
+            <button
+              type="button"
+              className={configMode === "json" ? styles.configModeButtonActive : styles.configModeButton}
+              onClick={() => switchConfigMode("json")}
+            >
+              JSON
+            </button>
           </div>
 
-          <div className={styles.modalSectionTitle}>Crawl Config</div>
-          <div className={styles.modalGridThree}>
-            <div className={styles.modalField}>
-              <Label htmlFor="crawl-max-states">Max States</Label>
-              <Input
-                id="crawl-max-states"
-                type="number"
-                min={1}
-                value={maxStates}
-                onChange={(event) => setMaxStates(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="crawl-timeout">Timeout Seconds</Label>
-              <Input
-                id="crawl-timeout"
-                type="number"
-                min={1}
-                value={timeoutSeconds}
-                onChange={(event) => setTimeoutSeconds(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="crawl-max-transitions">Max Transitions</Label>
-              <Input
-                id="crawl-max-transitions"
-                type="number"
-                min={1}
-                value={maxTransitions}
-                onChange={(event) => setMaxTransitions(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="crawl-max-elements">Max Elements per State</Label>
-              <Input
-                id="crawl-max-elements"
-                type="number"
-                min={1}
-                value={maxElementsPerState}
-                onChange={(event) => setMaxElementsPerState(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="crawl-action-repeats">Action Repeats per URL</Label>
-              <Input
-                id="crawl-action-repeats"
-                type="number"
-                min={0}
-                value={maxActionRepeatsPerUrl}
-                onChange={(event) => setMaxActionRepeatsPerUrl(event.target.value)}
-              />
-            </div>
-          </div>
+          {configMode === "json" ? (
+            <>
+              <div className={styles.modalField}>
+                <Label htmlFor="session-config-json">Session Config JSON</Label>
+                <textarea
+                  id="session-config-json"
+                  className={styles.configJsonTextarea}
+                  value={sessionJson}
+                  onChange={(event) => setSessionJson(event.target.value)}
+                  spellCheck={false}
+                />
+              </div>
+              {jsonResult.error && <p className={styles.applicationError}>{jsonResult.error}</p>}
+            </>
+          ) : (
+            <>
+              <details className={styles.formSection} open>
+                <summary className={styles.formSectionSummary}>Basics</summary>
+                <div className={styles.formSectionBody}>
+                  <div className={styles.modalGridTwo}>
+                    <div className={styles.modalField}>
+                      <Label>Trigger</Label>
+                      <Select
+                        options={TRIGGER_OPTIONS}
+                        value={trigger}
+                        onChange={(value) => value && setTrigger(value as CrawlSessionTrigger)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="crawl-max-states">Max States</Label>
+                      <Input
+                        id="crawl-max-states"
+                        type="number"
+                        min={1}
+                        value={maxStates}
+                        onChange={(event) => setMaxStates(event.target.value)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="crawl-timeout">Timeout Seconds</Label>
+                      <Input
+                        id="crawl-timeout"
+                        type="number"
+                        min={1}
+                        value={timeoutSeconds}
+                        onChange={(event) => setTimeoutSeconds(event.target.value)}
+                      />
+                      <p className={styles.fieldHelp}>Stops crawling and continues with enabled follow-up steps.</p>
+                    </div>
+                  </div>
 
-          <label className={styles.modalCheckbox}>
-            <input
-              type="checkbox"
-              checked={generateTestFlows}
-              onChange={(event) => setGenerateTestFlows(event.target.checked)}
-            />
-            <span>Generate test flows after crawl</span>
-          </label>
+                  <label className={styles.modalCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={generateTestFlows}
+                      onChange={(event) => {
+                        setGenerateTestFlows(event.target.checked);
+                        if (!event.target.checked) setGenerateTestCode(false);
+                      }}
+                    />
+                    <span>Create test flows after crawl</span>
+                  </label>
 
-          <div className={styles.modalSectionTitle}>Test Flow Generation</div>
-          <div className={styles.modalGridTwo}>
-            <div className={styles.modalField}>
-              <Label htmlFor="tf-coverage-percentage">Coverage Percentage</Label>
-              <Input
-                id="tf-coverage-percentage"
-                type="number"
-                min={0}
-                max={100}
-                step="0.1"
-                value={coveragePercentage}
-                onChange={(event) => setCoveragePercentage(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="tf-count">Number of Test Flows</Label>
-              <Input
-                id="tf-count"
-                type="number"
-                min={1}
-                value={numOfTf}
-                onChange={(event) => setNumOfTf(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="tf-num-states">States per Test Flow</Label>
-              <Input
-                id="tf-num-states"
-                type="number"
-                min={1}
-                value={numOfStates}
-                onChange={(event) => setNumOfStates(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="tf-min-states">Minimum States per Test Flow</Label>
-              <Input
-                id="tf-min-states"
-                type="number"
-                min={1}
-                value={minNumOfStatesPerTf}
-                onChange={(event) => setMinNumOfStatesPerTf(event.target.value)}
-              />
-            </div>
-          </div>
-          <label className={styles.modalCheckbox}>
-            <input
-              type="checkbox"
-              checked={useSemanticDiversity}
-              onChange={(event) => setUseSemanticDiversity(event.target.checked)}
-            />
-            <span>Use semantic diversity</span>
-          </label>
+                  <label className={styles.modalCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={shouldGenerateTestCode}
+                      disabled={!generateTestFlows}
+                      onChange={(event) => setGenerateTestCode(event.target.checked)}
+                    />
+                    <span>Generate test code and open PR after flows are created</span>
+                  </label>
+                </div>
+              </details>
 
-          <div className={styles.modalSectionTitle}>Input Defaults</div>
-          {renderInputDefaultRows("Field Patterns", fieldPatternRows, setFieldPatternRows)}
-          {inputDefaultsInvalid && (
-            <p className={styles.applicationError}>Each input default needs both a key and a value.</p>
+              <details className={styles.formSection}>
+                <summary className={styles.formSectionSummary}>Crawler Limits</summary>
+                <div className={styles.formSectionBody}>
+                  <div className={styles.modalGridThree}>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="crawl-max-transitions">Max Transitions</Label>
+                      <Input
+                        id="crawl-max-transitions"
+                        type="number"
+                        min={1}
+                        value={maxTransitions}
+                        onChange={(event) => setMaxTransitions(event.target.value)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="crawl-max-elements">Max Elements per State</Label>
+                      <Input
+                        id="crawl-max-elements"
+                        type="number"
+                        min={1}
+                        value={maxElementsPerState}
+                        onChange={(event) => setMaxElementsPerState(event.target.value)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="crawl-action-repeats">Action Repeats per URL</Label>
+                      <Input
+                        id="crawl-action-repeats"
+                        type="number"
+                        min={0}
+                        value={maxActionRepeatsPerUrl}
+                        onChange={(event) => setMaxActionRepeatsPerUrl(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <label className={styles.modalCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={useSemanticDiversity}
+                      onChange={(event) => setUseSemanticDiversity(event.target.checked)}
+                    />
+                    <span>Use semantic diversity</span>
+                  </label>
+                </div>
+              </details>
+
+              <details className={styles.formSection}>
+                <summary className={styles.formSectionSummary}>Test Flow Selection</summary>
+                <div className={styles.formSectionBody}>
+                  <div className={styles.modalGridTwo}>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="tf-coverage-percentage">Coverage Percentage</Label>
+                      <Input
+                        id="tf-coverage-percentage"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.1"
+                        value={coveragePercentage}
+                        onChange={(event) => setCoveragePercentage(event.target.value)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="tf-count">Minimum Test Flows</Label>
+                      <Input
+                        id="tf-count"
+                        type="number"
+                        min={1}
+                        value={numOfTf}
+                        onChange={(event) => setNumOfTf(event.target.value)}
+                      />
+                      <p className={styles.fieldHelp}>Try to select at least this many flows.</p>
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="tf-max-count">Maximum Test Flows</Label>
+                      <Input
+                        id="tf-max-count"
+                        type="number"
+                        min={1}
+                        value={maxNumOfTf}
+                        onChange={(event) => setMaxNumOfTf(event.target.value)}
+                      />
+                      <p className={styles.fieldHelp}>Stop selection once this many flows are selected.</p>
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="tf-num-states">States per Test Flow</Label>
+                      <Input
+                        id="tf-num-states"
+                        type="number"
+                        min={1}
+                        value={numOfStates}
+                        onChange={(event) => setNumOfStates(event.target.value)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="tf-min-states">Minimum States per Test Flow</Label>
+                      <Input
+                        id="tf-min-states"
+                        type="number"
+                        min={1}
+                        value={minNumOfStatesPerTf}
+                        onChange={(event) => setMinNumOfStatesPerTf(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <details className={styles.formSection}>
+                <summary className={styles.formSectionSummary}>Input Defaults</summary>
+                <div className={styles.formSectionBody}>
+                  {renderInputDefaultRows("Field Patterns", fieldPatternRows, setFieldPatternRows)}
+                  {inputDefaultsInvalid && (
+                    <p className={styles.applicationError}>Each input default needs both a key and a value.</p>
+                  )}
+                  {inputDefaultsDuplicated && (
+                    <p className={styles.applicationError}>Input default keys must be unique.</p>
+                  )}
+                </div>
+              </details>
+
+              <details
+                className={`${styles.formSection} ${shouldGenerateTestCode ? "" : styles.disabledSection}`}
+              >
+                <summary className={styles.formSectionSummary}>Code Generation and PR</summary>
+                <div className={styles.formSectionBody}>
+                  <div className={styles.modalGridTwo}>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="codegen-branch">Codegen Branch</Label>
+                      <Input
+                        id="codegen-branch"
+                        value={codegenBranch}
+                        disabled={!shouldGenerateTestCode}
+                        onChange={(event) => setCodegenBranch(event.target.value)}
+                      />
+                    </div>
+                    <div className={styles.modalField}>
+                      <Label htmlFor="pr-target-branch">PR Target Branch</Label>
+                      <Input
+                        id="pr-target-branch"
+                        value={prTargetBranch}
+                        disabled={!shouldGenerateTestCode}
+                        onChange={(event) => setPrTargetBranch(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.modalField}>
+                    <Label htmlFor="pr-title">PR Title</Label>
+                    <Input
+                      id="pr-title"
+                      value={prTitle}
+                      disabled={!shouldGenerateTestCode}
+                      onChange={(event) => setPrTitle(event.target.value)}
+                    />
+                  </div>
+                  <div className={styles.modalField}>
+                    <Label htmlFor="pr-body">PR Body</Label>
+                    <textarea
+                      id="pr-body"
+                      className={styles.modalTextarea}
+                      value={prBody}
+                      disabled={!shouldGenerateTestCode}
+                      onChange={(event) => setPrBody(event.target.value)}
+                    />
+                  </div>
+                  <label className={styles.modalCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={prDraft}
+                      disabled={!shouldGenerateTestCode}
+                      onChange={(event) => setPrDraft(event.target.checked)}
+                    />
+                    <span>Create PR as draft</span>
+                  </label>
+                </div>
+              </details>
+            </>
           )}
-          {inputDefaultsDuplicated && <p className={styles.applicationError}>Input default keys must be unique.</p>}
-
-          <div className={styles.modalSectionTitle}>Codegen Config</div>
-          <div className={styles.modalGridTwo}>
-            <div className={styles.modalField}>
-              <Label htmlFor="codegen-branch">Codegen Branch</Label>
-              <Input
-                id="codegen-branch"
-                value={codegenBranch}
-                onChange={(event) => setCodegenBranch(event.target.value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <Label htmlFor="pr-target-branch">PR Target Branch</Label>
-              <Input
-                id="pr-target-branch"
-                value={prTargetBranch}
-                onChange={(event) => setPrTargetBranch(event.target.value)}
-              />
-            </div>
-          </div>
-          <div className={styles.modalField}>
-            <Label htmlFor="pr-title">PR Title</Label>
-            <Input id="pr-title" value={prTitle} onChange={(event) => setPrTitle(event.target.value)} />
-          </div>
-          <div className={styles.modalField}>
-            <Label htmlFor="pr-body">PR Body</Label>
-            <textarea
-              id="pr-body"
-              className={styles.modalTextarea}
-              value={prBody}
-              onChange={(event) => setPrBody(event.target.value)}
-            />
-          </div>
-          <label className={styles.modalCheckbox}>
-            <input type="checkbox" checked={prDraft} onChange={(event) => setPrDraft(event.target.checked)} />
-            <span>Create PR as draft</span>
-          </label>
 
           <div className={styles.modalActions}>
             <Button variant="outline" onClick={onClose}>

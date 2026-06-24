@@ -8,6 +8,9 @@ import type { Payload } from "@shared/types/common";
 import { toast } from "@shared/ui";
 import { testFlowService } from "../../api/testFlowService";
 import type {
+  FlowEditorConnectResponse,
+  FlowEditorDetailResponse,
+  FlowEditorDraftStep,
   GenerateTestFlowRequest,
   GenerateTestFlowResponse,
   ListTestFlowsRequest,
@@ -36,6 +39,59 @@ export function useTestFlows(
             queryKeys.testFlows.list(projectId, applicationId, filters),
           ) ?? emptyTestFlowsResponse)
         : emptyTestFlowsResponse,
+  });
+}
+
+export function useFlowEditor(projectId: string | null, applicationId: string | null, flowId: string | null) {
+  const safeProjectId = projectId ?? "__missing__";
+  const safeApplicationId = applicationId ?? "__missing__";
+  const safeFlowId = flowId ?? "__missing__";
+
+  return useQuery<FlowEditorDetailResponse>({
+    queryKey: queryKeys.testFlows.editor(safeProjectId, safeApplicationId, safeFlowId),
+    queryFn: () => testFlowService.getFlowEditor(safeProjectId, safeApplicationId, safeFlowId),
+    enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(flowId),
+  });
+}
+
+export function useSaveFlowEditorSteps() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { response: Awaited<ReturnType<typeof testFlowService.saveFlowEditorSteps>>; editorSteps: FlowEditorDraftStep[] },
+    Error,
+    { projectId: string; applicationId: string; flowId: string; editorSteps: FlowEditorDraftStep[] }
+  >({
+    mutationFn: async ({ projectId, applicationId, flowId, editorSteps }) => ({
+      response: await testFlowService.saveFlowEditorSteps(projectId, applicationId, flowId, editorSteps),
+      editorSteps,
+    }),
+    onSuccess: (_data, variables) => {
+      toast.success("Editor steps saved");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.testFlows.editor(variables.projectId, variables.applicationId, variables.flowId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.testFlows.lists(variables.projectId, variables.applicationId),
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to save editor steps", error.message);
+    },
+  });
+}
+
+export function useConnectFlowEditor() {
+  return useMutation<
+    FlowEditorConnectResponse,
+    Error,
+    { projectId: string; applicationId: string; flowId: string }
+  >({
+    mutationFn: ({ projectId, applicationId, flowId }) =>
+      testFlowService.connectFlowEditor(projectId, applicationId, flowId),
+    onError: (error) => {
+      toast.error("Failed to open editor session", error.message);
+    },
   });
 }
 

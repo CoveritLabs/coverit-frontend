@@ -23,6 +23,7 @@ export interface TestFlow {
   transitionRefs: string[];
   testFlowType: TestFlowType;
   stepCount: number;
+  editorStepCount: number;
   status: TestFlowStatus;
   createdAt: string;
   generatedAt: string | null;
@@ -58,6 +59,100 @@ export interface GenerateTestFlowResponse {
   message: string;
   flowId: string;
   jobId: string;
+}
+
+export type FlowEditorStepKind = "design-class" | "design-operation" | "assertion" | "action-hook" | "group";
+export type FlowEditorPositionEdge = "before" | "after";
+export type FlowEditorLabelingStatus = "COMPLETED" | "PENDING" | "QUEUED" | "MISSING";
+export type FlowEditorValueType = "string" | "number" | "integer" | "currency" | "boolean" | "date" | "json" | "array" | "object";
+export type FlowEditorCodeLanguage = "typescript";
+
+export type FlowEditorValueSpec =
+  | { literal: unknown }
+  | { from: string }
+  | { source: "extract"; id: string }
+  | { source: "store" | "arg" | "context" | "env"; path: string }
+  | { expressionId: string; args?: Record<string, FlowEditorValueSpec> }
+  | { functionId: string; args?: Record<string, FlowEditorValueSpec> }
+  | { code: FlowEditorInlineCodeBlock; args?: Record<string, FlowEditorValueSpec> }
+  | { fields: Record<string, FlowEditorValueSpec> }
+  | { list: FlowEditorValueSpec[] };
+
+export interface FlowEditorInlineCodeBlock {
+  language: FlowEditorCodeLanguage;
+  body: string;
+  imports?: string[];
+  inputSchema?: unknown;
+  outputSchema?: unknown;
+}
+
+export interface FlowEditorStepStateLabel {
+  stateHash: string;
+  label: string;
+  labelingStatus: FlowEditorLabelingStatus;
+}
+
+export interface FlowEditorElementRef {
+  selector?: string;
+  selectorCandidates?: string[];
+  tag?: string | null;
+  text?: string;
+  accessibleName?: string;
+  attributes?: Record<string, string>;
+  pageUrl?: string;
+  stateHash?: string;
+  box?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null;
+  viewport?: {
+    width: number;
+    height: number;
+  };
+}
+
+export interface FlowEditorDraftStep {
+  id: string;
+  kind: FlowEditorStepKind;
+  position: {
+    edge: FlowEditorPositionEdge;
+    transitionId: string;
+  };
+  order: number;
+  label: string;
+  element?: FlowEditorElementRef;
+  definition: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FlowEditorTransitionStep {
+  id: string;
+  index: number;
+  transitionId: string;
+  label: string;
+  action?: string;
+  labelingStatus: FlowEditorLabelingStatus;
+  fromState?: FlowEditorStepStateLabel;
+  toState?: FlowEditorStepStateLabel;
+}
+
+export interface FlowEditorDetailResponse {
+  flow: TestFlow;
+  transitionSteps: FlowEditorTransitionStep[];
+  editorSteps: FlowEditorDraftStep[];
+}
+
+export interface SaveFlowEditorStepsResponse {
+  editorSteps: FlowEditorDraftStep[];
+  editorStepCount: number;
+}
+
+export interface FlowEditorConnectResponse {
+  editorSessionId: string;
+  wsTicket: string;
 }
 
 export interface RegressionCodebaseOption {

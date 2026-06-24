@@ -1220,9 +1220,11 @@ const Applications = () => {
         maxStates: Number(session.crawlConfig.maxStates ?? 1000),
         timeoutSeconds: Number(session.crawlConfig.timeoutSeconds ?? 3600),
         generateTestFlows: session.crawlConfig.generateTestFlows !== false,
+        generateTestCode: session.crawlConfig.generateTestCode === true,
         testFlowGeneration: {
           coveragePercentage: Number(testFlowGeneration.coveragePercentage ?? 100),
           numOfTf: Number(testFlowGeneration.numOfTf ?? 1),
+          maxNumOfTf: Number(testFlowGeneration.maxNumOfTf ?? 10000),
           numOfStates: Number(testFlowGeneration.numOfStates ?? 20),
           minNumOfStatesPerTf: Number(testFlowGeneration.minNumOfStatesPerTf ?? 3),
         },

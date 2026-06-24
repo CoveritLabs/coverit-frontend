@@ -1,0 +1,1259 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+.shell {
+  --flow-strong-border: color-mix(in srgb, var(--border) 70%, var(--foreground));
+  --flow-step-hover: color-mix(in srgb, var(--muted) 55%, var(--card));
+  --flow-success-tint: color-mix(in srgb, var(--success) 10%, var(--card));
+  --flow-success-tint-strong: color-mix(in srgb, var(--success) 14%, var(--card));
+  --flow-design-class: var(--chart-1);
+  --flow-assertion: var(--chart-4);
+  --flow-action-hook: var(--chart-5);
+  --flow-group: var(--chart-2);
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  min-height: 0;
+}
+
+.centerState {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  color: var(--muted-foreground);
+  font-size: 0.9375rem;
+}
+
+.editorViewportWrapper {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--manual-session-viewport-shell);
+}
+
+.editorViewportFrame {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  max-width: calc((100vh - 5.5rem) * 1365 / 768);
+  aspect-ratio: 1365 / 768;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(135deg, var(--manual-session-grid) 25%, transparent 25%),
+    linear-gradient(225deg, var(--manual-session-grid) 25%, transparent 25%), var(--manual-session-viewport-bg);
+  background-size: 20px 20px;
+}
+
+.editorCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+  cursor: default;
+}
+
+.editorCanvasInspecting {
+  cursor: crosshair;
+}
+
+.canvasOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.inspectBox {
+  position: absolute;
+  display: block;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 18%, transparent);
+}
+
+.inspectBoxSelected {
+  z-index: 1;
+  border: 1px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+.inspectBoxHovered {
+  z-index: 2;
+  border: 2px solid var(--success);
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+}
+
+.inspectBoxCombined {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 18%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--warning) 22%, transparent);
+}
+
+.inspectPopup {
+  position: absolute;
+  z-index: 3;
+  max-width: min(28rem, calc(100% - 1rem));
+  transform: translateY(calc(-100% - 0.375rem));
+  padding: 0.25rem 0.5rem;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.positionLoadingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--background) 62%, transparent);
+  backdrop-filter: blur(1px);
+  font-size: 0.875rem;
+  text-align: center;
+
+  strong {
+    max-width: min(28rem, calc(100% - 2rem));
+    color: var(--muted-foreground);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.positionErrorOverlay {
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 10%, var(--background));
+}
+
+.viewportEmpty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+}
+
+.spinnerIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── Sidebar context (mirrors ManualSession.panel) ─────────────────────────── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+}
+
+.sidebarContext {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebarContextHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  strong {
+    color: var(--foreground);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+}
+
+.contextEyebrow {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.targetSummary {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.panelActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.iconButton:hover {
+  color: var(--foreground);
+  border-color: var(--flow-strong-border);
+}
+
+.iconButtonActive {
+  color: var(--success);
+  background: var(--flow-success-tint);
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent);
+}
+
+.dirtyBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ─── Tab bar ───────────────────────────────────────────────────────────────── */
+
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabButton,
+.tabButtonActive {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.tabButton:hover {
+  color: var(--foreground);
+}
+
+.tabButtonActive {
+  color: var(--success);
+  border-bottom-color: var(--success);
+}
+
+.tabIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.tabContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.editorTabContent {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.editorTabScroll {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.inspectorDrawer {
+  flex: 0 0 auto;
+  max-height: 3.25rem;
+  min-height: 3.25rem;
+  overflow: hidden;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  transition: max-height 0.18s ease;
+}
+
+.inspectorDrawerOpen {
+  max-height: min(24rem, 58%);
+}
+
+.inspectorDrawerToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.625rem 0.875rem;
+  color: var(--foreground);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.inspectorDrawerToggle:hover {
+  background: var(--muted);
+}
+
+.inspectorDrawerTitle {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.5rem;
+  align-items: center;
+  text-align: left;
+
+  span {
+    color: var(--muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  strong {
+    grid-column: 2;
+    min-width: 0;
+    color: var(--foreground);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.inspectorDrawerIcon {
+  grid-row: 1 / span 2;
+  width: 1rem;
+  height: 1rem;
+  color: var(--success);
+}
+
+.drawerChevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+.inspectorDrawerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: calc(min(24rem, 58vh) - 3.25rem);
+  padding: 0 0.875rem 0.875rem;
+  overflow-y: auto;
+}
+
+.metadataGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.625rem;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+
+  h3 {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.metadataPrimary {
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.selectorCandidateList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  code {
+    padding: 0.25rem 0.375rem;
+    color: var(--muted-foreground);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+}
+
+.metadataRow,
+.attributeRow {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 0.35fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.metadataRow span,
+.attributeRow code {
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+
+.metadataRow strong,
+.attributeRow span {
+  min-width: 0;
+  color: var(--foreground);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.metadataMono,
+.attributeRow code {
+  font-family: var(--font-mono);
+}
+
+.attributeList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metadataEmpty {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+/* ─── Steps header ──────────────────────────────────────────────────────────── */
+
+.stepsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stepCount {
+  min-width: 1.5rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  color: var(--foreground);
+  background: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ─── Flow list (steps + injected blocks + injector rows) ───────────────────── */
+
+.flowList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transitionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: -0.25rem 0;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+
+/* ─── Step item ─────────────────────────────────────────────────────────────── */
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: var(--muted);
+  transition: background 0.12s ease;
+}
+
+.transitionGroup:hover .step,
+.stepHover {
+  background: var(--flow-step-hover);
+}
+
+.stepActive {
+  background: var(--flow-success-tint);
+  border-color: var(--success);
+}
+
+.stepReplaying {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 55%, var(--border));
+}
+
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.625rem;
+  width: 1.625rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  color: var(--primary-foreground);
+  background: var(--success);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  strong {
+    color: var(--foreground);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.stepDetail {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stepUrl {
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stepStatus {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+  padding: 0 0.375rem;
+  color: var(--muted-foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stepStatus_completed {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+
+.stepStatus_pending,
+.stepStatus_queued {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--border));
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+.stepStatus_missing {
+  color: var(--muted-foreground);
+}
+
+/* ─── Injected block ────────────────────────────────────────────────────────── */
+
+.block {
+  --block-accent: var(--muted-foreground);
+  --block-accent-soft: color-mix(in srgb, var(--block-accent) 9%, var(--card));
+
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--block-accent-soft);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--block-accent);
+}
+
+.block_design-class {
+  --block-accent: var(--flow-design-class);
+}
+
+.block_design-operation {
+  --block-accent: var(--flow-design-class);
+}
+
+.block_assertion {
+  --block-accent: var(--flow-assertion);
+}
+
+.block_action-hook {
+  --block-accent: var(--flow-action-hook);
+}
+
+.block_group {
+  --block-accent: var(--flow-group);
+}
+
+.blockAccent_design-class .blockIcon,
+.blockAccent_design-operation .blockIcon,
+.blockAccent_assertion .blockIcon,
+.blockAccent_action-hook .blockIcon,
+.blockAccent_group .blockIcon {
+  color: var(--block-accent);
+}
+
+.blockIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.1875rem;
+  flex-shrink: 0;
+}
+
+.blockBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.blockKind {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.blockLabel {
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.blockSelector {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.blockRemove {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.blockRemove:hover {
+  color: var(--destructive);
+  background: var(--muted);
+}
+
+.blockRemoveIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ─── Tokens (inline expression renderer) ───────────────────────────────────── */
+
+.tokens {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.token {
+  display: inline-flex;
+  align-items: center;
+}
+
+.token_kw {
+  color: var(--muted-foreground);
+}
+
+.token_var {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  font-weight: 700;
+}
+
+.token_sel {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.token_op {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.token_num {
+  color: var(--foreground);
+  background: var(--muted);
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.token_lit {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+/* ─── Injector row (the + handle between steps) ─────────────────────────────── */
+
+.injector {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0 0.5rem;
+  list-style: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.injectorVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.transitionGroup:hover .injector {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.injectorActive {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.injectorActive .injectorLine {
+  background: var(--success);
+}
+
+.injectorActive .injectorButton {
+  color: var(--primary-foreground);
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.injectorReplaying .injectorButton {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 18%, transparent);
+}
+
+.injectorButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.125rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--success);
+  background: var(--card);
+  border: 1px solid var(--flow-strong-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.injectorButton:hover {
+  color: var(--primary-foreground);
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.injectorIcon {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.injectorLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── Editor form ───────────────────────────────────────────────────────────── */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.editorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.editorHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.editorEyebrow {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.editorHeading strong {
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.positionStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--success);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.editorClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.editorClose:hover {
+  color: var(--foreground);
+  border-color: var(--flow-strong-border);
+}
+
+.editorCloseIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.editorLabel {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Type picker ───────────────────────────────────────────────────────────── */
+
+.typeGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.typeCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  color: var(--foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.typeCard:hover {
+  border-color: var(--flow-strong-border);
+}
+
+.typeCardActive {
+  background: var(--flow-success-tint);
+  border-color: var(--success);
+}
+
+.typeCardIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--muted-foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.typeCardActive .typeCardIconWrap {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.typeCardIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.typeCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.typeCardLabel {
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.typeCardDesc {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+/* ─── Form fields ───────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.field span {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  color: var(--foreground);
+  background: var(--input-background);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  font-family: var(--font-mono);
+}
+
+.field input::placeholder {
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+/* ─── Preview ───────────────────────────────────────────────────────────────── */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+.previewLabel {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.elementSummary {
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.jsonPreview {
+  max-height: 16rem;
+  margin: 0.25rem 0 0;
+  padding: 0.625rem;
+  overflow: auto;
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+}
+
+/* ─── Editor actions ────────────────────────────────────────────────────────── */
+
+.editorActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.primaryButton,
+.secondaryButton,
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.primaryButton {
+  flex: 1;
+  color: var(--primary-foreground);
+  background: var(--success);
+  border: 1px solid transparent;
+}
+
+.primaryButton:hover {
+  background: color-mix(in srgb, var(--success) 88%, var(--foreground));
+}
+
+.secondaryButton {
+  color: var(--foreground);
+  background: var(--muted);
+  border: 1px solid var(--flow-strong-border);
+}
+
+.secondaryButton:hover {
+  background: color-mix(in srgb, var(--muted) 75%, var(--card));
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.backButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.buttonIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.backButton {
+  margin: 0 1rem 1rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.backButton:hover {
+  color: var(--foreground);
+  border-color: var(--flow-strong-border);
+}
+
+/* ─── Empty editor state ────────────────────────────────────────────────────── */
+
+.emptyEditor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.emptyEditorIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+  opacity: 0.6;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 960px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 22rem;
+  }
+
+  .panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}

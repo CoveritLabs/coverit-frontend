@@ -3,11 +3,12 @@
 // See LICENSE file in the project root for full license information.
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { TargetApplicationResponse } from "@coveritlabs/contracts";
 import { AlertCircle, X } from "lucide-react";
 import { useUIStore } from "@app/store";
 import { useTargetApplications } from "@features/target-applications";
+import { ROUTES } from "@shared/config/routes";
 import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { ErrorBanner } from "@shared/feedback/ErrorBanner";
 import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
@@ -195,6 +196,7 @@ function GenerateFlowModal({
 
 function TestFlows() {
   const selectedProject = useUIStore((state) => state.selectedProject);
+  const navigate = useNavigate();
   const {
     data: applications = [],
     isLoading: applicationsLoading,
@@ -440,6 +442,13 @@ function TestFlows() {
           isFetching={flowsQuery.isFetching}
           generatingFlowId={generateFlowMutation.isPending ? generatingFlow?.id : null}
           onGenerate={(flow) => setGeneratingFlow(flow)}
+          onEdit={(flow) => {
+            if (!activeApplication) return;
+            navigate(
+              ROUTES.TEST_FLOW_EDITOR.replace(":flowId", flow.id) +
+                `?appId=${encodeURIComponent(activeApplication.id)}`,
+            );
+          }}
           onPreviousPage={() => {
             const previousCursor = cursorStack[cursorStack.length - 1] ?? null;
             setCursor(previousCursor);

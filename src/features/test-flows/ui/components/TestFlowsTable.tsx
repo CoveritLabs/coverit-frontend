@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { RefreshCw } from "lucide-react";
+import { PencilLine, RefreshCw } from "lucide-react";
 import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
 import type { TestFlow } from "../../model/types/test-flows.types";
 import styles from "../TestFlows.module.scss";
@@ -37,6 +37,7 @@ export function TestFlowsTable({
   onPreviousPage,
   onNextPage,
   onGenerate,
+  onEdit,
   generatingFlowId,
 }: {
   flows: TestFlow[];
@@ -48,6 +49,7 @@ export function TestFlowsTable({
   onPreviousPage: () => void;
   onNextPage: () => void;
   onGenerate: (flow: TestFlow) => void;
+  onEdit: (flow: TestFlow) => void;
   generatingFlowId?: string | null;
 }) {
   const showEmptyState = flows.length === 0 && !hasPreviousPage && !hasNextPage;
@@ -93,7 +95,10 @@ export function TestFlowsTable({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className={styles.stepCount}>{flow.stepCount}</span>
+                    <span className={styles.stepCount}>
+                      {flow.stepCount}
+                      {flow.editorStepCount > 0 ? ` + ${flow.editorStepCount} draft` : ""}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -125,21 +130,33 @@ export function TestFlowsTable({
                     <span className={styles.dateText}>{formatDateTime(flow.createdAt)}</span>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={styles.generateButton}
-                      onClick={() => onGenerate(flow)}
-                      disabled={flow.status === "GENERATED" || generatingFlowId === flow.id}
-                      title={
-                        flow.status === "GENERATED"
-                          ? "This flow is up to date"
-                          : `Generate from ${flow.transitionRefs.length} transition(s)`
-                      }
-                    >
-                      <RefreshCw size={14} />
-                      Generate
-                    </Button>
+                    <div className={styles.rowActions}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={styles.generateButton}
+                        onClick={() => onEdit(flow)}
+                        title="Edit flow"
+                      >
+                        <PencilLine size={14} />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={styles.generateButton}
+                        onClick={() => onGenerate(flow)}
+                        disabled={flow.status === "GENERATED" || generatingFlowId === flow.id}
+                        title={
+                          flow.status === "GENERATED"
+                            ? "This flow is up to date"
+                            : `Generate from ${flow.transitionRefs.length} transition(s)`
+                        }
+                      >
+                        <RefreshCw size={14} />
+                        Generate
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

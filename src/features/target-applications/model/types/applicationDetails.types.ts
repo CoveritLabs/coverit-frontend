@@ -27,9 +27,11 @@ export interface CrawlConfigInput {
   maxStates: number;
   timeoutSeconds: number;
   generateTestFlows: boolean;
+  generateTestCode?: boolean;
   testFlowGeneration?: {
     coveragePercentage?: number;
     numOfTf?: number;
+    maxNumOfTf?: number;
     numOfStates?: number;
     minNumOfStatesPerTf?: number;
   };
