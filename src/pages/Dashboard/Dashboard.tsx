@@ -2,45 +2,62 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import type { TargetApplicationResponse } from "@coveritlabs/contracts";
-import { Activity, AlertTriangle, CheckCircle2, Clock3, FlaskConical, RefreshCw, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, FlaskConical, RefreshCw, Route } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useUIStore } from "@app/store";
 import {
   useProjectDashboard,
   type ProjectActivity,
-  type ProjectCoverageSummary,
-  type ProjectLatestCrawlSession,
-  type ProjectLatestRun,
-  type ProjectLatestTestFlow,
-  type ProjectRunStatistics,
+  type ProjectCoveragePoint,
+  type ProjectCrawlSessionTrendPoint,
+  type ProjectRunTrendPoint,
+  type ProjectTestFlowBreakdownPoint,
 } from "@features/dashboard";
 import { useProjects } from "@features/projects";
-import { useTargetApplications } from "@features/target-applications";
 import { ROUTES } from "@shared/config/routes";
 import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
-import { Badge, Button, Card, Select } from "@shared/ui";
+import { Badge, Button, Card } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import styles from "./Dashboard.module.scss";
 
-const LATEST_VERSION_VALUE = "latest";
-const EMPTY_COVERAGE: ProjectCoverageSummary = { percentage: 0, coveredTransitions: 0, totalTransitions: 0 } as ProjectCoverageSummary;
-const EMPTY_RUN_STATISTICS: ProjectRunStatistics = {
+const EMPTY_TOTALS = {
+  totalStates: 0,
+  totalTransitions: 0,
+  totalOnDemandSessions: 0,
+  totalRuns: 0,
   passedCount: 0,
   warningCount: 0,
   failedCount: 0,
   reportedWarningCount: 0,
   reportedFailedCount: 0,
-  totalRuns: 0,
-} as ProjectRunStatistics;
+};
+
+const RESULT_COLORS = {
+  passed: "#2e9f75",
+  warning: "#d69026",
+  failed: "var(--destructive)",
+} as const;
+
+const CHART_GRID_STROKE = "var(--border)";
+const CHART_TEXT_COLOR = "var(--text-secondary)";
 
 type StatusTone = "success" | "warning" | "danger" | "running" | "neutral";
-
-type VersionOption = {
-  value: string;
-  label: string;
+type ChartTooltipPayload = {
+  dataKey?: string | number;
+  name?: string | number;
+  value?: string | number;
+  payload?: unknown;
 };
 
 function formatDateTime(value?: string) {
@@ -83,6 +100,12 @@ function getStatusTone(status?: string): StatusTone {
 
 function getActivityLabel(eventType: string) {
   return titleCase(eventType.replace(/\./g, " "));
+}
+
+function getOverallCoverage(points: ProjectCoveragePoint[]) {
+  const covered = points.reduce((sum, point) => sum + point.coveredTransitions, 0);
+  const total = points.reduce((sum, point) => sum + point.totalTransitions, 0);
+  return total > 0 ? Math.min(100, (covered / total) * 100) : 0;
 }
 
 function EmptyState({
@@ -147,11 +170,6 @@ function KpiCard({
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const tone = getStatusTone(status);
-  return <Badge className={cn(styles.statusBadge, styles[`badge_${tone}`])}>{titleCase(status)}</Badge>;
-}
-
 function SectionCard({ title, caption, children }: { title: string; caption?: string; children: ReactNode }) {
   return (
     <Card className={styles.sectionCard}>
@@ -166,74 +184,274 @@ function SectionCard({ title, caption, children }: { title: string; caption?: st
   );
 }
 
-function LatestRuns({ runs }: { runs: ProjectLatestRun[] }) {
+function StatusBadge({ status }: { status: string }) {
+  const tone = getStatusTone(status);
+  return <Badge className={cn(styles.statusBadge, styles[`badge_${tone}`])}>{titleCase(status)}</Badge>;
+}
+
+function ChartGrid() {
+  return <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" vertical={false} />;
+}
+
+function ChartXAxis({ dataKey = "label", interval = 0 }: { dataKey?: string; interval?: number }) {
+  return (
+    <XAxis
+      dataKey={dataKey}
+      interval={interval}
+      tick={{ fill: CHART_TEXT_COLOR, fontSize: 11 }}
+      tickLine={false}
+      axisLine={{ stroke: CHART_GRID_STROKE }}
+      minTickGap={12}
+    />
+  );
+}
+
+function ChartYAxis({ tickFormatter, width = 42 }: { tickFormatter?: (value: number) => string; width?: number }) {
+  return (
+    <YAxis
+      tickFormatter={tickFormatter}
+      tick={{ fill: CHART_TEXT_COLOR, fontSize: 11 }}
+      tickLine={false}
+      axisLine={false}
+      width={width}
+    />
+  );
+}
+
+function DashboardTooltip({ active, payload, label }: { active?: boolean; payload?: ChartTooltipPayload[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className={styles.chartTooltip}>
+      <strong>{label ?? (payload[0]?.payload as { label?: string } | undefined)?.label}</strong>
+      {payload.map((item) => (
+        <span key={`${item.dataKey}-${item.name}`}>
+          {item.name ?? titleCase(String(item.dataKey))}: {formatNumber(Number(item.value))}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CoverageTooltip({ active, payload }: { active?: boolean; payload?: ChartTooltipPayload[] }) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0].payload as ProjectCoveragePoint & { label: string };
+  return (
+    <div className={styles.chartTooltip}>
+      <strong>{point.applicationName}</strong>
+      <span>{point.version}</span>
+      <span>Coverage: {formatPercent(point.percentage)}</span>
+      <span>
+        {formatNumber(point.coveredTransitions)} / {formatNumber(point.totalTransitions)} transitions
+      </span>
+      <span>{formatNumber(point.sessionCount)} on-demand sessions</span>
+    </div>
+  );
+}
+
+function RunTooltip({ active, payload }: { active?: boolean; payload?: ChartTooltipPayload[] }) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0].payload as ProjectRunTrendPoint & { label: string };
+  return (
+    <div className={styles.chartTooltip}>
+      <strong>{point.displayName}</strong>
+      <span>{point.applicationName}{point.version ? ` / ${point.version}` : ""}</span>
+      <span>Status: {titleCase(point.status)}</span>
+      <span>Pass: {formatNumber(point.passedCount)}</span>
+      <span>Warn: {formatNumber(point.warningCount)}</span>
+      <span>Fail: {formatNumber(point.failedCount)}</span>
+    </div>
+  );
+}
+
+function CoveragePanel({
+  appCoverage,
+  versionCoverage,
+  selectedApplicationId,
+  onSelectApplication,
+}: {
+  appCoverage: ProjectCoveragePoint[];
+  versionCoverage: ProjectCoveragePoint[];
+  selectedApplicationId: string | null;
+  onSelectApplication: (applicationId: string) => void;
+}) {
+  const selectedApp = appCoverage.find((point) => point.applicationId === selectedApplicationId) ?? appCoverage[0];
+  const versions = selectedApp
+    ? versionCoverage.filter((point) => point.applicationId === selectedApp.applicationId)
+    : [];
+  const chartData = appCoverage.map((point) => ({
+    ...point,
+    label: point.applicationName,
+  }));
+
+  return (
+    <Card className={styles.coverageCard}>
+      <div className={styles.coverageHeader}>
+        <div>
+          <h2>Coverage by application</h2>
+          <p>Latest version per application, based on completed on-demand sessions</p>
+        </div>
+        {selectedApp && (
+          <Badge variant="outline" className={styles.coverageSelection}>
+            {selectedApp.applicationName}
+          </Badge>
+        )}
+      </div>
+
+      {chartData.length === 0 ? (
+        <p className={styles.panelEmpty}>Coverage appears after applications have completed on-demand crawls.</p>
+      ) : (
+        <div className={styles.coverageGrid}>
+          <div className={styles.chartWrap}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <ChartGrid />
+                <ChartXAxis interval={0} />
+                <ChartYAxis tickFormatter={(value) => `${value}%`} />
+                <Tooltip content={<CoverageTooltip />} cursor={{ fill: "color-mix(in oklab, var(--muted) 55%, transparent)" }} />
+                <Bar
+                  dataKey="percentage"
+                  name="Coverage"
+                  fill="var(--chart-1)"
+                  radius={[4, 4, 0, 0]}
+                  onClick={(point) => {
+                    const applicationId =
+                      (point as { applicationId?: string; payload?: { applicationId?: string } }).applicationId ??
+                      (point as { payload?: { applicationId?: string } }).payload?.applicationId;
+                    if (applicationId) onSelectApplication(applicationId);
+                  }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className={styles.versionDrilldown}>
+            <div className={styles.versionDrilldownHeader}>
+              <span>{selectedApp ? selectedApp.applicationName : "Versions"}</span>
+              <strong>{selectedApp ? formatPercent(selectedApp.percentage) : "0%"}</strong>
+            </div>
+            {versions.length === 0 ? (
+              <p className={styles.versionEmpty}>Select an application to compare its versions.</p>
+            ) : (
+              <div className={styles.versionRows}>
+                {versions.map((version) => (
+                  <div key={version.versionId} className={styles.versionRow}>
+                    <div>
+                      <span>{version.version}</span>
+                      <strong>{formatPercent(version.percentage)}</strong>
+                    </div>
+                    <div className={styles.versionTrack}>
+                      <span style={{ width: `${Math.min(100, Math.max(0, version.percentage))}%` }} />
+                    </div>
+                    <em>
+                      {formatNumber(version.coveredTransitions)} / {formatNumber(version.totalTransitions)} transitions
+                    </em>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RunsTrend({ runs }: { runs: ProjectRunTrendPoint[] }) {
+  const chartData = runs.map((run, index) => ({
+    ...run,
+    label: `Run ${index + 1}`,
+  }));
+  const recentRuns = runs.slice(-5).reverse();
+  const interval = chartData.length <= 8 ? 0 : Math.ceil(chartData.length / 8) - 1;
+
   if (runs.length === 0) return <p className={styles.panelEmpty}>No regression runs yet.</p>;
 
   return (
-    <div className={styles.list}>
-      {runs.map((run) => (
-        <div key={run.id} className={styles.listItem}>
-          <div className={styles.listMain}>
-            <strong>{run.displayName}</strong>
-            <span>
-              {run.applicationName}
-              {run.version ? ` / ${run.version}` : ""}
-            </span>
-          </div>
-          <div className={styles.listMeta}>
+    <div className={styles.runsPanel}>
+      <div className={styles.chartWrap}>
+        <ResponsiveContainer width="100%" height={230}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <ChartGrid />
+            <ChartXAxis interval={interval} />
+            <ChartYAxis />
+            <Tooltip content={<RunTooltip />} cursor={{ fill: "color-mix(in oklab, var(--muted) 55%, transparent)" }} />
+            <Bar dataKey="passedCount" name="Pass" stackId="results" fill={RESULT_COLORS.passed} />
+            <Bar dataKey="warningCount" name="Warn" stackId="results" fill={RESULT_COLORS.warning} />
+            <Bar dataKey="failedCount" name="Fail" stackId="results" fill={RESULT_COLORS.failed} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={styles.recentRunStrip}>
+        {recentRuns.map((run) => (
+          <div key={run.id} className={styles.recentRunItem}>
+            <div>
+              <strong>{run.displayName}</strong>
+              <span>{run.applicationName}{run.version ? ` / ${run.version}` : ""}</span>
+            </div>
             <StatusBadge status={run.status} />
-            <span>{formatDateTime(run.createdAt)}</span>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
 
-function LatestCrawlSessions({ sessions }: { sessions: ProjectLatestCrawlSession[] }) {
-  if (sessions.length === 0) return <p className={styles.panelEmpty}>No crawl sessions yet.</p>;
+function CrawlTrend({ sessions }: { sessions: ProjectCrawlSessionTrendPoint[] }) {
+  const data = sessions.map((session, index) => ({
+    ...session,
+    label: `Crawl ${index + 1}`,
+  }));
+
+  if (sessions.length === 0) return <p className={styles.panelEmpty}>No completed on-demand crawls yet.</p>;
 
   return (
-    <div className={styles.list}>
-      {sessions.map((session) => (
-        <div key={session.id} className={styles.listItem}>
-          <div className={styles.listMain}>
-            <strong>{session.applicationName}</strong>
-            <span>
-              {session.version} / {formatNumber(session.stateCount)} states / {formatNumber(session.transitionCount)} transitions
-            </span>
-          </div>
-          <div className={styles.listMeta}>
-            <StatusBadge status={session.status} />
-            <span>{formatDateTime(session.createdAt)}</span>
-          </div>
-        </div>
-      ))}
+    <div className={styles.chartWrap}>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <ChartGrid />
+          <ChartXAxis interval={data.length <= 8 ? 0 : 1} />
+          <ChartYAxis />
+          <Tooltip content={<DashboardTooltip />} cursor={{ fill: "color-mix(in oklab, var(--muted) 55%, transparent)" }} />
+          <Bar dataKey="stateCount" name="States" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="transitionCount" name="Transitions" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-function LatestTestFlows({ flows }: { flows: ProjectLatestTestFlow[] }) {
+function TestFlowBreakdown({ flows }: { flows: ProjectTestFlowBreakdownPoint[] }) {
+  const data = flows.map((flow) => ({
+    ...flow,
+    label: titleCase(flow.type),
+  }));
+
   if (flows.length === 0) return <p className={styles.panelEmpty}>No test flows generated yet.</p>;
 
   return (
-    <div className={styles.list}>
-      {flows.map((flow) => (
-        <div key={flow.id} className={styles.listItem}>
-          <div className={styles.listMain}>
-            <strong>{flow.applicationName}</strong>
-            <span>
-              {flow.version} / {flow.stepCount} steps / {flow.isClipped ? "Clipped" : "Complete"}
-            </span>
+    <div className={styles.flowBreakdown}>
+      <div className={styles.chartWrap}>
+        <ResponsiveContainer width="100%" height={230}>
+          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <ChartGrid />
+            <ChartXAxis interval={0} />
+            <ChartYAxis />
+            <Tooltip content={<DashboardTooltip />} cursor={{ fill: "color-mix(in oklab, var(--muted) 55%, transparent)" }} />
+            <Bar dataKey="generatedCount" name="Generated" stackId="flows" fill="var(--chart-4)" />
+            <Bar dataKey="staleCount" name="Stale" stackId="flows" fill="var(--chart-5)" />
+            <Bar dataKey="pendingCount" name="Pending" stackId="flows" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={styles.flowRows}>
+        {flows.map((flow) => (
+          <div key={flow.type} className={styles.flowRow}>
+            <span>{titleCase(flow.type)}</span>
+            <strong>{formatNumber(flow.count)}</strong>
+            <em>{formatNumber(flow.totalSteps)} steps</em>
           </div>
-          <div className={styles.listMeta}>
-            <Badge variant="outline" className={styles.hashBadge}>
-              {flow.checkpointStateHash.slice(0, 8)}
-            </Badge>
-            <span>{formatDateTime(flow.createdAt)}</span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -262,50 +480,24 @@ function RecentActivities({ activities }: { activities: ProjectActivity[] }) {
   );
 }
 
-function buildVersionOptions(applications: TargetApplicationResponse[]): VersionOption[] {
-  const versionOptions = applications.flatMap((application) =>
-    (application.versions ?? []).map((version) => ({
-      value: version.id,
-      label: `${application.name} / ${version.version}`,
-    })),
-  );
-
-  return [{ value: LATEST_VERSION_VALUE, label: "Latest version" }, ...versionOptions];
-}
-
 function Dashboard() {
   const navigate = useNavigate();
   const selectedProject = useUIStore((state) => state.selectedProject);
   const setSelectedProject = useUIStore((state) => state.setSelectedProject);
   const setUserRole = useUIStore((state) => state.setUserRole);
   const { data: projects = [], isLoading: projectsLoading } = useProjects();
-  const [selectedVersionId, setSelectedVersionId] = useState<string>(LATEST_VERSION_VALUE);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const selectedProjectExists = Boolean(
     selectedProject && projects.some((project) => project.id === selectedProject.id),
   );
   const activeProject = projectsLoading || selectedProjectExists ? selectedProject : null;
-  const {
-    data: applications = [],
-    isLoading: applicationsLoading,
-    isError: applicationsError,
-    refetch: refetchApplications,
-  } = useTargetApplications(activeProject?.id ?? null);
-
-  const versionOptions = useMemo(() => buildVersionOptions(applications), [applications]);
-  const resolvedVersionId = selectedVersionId === LATEST_VERSION_VALUE ? undefined : selectedVersionId;
-  const dashboardQuery = useProjectDashboard(activeProject?.id ?? null, resolvedVersionId);
+  const dashboardQuery = useProjectDashboard(activeProject?.id ?? null);
   const dashboard = dashboardQuery.data;
-  const isRefreshing = applicationsLoading || dashboardQuery.isFetching;
+  const isRefreshing = dashboardQuery.isFetching;
 
   const handleRefresh = () => {
-    void Promise.all([dashboardQuery.refetch(), refetchApplications()]);
+    void dashboardQuery.refetch();
   };
-
-  useEffect(() => {
-    if (selectedVersionId === LATEST_VERSION_VALUE) return;
-    const versionExists = versionOptions.some((option) => option.value === selectedVersionId);
-    if (!versionExists) setSelectedVersionId(LATEST_VERSION_VALUE);
-  }, [selectedVersionId, versionOptions]);
 
   useEffect(() => {
     if (projectsLoading || !selectedProject || selectedProjectExists) return;
@@ -313,32 +505,28 @@ function Dashboard() {
     setUserRole(null);
   }, [projectsLoading, selectedProject, selectedProjectExists, setSelectedProject, setUserRole]);
 
+  useEffect(() => {
+    if (!dashboard?.coverageByApplication.length) {
+      setSelectedApplicationId(null);
+      return;
+    }
+    if (!selectedApplicationId || !dashboard.coverageByApplication.some((point) => point.applicationId === selectedApplicationId)) {
+      setSelectedApplicationId(dashboard.coverageByApplication[0].applicationId);
+    }
+  }, [dashboard?.coverageByApplication, selectedApplicationId]);
+
   if (!activeProject) {
     if (!projectsLoading && projects.length === 0) {
       return (
         <PlainEmptyState
           title="Create a project first"
           description="Dashboard statistics appear after a project exists."
-          action={
-            <Button onClick={() => navigate(ROUTES.ADMINISTRATE)}>
-              Create Project
-            </Button>
-          }
+          action={<Button onClick={() => navigate(ROUTES.ADMINISTRATE)}>Create Project</Button>}
         />
       );
     }
 
-    return (
-      <EmptyState title="Choose a project" description="Select a project from the sidebar to view dashboard statistics." />
-    );
-  }
-
-  if (applicationsLoading && !dashboard) {
-    return <PageLoader />;
-  }
-
-  if (applicationsError) {
-    return <ContentErrorPanel title="Failed to load dashboard filters" message="Project applications could not be loaded." />;
+    return <EmptyState title="Choose a project" description="Select a project from the sidebar to view dashboard statistics." />;
   }
 
   if (dashboardQuery.isError) {
@@ -356,11 +544,9 @@ function Dashboard() {
     return <PageLoader />;
   }
 
-  const stats = dashboard.runStatistics ?? EMPTY_RUN_STATISTICS;
-  const coverage = dashboard.coverage ?? EMPTY_COVERAGE;
-  const resolvedVersionLabel = dashboard.selectedVersion
-    ? `${dashboard.selectedVersion.applicationName} / ${dashboard.selectedVersion.version}`
-    : "No version available";
+  const totals = dashboard.totals ?? EMPTY_TOTALS;
+  const overallCoverage = getOverallCoverage(dashboard.coverageByApplication ?? []);
+  const reportedIssues = totals.reportedWarningCount + totals.reportedFailedCount;
 
   return (
     <div className={styles.page}>
@@ -381,74 +567,58 @@ function Dashboard() {
           >
             <RefreshCw className={cn(styles.refreshIcon, isRefreshing && styles.spinIcon)} />
           </Button>
-          <span className={styles.versionLabel}>Version</span>
-          <Select
-            options={versionOptions}
-            value={selectedVersionId}
-            onChange={(value) => setSelectedVersionId(value ?? LATEST_VERSION_VALUE)}
-            disabled={versionOptions.length <= 1}
-            className={styles.versionSelect}
-          />
         </div>
       </header>
 
       <section className={styles.kpiGrid}>
         <KpiCard
-          label="Test Coverage"
-          value={formatPercent(coverage.percentage)}
-          helper={`${formatNumber(coverage.coveredTransitions)} of ${formatNumber(coverage.totalTransitions)} transitions on ${resolvedVersionLabel}`}
+          label="Coverage"
+          value={formatPercent(overallCoverage)}
+          helper={`${formatNumber(dashboard.coverageByApplication.length)} applications with latest-version coverage`}
           icon={<FlaskConical />}
-          tone={coverage.percentage >= 80 ? "success" : coverage.percentage > 0 ? "warning" : "neutral"}
+          tone={overallCoverage >= 80 ? "success" : overallCoverage > 0 ? "warning" : "neutral"}
         />
         <KpiCard
-          label="Passed"
-          value={formatNumber(stats.passedCount)}
-          helper={`${formatNumber(stats.totalRuns)} total runs`}
+          label="New States"
+          value={formatNumber(totals.totalStates)}
+          helper={`${formatNumber(totals.totalTransitions)} transitions from ${formatNumber(totals.totalOnDemandSessions)} on-demand sessions`}
+          icon={<Route />}
+          tone="running"
+        />
+        <KpiCard
+          label="Run Results"
+          value={formatNumber(totals.totalRuns)}
+          helper={`${formatNumber(totals.passedCount)} pass / ${formatNumber(totals.warningCount)} warn / ${formatNumber(totals.failedCount)} fail`}
           icon={<CheckCircle2 />}
-          tone="success"
+          tone={totals.failedCount > 0 ? "danger" : totals.warningCount > 0 ? "warning" : "success"}
         />
         <KpiCard
-          label="Warnings"
-          value={formatNumber(stats.warningCount)}
-          helper={`${formatNumber(stats.reportedWarningCount)} reported`}
+          label="Reported"
+          value={formatNumber(reportedIssues)}
+          helper={`${formatNumber(totals.reportedWarningCount)} warnings / ${formatNumber(totals.reportedFailedCount)} failures reported`}
           icon={<AlertTriangle />}
-          tone="warning"
-        />
-        <KpiCard
-          label="Failed"
-          value={formatNumber(stats.failedCount)}
-          helper={`${formatNumber(stats.reportedFailedCount)} reported`}
-          icon={<XCircle />}
-          tone="danger"
+          tone={reportedIssues > 0 ? "warning" : "neutral"}
         />
       </section>
 
-      <section className={styles.coveragePanel}>
-        <Card className={styles.coverageCard}>
-          <div className={styles.coverageHeader}>
-            <div>
-              <h2>Coverage</h2>
-              <p>{coverage.crawlSessionId ? `Latest crawl session ${coverage.crawlSessionId}` : "No crawl session available"}</p>
-            </div>
-            <strong>{formatPercent(coverage.percentage)}</strong>
-          </div>
-          <div className={styles.coverageTrack}>
-            <span style={{ width: `${Math.min(100, Math.max(0, coverage.percentage))}%` }} />
-          </div>
-        </Card>
-      </section>
+      <CoveragePanel
+        appCoverage={dashboard.coverageByApplication ?? []}
+        versionCoverage={dashboard.coverageByVersion ?? []}
+        selectedApplicationId={selectedApplicationId}
+        onSelectApplication={setSelectedApplicationId}
+      />
 
       <main className={styles.contentGrid}>
-        <SectionCard title="Latest Runs" caption="Most recent regression runs across this project">
-          <LatestRuns runs={dashboard.latestRuns ?? []} />
+        <SectionCard title="Runs Trend" caption="Pass, warning, and failure counts by recent run">
+          <RunsTrend runs={dashboard.runTrend ?? []} />
         </SectionCard>
-        <SectionCard title="Latest Crawl Sessions" caption="Newest crawl sessions across applications">
-          <LatestCrawlSessions sessions={dashboard.latestCrawlSessions ?? []} />
+        <SectionCard title="Crawl Discoveries" caption="New states and transitions from completed on-demand sessions">
+          <CrawlTrend sessions={dashboard.crawlSessionTrend ?? []} />
         </SectionCard>
-        <SectionCard title="Latest Test Flows" caption="Newest generated flows across applications">
-          <LatestTestFlows flows={dashboard.latestTestFlows ?? []} />
+        <SectionCard title="Test Flows" caption="Generation status by flow type">
+          <TestFlowBreakdown flows={dashboard.testFlowBreakdown ?? []} />
         </SectionCard>
-        <SectionCard title="Recent Activity" caption="Successful project changes recorded by API middleware">
+        <SectionCard title="Recent Activity" caption="Project operations recorded after successful actions">
           <RecentActivities activities={dashboard.recentActivities ?? []} />
         </SectionCard>
       </main>
