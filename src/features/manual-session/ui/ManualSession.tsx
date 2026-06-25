@@ -4,7 +4,14 @@
 
 import { useUIStore } from "@app/store";
 import { useIntegrationStatus } from "@features/integrations";
-import { useConnectManualSession, useTargetApplications } from "@features/target-applications";
+import {
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+  useConnectManualSession,
+  useTargetApplications,
+} from "@features/target-applications";
 import { env } from "@shared/config/env";
 import { ROUTES } from "@shared/config/routes";
 import { toast } from "@shared/ui";
@@ -68,13 +75,31 @@ function buildWsUrl(sessionId: string, ticket: string) {
   return `${base}/ws/manual-recordings/${encodeURIComponent(sessionId)}?ticket=${encodeURIComponent(ticket)}`;
 }
 
+function updateSearchParams(
+  searchParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string | null>,
+  replace = true,
+) {
+  const next = new URLSearchParams(searchParams);
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!value) next.delete(key);
+    else next.set(key, value);
+  });
+  setSearchParams(next, { replace });
+}
+
 function ManualSession() {
   const params = useParams<RouteParams>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedProject = useUIStore((state) => state.selectedProject);
-  const { data: applications = [] } = useTargetApplications(selectedProject?.id ?? null);
+  const selectedApplicationContext = useUIStore((state) => state.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((state) => state.setSelectedApplicationContext);
+  const { data: applications = [], isPlaceholderData: applicationsPlaceholderData } = useTargetApplications(
+    selectedProject?.id ?? null,
+  );
   const connectManualSession = useConnectManualSession();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -91,8 +116,12 @@ function ManualSession() {
   const ticket = searchParams.get("ticket") ?? "";
   const connectionKey = `${sessionId}:${ticket}`;
   const wsUrl = useMemo(() => (sessionId && ticket ? buildWsUrl(sessionId, ticket) : ""), [sessionId, ticket]);
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(params.applicationId ?? null);
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(params.versionId ?? null);
+  const routeApplicationId = params.applicationId ?? null;
+  const routeVersionId = params.versionId ?? null;
+  const requestedApplicationId = routeApplicationId ?? searchParams.get("appId");
+  const requestedVersionId = routeVersionId ?? searchParams.get("versionId");
+  const projectId = selectedProject?.id ?? null;
+  const contextProjectId = params.projectId ?? projectId;
 
   const [activeTab, setActiveTab] = useState<"record" | "bug">("record");
   const [status, setStatus] = useState("connecting");
@@ -118,15 +147,35 @@ function ManualSession() {
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
 
   const selectedApplication = useMemo(
-    () => typedApplications.find((application) => application.id === selectedApplicationId) ?? null,
-    [selectedApplicationId, typedApplications],
+    () =>
+      routeApplicationId
+        ? (typedApplications.find((application) => application.id === routeApplicationId) ?? null)
+        : resolveApplicationSelection({
+            applications: typedApplications,
+            projectId,
+            requestedApplicationId,
+            storedContext: selectedApplicationContext,
+          }),
+    [projectId, requestedApplicationId, routeApplicationId, selectedApplicationContext, typedApplications],
   );
+  const selectedApplicationId = routeApplicationId ?? selectedApplication?.id ?? null;
   const jiraStatusQuery = useIntegrationStatus(selectedProject?.id ?? null, "jira");
   const availableVersions = useMemo(() => selectedApplication?.versions ?? [], [selectedApplication]);
   const selectedVersion = useMemo(
-    () => availableVersions.find((version) => version.id === selectedVersionId) ?? null,
-    [availableVersions, selectedVersionId],
+    () =>
+      routeVersionId
+        ? (availableVersions.find((version) => version.id === routeVersionId) ?? null)
+        : resolveVersionSelection({
+            versions: availableVersions,
+            projectId,
+            applicationId: selectedApplicationId,
+            requestedVersionId,
+            storedContext: selectedApplicationContext,
+            requireVersion: true,
+          }),
+    [availableVersions, projectId, requestedVersionId, routeVersionId, selectedApplicationContext, selectedApplicationId],
   );
+  const selectedVersionId = routeVersionId ?? selectedVersion?.id ?? null;
   const initialCanvasUrl = state.applicationBaseUrl ?? selectedApplication?.baseUrl ?? "";
   initialCanvasUrlRef.current = initialCanvasUrl;
   const hasLiveSession = Boolean(sessionId);
@@ -215,36 +264,66 @@ function ManualSession() {
   }, [pendingEvents.length]);
 
   useEffect(() => {
-    if (params.applicationId) {
-      setSelectedApplicationId(params.applicationId);
+    if (!contextProjectId) return;
+
+    if (routeApplicationId || routeVersionId) {
+      const nextContext = {
+        projectId: contextProjectId,
+        applicationId: routeApplicationId ?? selectedApplication?.id ?? "",
+        applicationName: state.applicationName || selectedApplication?.name || routeApplicationId || "Select application",
+        versionId: routeVersionId,
+        versionName: state.versionName || selectedVersion?.version || routeVersionId,
+      };
+
+      if (nextContext.applicationId && !applicationContextEquals(selectedApplicationContext, nextContext)) {
+        setSelectedApplicationContext(nextContext);
+      }
       return;
     }
+
+    if (applicationsPlaceholderData) return;
 
     if (!typedApplications.length) {
-      setSelectedApplicationId(null);
+      if (selectedApplicationContext?.projectId === contextProjectId) setSelectedApplicationContext(null);
+      if (requestedApplicationId || requestedVersionId) {
+        updateSearchParams(searchParams, setSearchParams, { appId: null, versionId: null });
+      }
       return;
     }
 
-    if (!selectedApplicationId || !typedApplications.some((application) => application.id === selectedApplicationId)) {
-      setSelectedApplicationId(typedApplications[0].id);
-    }
-  }, [params.applicationId, selectedApplicationId, typedApplications]);
+    if (!selectedApplication) return;
 
-  useEffect(() => {
-    if (params.versionId) {
-      setSelectedVersionId(params.versionId);
-      return;
+    const nextContext = buildApplicationContext(contextProjectId, selectedApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
     }
 
-    if (!availableVersions.length) {
-      setSelectedVersionId(null);
-      return;
-    }
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== selectedApplication.id) updates.appId = selectedApplication.id;
+    if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
+    if (!selectedVersionId && requestedVersionId) updates.versionId = null;
 
-    if (!selectedVersionId || !availableVersions.some((version) => version.id === selectedVersionId)) {
-      setSelectedVersionId(availableVersions[0].id);
+    if (Object.keys(updates).length > 0) {
+      updateSearchParams(searchParams, setSearchParams, updates);
     }
-  }, [availableVersions, params.versionId, selectedVersionId]);
+  }, [
+    applicationsPlaceholderData,
+    contextProjectId,
+    requestedApplicationId,
+    requestedVersionId,
+    routeApplicationId,
+    routeVersionId,
+    searchParams,
+    selectedApplication,
+    selectedApplicationContext,
+    selectedVersion,
+    selectedVersionId,
+    setSearchParams,
+    setSelectedApplicationContext,
+    state.applicationName,
+    state.versionName,
+    typedApplications.length,
+  ]);
 
   const drawFrame = useCallback((dataUrl: string) => {
     const canvas = canvasRef.current;
@@ -875,6 +954,36 @@ function ManualSession() {
     handleReportBug();
   };
 
+  const handleApplicationChange = (applicationId: string | null) => {
+    const application = applicationId ? (typedApplications.find((item) => item.id === applicationId) ?? null) : null;
+    const version = application?.versions?.[0] ?? null;
+
+    updateSearchParams(
+      searchParams,
+      setSearchParams,
+      {
+        appId: application?.id ?? null,
+        versionId: version?.id ?? null,
+      },
+      false,
+    );
+
+    if (contextProjectId && application) {
+      setSelectedApplicationContext(buildApplicationContext(contextProjectId, application, version));
+    } else {
+      setSelectedApplicationContext(null);
+    }
+  };
+
+  const handleVersionChange = (versionId: string | null) => {
+    const version = versionId ? (availableVersions.find((item) => item.id === versionId) ?? null) : null;
+    updateSearchParams(searchParams, setSearchParams, { versionId: version?.id ?? null }, false);
+
+    if (contextProjectId && selectedApplication) {
+      setSelectedApplicationContext(buildApplicationContext(contextProjectId, selectedApplication, version));
+    }
+  };
+
   return (
     <main className={styles.shell}>
       <ManualSessionHeader
@@ -934,8 +1043,8 @@ function ManualSession() {
           bugSummary={bugSummary}
           bugSeverity={bugSeverity}
           canReportBug={canReportBug}
-          onApplicationChange={setSelectedApplicationId}
-          onVersionChange={setSelectedVersionId}
+          onApplicationChange={handleApplicationChange}
+          onVersionChange={handleVersionChange}
           onConnectionAction={handleConnectionAction}
           onTabChange={setActiveTab}
           onRewindToCheckpoint={handleRewindToCheckpoint}

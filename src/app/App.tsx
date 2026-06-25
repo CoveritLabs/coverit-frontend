@@ -2,13 +2,21 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
+import { lazy, Suspense } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
 import { queryClient } from "@shared/lib/reactQuery";
 import { AppRouter } from "@app/router";
 import { ErrorBoundary } from "@shared/feedback/ErrorBoundary/ErrorBoundary";
 import { env } from "@shared/config/env";
+
+const ReactQueryDevtools = env.isDev
+  ? lazy(() =>
+      import("@tanstack/react-query-devtools").then((module) => ({
+        default: module.ReactQueryDevtools,
+      })),
+    )
+  : null;
 
 export default function App() {
   return (
@@ -16,7 +24,11 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <AppRouter />
         <Toaster />
-        {env.isDev && <ReactQueryDevtools initialIsOpen={false} />}
+        {ReactQueryDevtools && (
+          <Suspense fallback={null}>
+            <ReactQueryDevtools initialIsOpen={false} />
+          </Suspense>
+        )}
       </QueryClientProvider>
     </ErrorBoundary>
   );

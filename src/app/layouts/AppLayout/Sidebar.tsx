@@ -19,7 +19,9 @@ import {
   ChevronRight,
   Layers,
 } from "lucide-react";
-import logoImage from "@/assets/logo.png";
+import type { LucideIcon } from "lucide-react";
+import logoImage from "@/assets/logo-sidebar.png";
+import { preloadRoute, type LazyRouteKey } from "@app/router/LazyRouter";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useProjects } from "@features/projects";
 import { ROUTES } from "@shared/config/routes";
@@ -32,13 +34,13 @@ import { Select } from "@shared/ui";
 import { motion } from "motion/react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard },
-  { label: "Applications", to: ROUTES.APPLICATIONS, icon: AppWindow },
-  { label: "Test Flows", to: ROUTES.TEST_FLOWS, icon: Workflow },
-  { label: "Manual Recording", to: ROUTES.MANUAL_RECORDINGS, icon: MonitorPlay },
-  { label: "Regression Runs", to: ROUTES.REGRESSION_RUNS, icon: ListChecks },
-  { label: "User Guides", to: ROUTES.USER_GUIDES, icon: BookOpen },
-];
+  { label: "Dashboard", to: ROUTES.DASHBOARD, icon: LayoutDashboard, routeKey: "dashboard" },
+  { label: "Applications", to: ROUTES.APPLICATIONS, icon: AppWindow, routeKey: "applications" },
+  { label: "Test Flows", to: ROUTES.TEST_FLOWS, icon: Workflow, routeKey: "testFlows" },
+  { label: "Manual Recording", to: ROUTES.MANUAL_RECORDINGS, icon: MonitorPlay, routeKey: "manualSession" },
+  { label: "Regression Runs", to: ROUTES.REGRESSION_RUNS, icon: ListChecks, routeKey: "regressionRuns" },
+  { label: "User Guides", to: ROUTES.USER_GUIDES, icon: BookOpen, routeKey: "userGuides" },
+] satisfies Array<{ label: string; to: string; icon: LucideIcon; routeKey: LazyRouteKey }>;
 
 const PROFILE_ITEMS = [
   { label: "Profile", to: ROUTES.PROFILE, icon: User, description: "View and edit your profile" },
@@ -54,7 +56,7 @@ export function Sidebar() {
   const menuRef = useRef<HTMLDivElement>(null);
   const projectPopoverRef = useRef<HTMLDivElement>(null);
 
-  const { data: projects = [], isLoading, isError } = useProjects();
+  const { data: projects = [], isLoading, isError, isPlaceholderData } = useProjects();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const selectedProject = useUIStore((s) => s.selectedProject);
@@ -66,7 +68,7 @@ export function Sidebar() {
 
   // Auto-select first project if none selected
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isPlaceholderData) return;
     if (!projects.length) {
       if (selectedProject) {
         setSelectedProject(null);
@@ -79,7 +81,7 @@ export function Sidebar() {
       setSelectedProject({ id: projects[0].id, name: projects[0].name });
       setUserRole(getProjectUserRole(projects[0], user?.id));
     }
-  }, [isLoading, projects, selectedProject, setSelectedProject, setUserRole, user?.id]);
+  }, [isLoading, isPlaceholderData, projects, selectedProject, setSelectedProject, setUserRole, user?.id]);
 
   useEffect(() => {
     if (!projectPopoverOpen) return;
@@ -92,14 +94,14 @@ export function Sidebar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [projectPopoverOpen]);
 
-  const selectPlaceholder = isLoading
+  const selectPlaceholder = isLoading || isPlaceholderData
     ? "Loading projects..."
     : isError
       ? "Failed to load projects"
       : projects.length
         ? "Select project"
         : "No projects yet";
-  const selectDisabled = isLoading || isError || projects.length === 0;
+  const selectDisabled = isLoading || isPlaceholderData || isError || projects.length === 0;
 
   const handleProjectChange = (id: string | null) => {
     const proj = id ? (projects.find((p) => p.id === id) ?? null) : null;
@@ -169,7 +171,7 @@ export function Sidebar() {
                   placeholder={selectPlaceholder}
                   disabled={selectDisabled}
                 />
-                {!isLoading && !isError && projects.length === 0 && (
+                {!isLoading && !isPlaceholderData && !isError && projects.length === 0 && (
                   <button
                     type="button"
                     className={styles.createProject}
@@ -193,7 +195,7 @@ export function Sidebar() {
               placeholder={selectPlaceholder}
               disabled={selectDisabled}
             />
-            {!isLoading && !isError && projects.length === 0 && (
+            {!isLoading && !isPlaceholderData && !isError && projects.length === 0 && (
               <button type="button" className={styles.createProject} onClick={() => navigate(ROUTES.ADMINISTRATE)}>
                 Create project
               </button>
@@ -204,10 +206,12 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className={styles.nav}>
-        {NAV_ITEMS.map(({ label, to, icon: Icon }) => (
+        {NAV_ITEMS.map(({ label, to, icon: Icon, routeKey }) => (
           <NavLink
             key={to}
             to={to}
+            onMouseEnter={() => preloadRoute(routeKey)}
+            onFocus={() => preloadRoute(routeKey)}
             className={({ isActive }) =>
               `${styles.navItem} ${isActive ? styles.navItemActive : ""} ${isCollapsed ? styles.navItemCollapsed : ""}`
             }

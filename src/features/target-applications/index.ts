@@ -3,6 +3,14 @@
 // See LICENSE file in the project root for full license information.
 
 export { targetApplicationService } from "./api/targetApplicationService";
+export {
+  applicationContextEquals,
+  buildApplicationContext,
+  getContextVersionId,
+  getVersionLabel,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+} from "./lib/applicationContext";
 export { useTargetApplication, useTargetApplications } from "./model/queries/useTargetApplication";
 export { applicationDetailsService } from "./api/applicationDetailsService";
 export {

@@ -7,7 +7,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { TargetApplicationResponse } from "@coveritlabs/contracts";
 import { AlertCircle, X } from "lucide-react";
 import { useUIStore } from "@app/store";
-import { useTargetApplications } from "@features/target-applications";
+import {
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+  useTargetApplications,
+} from "@features/target-applications";
 import { ROUTES } from "@shared/config/routes";
 import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { ErrorBanner } from "@shared/feedback/ErrorBanner";
@@ -196,12 +202,15 @@ function GenerateFlowModal({
 
 function TestFlows() {
   const selectedProject = useUIStore((state) => state.selectedProject);
+  const selectedApplicationContext = useUIStore((state) => state.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((state) => state.setSelectedApplicationContext);
   const navigate = useNavigate();
   const {
     data: applications = [],
     isLoading: applicationsLoading,
     isError: applicationsError,
     isFetching: applicationsQueryFetching,
+    isPlaceholderData: applicationsPlaceholderData,
     refetch: refetchApplicationsQuery,
   } = useTargetApplications(selectedProject?.id ?? null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -210,18 +219,38 @@ function TestFlows() {
   const [cursorStack, setCursorStack] = useState<Array<string | null>>([]);
   const [generatingFlow, setGeneratingFlow] = useState<TestFlow | null>(null);
 
-  const applicationId = searchParams.get("appId");
-  const versionId = searchParams.get("versionId");
+  const requestedApplicationId = searchParams.get("appId");
+  const requestedVersionId = searchParams.get("versionId");
+  const projectId = selectedProject?.id ?? null;
+  const activeApplication = useMemo(
+    () =>
+      resolveApplicationSelection({
+        applications,
+        projectId,
+        requestedApplicationId,
+        storedContext: selectedApplicationContext,
+      }),
+    [applications, projectId, requestedApplicationId, selectedApplicationContext],
+  );
+  const applicationId = activeApplication?.id ?? null;
+  const selectedVersion = useMemo(
+    () =>
+      resolveVersionSelection({
+        versions: activeApplication?.versions ?? [],
+        projectId,
+        applicationId,
+        requestedVersionId,
+        storedContext: selectedApplicationContext,
+      }),
+    [activeApplication?.versions, applicationId, projectId, requestedVersionId, selectedApplicationContext],
+  );
+  const versionId = selectedVersion?.id ?? null;
   const type = getTypeFilter(searchParams.get("type"));
 
-  const activeApplication = useMemo(
-    () => applications.find((application) => application.id === applicationId) ?? null,
-    [applicationId, applications],
-  );
-
   useEffect(() => {
-    if (applicationsLoading) return;
+    if (applicationsLoading || applicationsPlaceholderData) return;
     if (applications.length === 0) {
+      if (selectedApplicationContext?.projectId === projectId) setSelectedApplicationContext(null);
       setCursor(null);
       setCursorStack([]);
       updateSearchParams(searchParams, setSearchParams, {
@@ -232,31 +261,47 @@ function TestFlows() {
       return;
     }
 
-    if (!applicationId || !applications.some((application) => application.id === applicationId)) {
+    if (!activeApplication) return;
+
+    const nextContext = buildApplicationContext(selectedProject!.id, activeApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
+    }
+
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== activeApplication.id) updates.appId = activeApplication.id;
+    if (versionId && requestedVersionId !== versionId) updates.versionId = versionId;
+    if (!versionId && requestedVersionId) updates.versionId = null;
+
+    if (Object.keys(updates).length > 0) {
       setCursor(null);
       setCursorStack([]);
       updateSearchParams(
         searchParams,
         setSearchParams,
         {
-          appId: applications[0].id,
-          versionId: null,
+          ...updates,
           type: null,
         },
         false,
       );
     }
-  }, [applicationId, applications, applicationsLoading, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (!activeApplication || !versionId) return;
-    const versionExists = activeApplication.versions?.some((version: { id: string }) => version.id === versionId);
-    if (!versionExists) {
-      setCursor(null);
-      setCursorStack([]);
-      updateSearchParams(searchParams, setSearchParams, { versionId: null }, false);
-    }
-  }, [activeApplication, searchParams, setSearchParams, versionId]);
+  }, [
+    activeApplication,
+    applications.length,
+    applicationsLoading,
+    applicationsPlaceholderData,
+    projectId,
+    requestedApplicationId,
+    requestedVersionId,
+    searchParams,
+    selectedApplicationContext,
+    selectedProject,
+    selectedVersion,
+    setSearchParams,
+    setSelectedApplicationContext,
+    versionId,
+  ]);
 
   const filters = useMemo<ListTestFlowsRequest>(
     () => ({
@@ -337,6 +382,9 @@ function TestFlows() {
   const clearFilters = () => {
     setSearchText("");
     resetPagination();
+    if (projectId && activeApplication) {
+      setSelectedApplicationContext(buildApplicationContext(projectId, activeApplication, null));
+    }
     updateSearchParams(
       searchParams,
       setSearchParams,
@@ -354,7 +402,7 @@ function TestFlows() {
     );
   }
 
-  if (applicationsLoading) {
+  if (applicationsLoading || applicationsPlaceholderData) {
     return <PageLoader />;
   }
 
@@ -386,6 +434,10 @@ function TestFlows() {
         type={type}
         searchText={searchText}
         onApplicationChange={(value) => {
+          const application = applications.find((item) => item.id === value) ?? null;
+          if (projectId && application) {
+            setSelectedApplicationContext(buildApplicationContext(projectId, application, null));
+          }
           resetPagination();
           updateSearchParams(
             searchParams,
@@ -399,6 +451,15 @@ function TestFlows() {
           );
         }}
         onVersionChange={(value) => {
+          const version =
+            value && value !== "all"
+              ? ((activeApplication?.versions ?? []) as Array<{ id: string; version: string }>).find(
+                  (item) => item.id === value,
+                )
+              : null;
+          if (projectId && activeApplication) {
+            setSelectedApplicationContext(buildApplicationContext(projectId, activeApplication, version));
+          }
           resetPagination();
           updateSearchParams(
             searchParams,

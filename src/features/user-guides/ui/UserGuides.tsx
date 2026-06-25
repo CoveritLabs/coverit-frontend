@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
@@ -17,6 +18,12 @@ import {
   Tag,
 } from "lucide-react";
 import { useUIStore } from "@app/store";
+import {
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+} from "@features/target-applications";
 import { Badge, Button, Card, RichSelect, SegmentedProgress, TerminalPanel } from "@shared/ui";
 import type { RichSelectOption } from "@shared/ui";
 import {
@@ -28,10 +35,8 @@ import {
 import { cn } from "@shared/utils/cn";
 import type {
   GenerateGuideParams,
-  UserGuideApplication,
   UserGuideState,
   UserGuideStateKind,
-  UserGuideVersion,
 } from "../model/types/user-guides.types";
 import { useGuideTypewriter } from "./hooks/useGuideTypewriter";
 import styles from "./UserGuides.module.scss";
@@ -195,26 +200,57 @@ function ProjectEmptyState() {
   );
 }
 
-function findById<TItem extends { id: string }>(items: TItem[], id: string | null) {
-  return id ? (items.find((item) => item.id === id) ?? null) : null;
-}
-
 function findStateByHash(items: UserGuideState[], stateHash: string | null) {
   return stateHash ? (items.find((item) => item.stateHash === stateHash) ?? null) : null;
 }
 
+function updateSearchParams(
+  searchParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string | null>,
+  replace = true,
+) {
+  const next = new URLSearchParams(searchParams);
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!value) next.delete(key);
+    else next.set(key, value);
+  });
+  setSearchParams(next, { replace });
+}
+
 function UserGuides() {
   const selectedProject = useUIStore((state) => state.selectedProject);
+  const selectedApplicationContext = useUIStore((state) => state.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((state) => state.setSelectedApplicationContext);
   const projectId = selectedProject?.id ?? null;
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
-  const [selectedStartStateId, setSelectedStartStateId] = useState<string | null>(null);
-  const [selectedEndStateId, setSelectedEndStateId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeGuideKey, setActiveGuideKey] = useState<string | null>(null);
   const [guideResult, setGuideResult] = useState<{ lines: string[] } | null>(null);
+  const requestedApplicationId = searchParams.get("appId");
+  const requestedVersionId = searchParams.get("versionId");
+  const requestedStartStateId = searchParams.get("startState");
+  const requestedEndStateId = searchParams.get("endState");
 
   const applicationsQuery = useUserGuideApplications(projectId);
+  const applications = useMemo(() => applicationsQuery.data ?? [], [applicationsQuery.data]);
+  const selectedApplication = resolveApplicationSelection({
+    applications,
+    projectId,
+    requestedApplicationId,
+    storedContext: selectedApplicationContext,
+  });
+  const selectedApplicationId = selectedApplication?.id ?? null;
   const versionsQuery = useUserGuideVersions(projectId, selectedApplicationId);
+  const versions = useMemo(() => versionsQuery.data ?? [], [versionsQuery.data]);
+  const selectedVersion = resolveVersionSelection({
+    versions,
+    projectId,
+    applicationId: selectedApplicationId,
+    requestedVersionId,
+    storedContext: selectedApplicationContext,
+    requireVersion: true,
+  });
+  const selectedVersionId = selectedVersion?.id ?? null;
   const statesQuery = useUserGuideStates(projectId, selectedApplicationId, selectedVersionId);
   const {
     mutate: generateGuide,
@@ -222,8 +258,6 @@ function UserGuides() {
     isPending: isGuideGenerating,
   } = useGenerateUserGuide();
 
-  const applications = useMemo(() => applicationsQuery.data ?? [], [applicationsQuery.data]);
-  const versions = useMemo(() => versionsQuery.data ?? [], [versionsQuery.data]);
   const states = useMemo(() => statesQuery.data ?? [], [statesQuery.data]);
   const isRefreshing = applicationsQuery.isFetching || versionsQuery.isFetching || statesQuery.isFetching;
 
@@ -231,8 +265,15 @@ function UserGuides() {
     void Promise.all([applicationsQuery.refetch(), versionsQuery.refetch(), statesQuery.refetch()]);
   };
 
-  const selectedApplication = findById<UserGuideApplication>(applications, selectedApplicationId);
-  const selectedVersion = findById<UserGuideVersion>(versions, selectedVersionId);
+  const selectedStartStateId = states.some((state) => state.stateHash === requestedStartStateId)
+    ? requestedStartStateId
+    : null;
+  const selectedEndStateId =
+    requestedEndStateId && requestedEndStateId !== selectedStartStateId
+      ? states.some((state) => state.stateHash === requestedEndStateId)
+        ? requestedEndStateId
+        : null
+      : null;
   const selectedStartState = findStateByHash(states, selectedStartStateId);
   const selectedEndState = findStateByHash(states, selectedEndStateId);
   const contextComplete = Boolean(selectedApplication && selectedVersion);
@@ -252,56 +293,71 @@ function UserGuides() {
     resetGenerateGuide();
   }, [resetGenerateGuide]);
 
-  const resetFromApplication = useCallback(() => {
-    setSelectedVersionId(null);
-    setSelectedStartStateId(null);
-    setSelectedEndStateId(null);
+  useEffect(() => {
     resetGuideOutput();
-  }, [resetGuideOutput]);
-
-  const resetFromVersion = useCallback(() => {
-    setSelectedStartStateId(null);
-    setSelectedEndStateId(null);
-    resetGuideOutput();
-  }, [resetGuideOutput]);
+  }, [projectId, resetGuideOutput, selectedApplicationId, selectedEndStateId, selectedStartStateId, selectedVersionId]);
 
   useEffect(() => {
-    setSelectedApplicationId(null);
-    resetFromApplication();
-  }, [projectId, resetFromApplication]);
+    if (!projectId) return;
 
-  useEffect(() => {
-    if (!selectedApplicationId || applicationsQuery.isFetching || applications.length === 0) return;
-    if (!applications.some((application) => application.id === selectedApplicationId)) {
-      setSelectedApplicationId(null);
-      resetFromApplication();
+    if (!applicationsQuery.isLoading && !applicationsQuery.isPlaceholderData && applications.length === 0) {
+      if (selectedApplicationContext?.projectId === projectId) {
+        setSelectedApplicationContext(null);
+      }
+      if (requestedApplicationId || requestedVersionId || requestedStartStateId || requestedEndStateId) {
+        updateSearchParams(searchParams, setSearchParams, {
+          appId: null,
+          versionId: null,
+          startState: null,
+          endState: null,
+        });
+      }
+      return;
     }
-  }, [applications, applicationsQuery.isFetching, resetFromApplication, selectedApplicationId]);
 
-  useEffect(() => {
-    if (!selectedVersionId || versionsQuery.isFetching || versions.length === 0) return;
-    if (!versions.some((version) => version.id === selectedVersionId)) {
-      setSelectedVersionId(null);
-      resetFromVersion();
-    }
-  }, [resetFromVersion, selectedVersionId, versions, versionsQuery.isFetching]);
+    if (!selectedApplication) return;
 
-  useEffect(() => {
-    if (!selectedStartStateId || statesQuery.isFetching || states.length === 0) return;
-    if (!states.some((state) => state.stateHash === selectedStartStateId)) {
-      setSelectedStartStateId(null);
-      setSelectedEndStateId(null);
-      resetGuideOutput();
-    }
-  }, [resetGuideOutput, selectedStartStateId, states, statesQuery.isFetching]);
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== selectedApplication.id) updates.appId = selectedApplication.id;
+    if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
+    if (!selectedVersionId && requestedVersionId && !versionsQuery.isFetching) updates.versionId = null;
 
-  useEffect(() => {
-    if (!selectedEndStateId || statesQuery.isFetching || states.length === 0) return;
-    if (!states.some((state) => state.stateHash === selectedEndStateId)) {
-      setSelectedEndStateId(null);
-      resetGuideOutput();
+    if (requestedStartStateId && !selectedStartStateId && !statesQuery.isFetching) {
+      updates.startState = null;
+      updates.endState = null;
+    } else if (requestedEndStateId && !selectedEndStateId && !statesQuery.isFetching) {
+      updates.endState = null;
     }
-  }, [resetGuideOutput, selectedEndStateId, states, statesQuery.isFetching]);
+
+    const nextContext = buildApplicationContext(projectId, selectedApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updateSearchParams(searchParams, setSearchParams, updates);
+    }
+  }, [
+    applications.length,
+    applicationsQuery.isLoading,
+    applicationsQuery.isPlaceholderData,
+    projectId,
+    requestedApplicationId,
+    requestedEndStateId,
+    requestedStartStateId,
+    requestedVersionId,
+    searchParams,
+    selectedApplication,
+    selectedApplicationContext,
+    selectedEndStateId,
+    selectedStartStateId,
+    selectedVersion,
+    selectedVersionId,
+    setSearchParams,
+    setSelectedApplicationContext,
+    statesQuery.isFetching,
+    versionsQuery.isFetching,
+  ]);
 
   const applicationOptions = useMemo<RichSelectOption[]>(
     () => applications.map((application) => ({ value: application.id, label: application.name })),
@@ -421,8 +477,17 @@ function UserGuides() {
                     placeholder={applicationsQuery.isFetching ? "Loading apps..." : "Choose an app..."}
                     leadingIcon={<Layers />}
                     onChange={(value) => {
-                      setSelectedApplicationId(value);
-                      resetFromApplication();
+                      updateSearchParams(
+                        searchParams,
+                        setSearchParams,
+                        {
+                          appId: value,
+                          versionId: null,
+                          startState: null,
+                          endState: null,
+                        },
+                        false,
+                      );
                     }}
                     disabled={applicationsQuery.isFetching || applicationsQuery.isError}
                     emptyLabel="No applications found"
@@ -436,8 +501,16 @@ function UserGuides() {
                     placeholder={versionsQuery.isFetching ? "Loading versions..." : "Choose version..."}
                     leadingIcon={<Tag />}
                     onChange={(value) => {
-                      setSelectedVersionId(value);
-                      resetFromVersion();
+                      updateSearchParams(
+                        searchParams,
+                        setSearchParams,
+                        {
+                          versionId: value,
+                          startState: null,
+                          endState: null,
+                        },
+                        false,
+                      );
                     }}
                     disabled={!selectedApplicationId || versionsQuery.isFetching || versionsQuery.isError}
                     emptyLabel="No versions found"
@@ -463,9 +536,15 @@ function UserGuides() {
                       renderOption={(option) => <StateOptionRow option={option} />}
                       menuClassName={styles.stateMenu}
                       onChange={(value) => {
-                        setSelectedStartStateId(value);
-                        setSelectedEndStateId(null);
-                        resetGuideOutput();
+                        updateSearchParams(
+                          searchParams,
+                          setSearchParams,
+                          {
+                            startState: value,
+                            endState: null,
+                          },
+                          false,
+                        );
                       }}
                       disabled={!contextComplete || statesQuery.isFetching || statesQuery.isError}
                       emptyLabel="No states discovered"
@@ -501,8 +580,7 @@ function UserGuides() {
                       renderOption={(option) => <StateOptionRow option={option} />}
                       menuClassName={styles.stateMenu}
                       onChange={(value) => {
-                        setSelectedEndStateId(value);
-                        resetGuideOutput();
+                        updateSearchParams(searchParams, setSearchParams, { endState: value }, false);
                       }}
                       disabled={!selectedStartStateId || statesQuery.isFetching || statesQuery.isError}
                       emptyLabel="No states discovered"

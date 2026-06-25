@@ -24,6 +24,7 @@ import {
   type ProjectTestFlowBreakdownPoint,
 } from "@features/dashboard";
 import { useProjects } from "@features/projects";
+import { applicationContextEquals, buildApplicationContext } from "@features/target-applications";
 import { ROUTES } from "@shared/config/routes";
 import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
@@ -483,14 +484,16 @@ function RecentActivities({ activities }: { activities: ProjectActivity[] }) {
 function Dashboard() {
   const navigate = useNavigate();
   const selectedProject = useUIStore((state) => state.selectedProject);
+  const selectedApplicationContext = useUIStore((state) => state.selectedApplicationContext);
   const setSelectedProject = useUIStore((state) => state.setSelectedProject);
+  const setSelectedApplicationContext = useUIStore((state) => state.setSelectedApplicationContext);
   const setUserRole = useUIStore((state) => state.setUserRole);
-  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const { data: projects = [], isLoading: projectsLoading, isPlaceholderData: projectsPlaceholderData } = useProjects();
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const selectedProjectExists = Boolean(
     selectedProject && projects.some((project) => project.id === selectedProject.id),
   );
-  const activeProject = projectsLoading || selectedProjectExists ? selectedProject : null;
+  const activeProject = projectsLoading || projectsPlaceholderData || selectedProjectExists ? selectedProject : null;
   const dashboardQuery = useProjectDashboard(activeProject?.id ?? null);
   const dashboard = dashboardQuery.data;
   const isRefreshing = dashboardQuery.isFetching;
@@ -500,23 +503,62 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    if (projectsLoading || !selectedProject || selectedProjectExists) return;
+    if (projectsLoading || projectsPlaceholderData || !selectedProject || selectedProjectExists) return;
     setSelectedProject(null);
     setUserRole(null);
-  }, [projectsLoading, selectedProject, selectedProjectExists, setSelectedProject, setUserRole]);
+  }, [projectsLoading, projectsPlaceholderData, selectedProject, selectedProjectExists, setSelectedProject, setUserRole]);
 
   useEffect(() => {
-    if (!dashboard?.coverageByApplication.length) {
+    const coverage = dashboard?.coverageByApplication ?? [];
+    if (!coverage.length) {
       setSelectedApplicationId(null);
       return;
     }
-    if (!selectedApplicationId || !dashboard.coverageByApplication.some((point) => point.applicationId === selectedApplicationId)) {
-      setSelectedApplicationId(dashboard.coverageByApplication[0].applicationId);
+
+    const storedApplicationId =
+      selectedApplicationContext && activeProject && selectedApplicationContext.projectId === activeProject.id
+        ? selectedApplicationContext.applicationId
+        : null;
+    const storedApplication = storedApplicationId
+      ? coverage.find((point) => point.applicationId === storedApplicationId)
+      : null;
+    const currentApplication = coverage.find((point) => point.applicationId === selectedApplicationId);
+    const nextApplication = currentApplication ?? storedApplication ?? coverage[0];
+
+    if (selectedApplicationId !== nextApplication.applicationId) {
+      setSelectedApplicationId(nextApplication.applicationId);
     }
-  }, [dashboard?.coverageByApplication, selectedApplicationId]);
+
+    if (activeProject) {
+      const nextContext = buildApplicationContext(
+        activeProject.id,
+        { id: nextApplication.applicationId, name: nextApplication.applicationName },
+        { id: nextApplication.versionId, version: nextApplication.version },
+      );
+      if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+        setSelectedApplicationContext(nextContext);
+      }
+    }
+  }, [activeProject, dashboard?.coverageByApplication, selectedApplicationContext, selectedApplicationId, setSelectedApplicationContext]);
+
+  const handleCoverageApplicationSelect = (applicationId: string) => {
+    setSelectedApplicationId(applicationId);
+
+    const coverage = dashboard?.coverageByApplication ?? [];
+    const point = coverage.find((item) => item.applicationId === applicationId);
+    if (!activeProject || !point) return;
+
+    setSelectedApplicationContext(
+      buildApplicationContext(
+        activeProject.id,
+        { id: point.applicationId, name: point.applicationName },
+        { id: point.versionId, version: point.version },
+      ),
+    );
+  };
 
   if (!activeProject) {
-    if (!projectsLoading && projects.length === 0) {
+    if (!projectsLoading && !projectsPlaceholderData && projects.length === 0) {
       return (
         <PlainEmptyState
           title="Create a project first"
@@ -605,7 +647,7 @@ function Dashboard() {
         appCoverage={dashboard.coverageByApplication ?? []}
         versionCoverage={dashboard.coverageByVersion ?? []}
         selectedApplicationId={selectedApplicationId}
-        onSelectApplication={setSelectedApplicationId}
+        onSelectApplication={handleCoverageApplicationSelect}
       />
 
       <main className={styles.contentGrid}>

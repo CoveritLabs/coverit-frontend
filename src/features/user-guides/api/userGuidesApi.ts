@@ -31,6 +31,11 @@ interface ApiGenerateUserGuideResponse {
   error?: string;
 }
 
+interface TargetApplicationVersion {
+  id: string;
+  version: string;
+}
+
 function getPathFromUrl(url?: string): string | undefined {
   if (!url) return undefined;
 
@@ -92,7 +97,7 @@ export const userGuidesApi = {
 
   async getVersions(projectId: string, applicationId: string): Promise<UserGuideVersion[]> {
     const application = await targetApplicationService.getTargetApplication(projectId, applicationId);
-    return application.versions.map((version) => ({
+    return (application.versions as TargetApplicationVersion[]).map((version) => ({
       id: version.id,
       name: version.version,
     }));

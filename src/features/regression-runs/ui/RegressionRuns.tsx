@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { TargetApplicationResponse } from "@coveritlabs/contracts";
 import { ErrorBanner } from "@shared/feedback/ErrorBanner";
@@ -17,7 +17,13 @@ import {
   useRegressionScenarios,
 } from "../model/queries/useRegressionRuns";
 import { useIntegrationStatus } from "@features/integrations";
-import { useTargetApplications } from "@features/target-applications";
+import {
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+  useTargetApplications,
+} from "@features/target-applications";
 import type {
   SearchParamStatus,
   RegressionRunsView,
@@ -30,7 +36,6 @@ import { RegressionRunsFilters } from "./components/filters/filters";
 import { RegressionRunsHeader } from "./components/filters/header";
 import { RegressionRunsList } from "./components/runs/runs-list";
 import { RegressionRunWorkspace } from "./components/runs/run-workspace";
-import { RegressionStatsTab } from "./components/stats/stats-tab";
 import { updateSearchParams } from "../lib/formatters";
 import { buildVersionNameMap, enrichRegressionRun, enrichRegressionRuns } from "../model/mappers/run-view-model";
 import styles from "./RegressionRuns.module.scss";
@@ -43,21 +48,28 @@ function getSearchParamValue<T extends string>(value: string | null, allowed: re
 const VIEW_OPTIONS = ["overview", "statistics"] as const;
 const RUN_TAB_OPTIONS = ["scenarios", "artifacts"] as const;
 const SCENARIO_TAB_OPTIONS = ["events", "artifacts"] as const;
+const LazyRegressionStatsTab = lazy(() =>
+  import("./components/stats/stats-tab").then((module) => ({ default: module.RegressionStatsTab })),
+);
 
 function RegressionRuns() {
   const selectedProject = useUIStore((state) => state.selectedProject);
+  const selectedApplicationContext = useUIStore((state) => state.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((state) => state.setSelectedApplicationContext);
   const {
     data: applications = [],
     isLoading: applicationsLoading,
     isError: applicationsError,
     isFetching: applicationsFetching,
+    isPlaceholderData: applicationsPlaceholderData,
     refetch: refetchApplications,
   } = useTargetApplications(selectedProject?.id ?? null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchText, setSearchText] = useState("");
 
-  const applicationId = searchParams.get("appId");
-  const versionId = searchParams.get("versionId");
+  const requestedApplicationId = searchParams.get("appId");
+  const requestedVersionId = searchParams.get("versionId");
+  const projectId = selectedProject?.id ?? null;
   const status = (searchParams.get("status") as SearchParamStatus | null) ?? "all";
   const view = getSearchParamValue<RegressionRunsView>(searchParams.get("view"), VIEW_OPTIONS, "overview");
   const runId = searchParams.get("runId");
@@ -70,9 +82,28 @@ function RegressionRuns() {
   );
 
   const activeApplication = useMemo(
-    () => applications.find((application) => application.id === applicationId) ?? null,
-    [applicationId, applications],
+    () =>
+      resolveApplicationSelection({
+        applications,
+        projectId,
+        requestedApplicationId,
+        storedContext: selectedApplicationContext,
+      }),
+    [applications, projectId, requestedApplicationId, selectedApplicationContext],
   );
+  const applicationId = activeApplication?.id ?? null;
+  const selectedVersion = useMemo(
+    () =>
+      resolveVersionSelection({
+        versions: activeApplication?.versions ?? [],
+        projectId,
+        applicationId,
+        requestedVersionId,
+        storedContext: selectedApplicationContext,
+      }),
+    [activeApplication?.versions, applicationId, projectId, requestedVersionId, selectedApplicationContext],
+  );
+  const versionId = selectedVersion?.id ?? null;
 
   const versionNameById = useMemo(
     () => buildVersionNameMap(activeApplication?.versions ?? []),
@@ -80,8 +111,9 @@ function RegressionRuns() {
   );
 
   useEffect(() => {
-    if (applicationsLoading) return;
+    if (applicationsLoading || applicationsPlaceholderData) return;
     if (applications.length === 0) {
+      if (selectedApplicationContext?.projectId === projectId) setSelectedApplicationContext(null);
       updateSearchParams(searchParams, setSearchParams, {
         appId: null,
         versionId: null,
@@ -93,16 +125,43 @@ function RegressionRuns() {
       return;
     }
 
-    if (!applicationId || !applications.some((application) => application.id === applicationId)) {
+    if (!activeApplication) return;
+
+    const nextContext = buildApplicationContext(selectedProject!.id, activeApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
+    }
+
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== activeApplication.id) updates.appId = activeApplication.id;
+    if (versionId && requestedVersionId !== versionId) updates.versionId = versionId;
+    if (!versionId && requestedVersionId) updates.versionId = null;
+
+    if (Object.keys(updates).length > 0) {
       updateSearchParams(searchParams, setSearchParams, {
-        appId: applications[0].id,
+        ...updates,
         runId: null,
         runTab: "scenarios",
         scenarioId: null,
         scenarioTab: "events",
       });
     }
-  }, [applicationId, applications, applicationsLoading, searchParams, setSearchParams]);
+  }, [
+    activeApplication,
+    applications.length,
+    applicationsLoading,
+    applicationsPlaceholderData,
+    projectId,
+    requestedApplicationId,
+    requestedVersionId,
+    searchParams,
+    selectedApplicationContext,
+    selectedProject,
+    selectedVersion,
+    setSearchParams,
+    setSelectedApplicationContext,
+    versionId,
+  ]);
 
   const runFilters = useMemo(
     () => ({
@@ -374,7 +433,7 @@ function RegressionRuns() {
     );
   }
 
-  if (applicationsLoading) {
+  if (applicationsLoading || applicationsPlaceholderData) {
     return <PageLoader />;
   }
 
@@ -424,6 +483,10 @@ function RegressionRuns() {
         status={status}
         searchText={searchText}
         onApplicationChange={(value) => {
+          const application = applications.find((item) => item.id === value) ?? null;
+          if (projectId && application) {
+            setSelectedApplicationContext(buildApplicationContext(projectId, application, null));
+          }
           updateSearchParams(
             searchParams,
             setSearchParams,
@@ -439,6 +502,15 @@ function RegressionRuns() {
           );
         }}
         onVersionChange={(value) => {
+          const version =
+            value && value !== "all"
+              ? ((activeApplication?.versions ?? []) as Array<{ id: string; version: string }>).find(
+                  (item) => item.id === value,
+                )
+              : null;
+          if (projectId && activeApplication) {
+            setSelectedApplicationContext(buildApplicationContext(projectId, activeApplication, version));
+          }
           updateSearchParams(
             searchParams,
             setSearchParams,
@@ -471,7 +543,9 @@ function RegressionRuns() {
       />
 
       {view === "statistics" ? (
-        <RegressionStatsTab runs={filteredRuns} />
+        <Suspense fallback={<PageLoader />}>
+          <LazyRegressionStatsTab runs={filteredRuns} />
+        </Suspense>
       ) : (
         <div className={styles.overviewGrid}>
           <div className={styles.overviewSidebar}>
