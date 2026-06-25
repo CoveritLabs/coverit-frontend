@@ -71,6 +71,7 @@ export type FlowEditorValueSpec =
   | { literal: unknown }
   | { from: string }
   | { source: "extract"; id: string }
+  | { source: "element"; selector: string; token?: string }
   | { source: "store" | "arg" | "context" | "env"; path: string }
   | { expressionId: string; args?: Record<string, FlowEditorValueSpec> }
   | { functionId: string; args?: Record<string, FlowEditorValueSpec> }

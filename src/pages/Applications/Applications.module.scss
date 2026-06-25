@@ -1165,8 +1165,8 @@
 }
 
 .sessionStatusProgress {
-  color: var(--primary);
-  border-color: color-mix(in oklab, var(--primary) 42%, var(--border));
+  color: #d97706;
+  border-color: color-mix(in oklab, #d97706 42%, var(--border));
   background: transparent;
 }
 

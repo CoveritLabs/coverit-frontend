@@ -20,8 +20,12 @@ import { env } from "@shared/config/env";
 import { ROUTES } from "@shared/config/routes";
 import { Button } from "@shared/ui";
 import {
+  buildDesignClassTokenOptions,
+  buildElementTokenOptions,
+  mergeElementCatalog,
+} from "../lib/flow-editor-token-options";
+import {
   AlertCircle,
-  Braces,
   Check,
   ChevronDown,
   ChevronUp,
@@ -40,6 +44,7 @@ import {
 import type { ComponentType, JSX, MouseEvent, WheelEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { FlowEditorEditsForm } from "./components/FlowEditorEditsForm";
 import { ManualSessionHeader } from "./components/ManualSessionHeader";
 import styles from "./FlowEditor.module.scss";
 
@@ -124,10 +129,15 @@ const HOOK_COMMANDS = [
 ];
 const ELEMENT_HOOK_COMMANDS = new Set(["click", "dblclick", "fill", "clear", "hover", "select", "check", "uncheck", "press", "focus", "blur"]);
 const DESIGN_OPERATION_TYPES = ["set", "append", "merge", "delete", "clear", "call-function", "extract"] as const;
-const STEP_KINDS = ["design-operation", "assertion", "action-hook", "group"] as const;
+const STEP_KINDS = ["design-operation", "assertion", "action-hook"] as const;
 
 type DesignOperationInputType = (typeof DESIGN_OPERATION_TYPES)[number];
+type DesignClassOperationType = Exclude<DesignOperationInputType, "call-function" | "extract">;
 type ValueInputMode = "literal" | "store" | "function" | "expression";
+
+const DESIGN_CLASS_OPERATION_TYPES = DESIGN_OPERATION_TYPES.filter(
+  (operation): operation is DesignClassOperationType => operation !== "call-function" && operation !== "extract",
+);
 
 const DEFAULT_FORM_VALUES: FormValues = {
   variableName: "SELECTED_VALUE",
@@ -172,9 +182,6 @@ function kindMeta(kind: FlowEditorStepKind): {
   }
   if (kind === "action-hook") {
     return { label: "Action-Hook", description: "Run a utility or element command", Icon: Zap };
-  }
-  if (kind === "group") {
-    return { label: "Group", description: "Bundle variable or function steps", Icon: Braces };
   }
   return { label: "Assertion", description: "Validate an element or stored value", Icon: Equal };
 }
@@ -367,41 +374,11 @@ function isSameElement(left: FlowEditorElementRef | null, right: FlowEditorEleme
   );
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
-
-function addString(set: Set<string>, value: unknown) {
-  if (typeof value === "string" && value.trim()) set.add(value.trim());
-}
-
-function collectStoreKeysFromDefinition(definition: unknown, keys: Set<string>) {
-  const record = asRecord(definition);
-  addString(keys, record.storeKey);
-  addString(keys, record.key);
-  addString(keys, record.assignTo);
-  const operations = Array.isArray(record.operations) ? record.operations : [];
-  operations.forEach((operation) => collectStoreKeysFromDefinition(operation, keys));
-}
-
-function designSymbolsFromDrafts(draftSteps: FlowEditorDraftStep[]) {
-  const storeKeys = new Set<string>();
-  const functionIds = new Set<string>();
-  const expressionIds = new Set<string>();
-
-  draftSteps.forEach((step) => {
-    const definition = asRecord(step.definition);
-    collectStoreKeysFromDefinition(definition, storeKeys);
-    addString(functionIds, definition.functionId);
-    addString(expressionIds, definition.expressionId);
-  });
-
-  return {
-    storeKeys: [...storeKeys].sort(),
-    functionIds: [...functionIds].sort(),
-    expressionIds: [...expressionIds].sort(),
-  };
-}
+type LegacyDesignSymbols = {
+  storeKeys: string[];
+  functionIds: string[];
+  expressionIds: string[];
+};
 
 function formatBox(box: FlowEditorElementRef["box"]) {
   if (!box) return "Unavailable";
@@ -616,7 +593,7 @@ function TransitionItem({
   );
 }
 
-function EditorForm({
+export function LegacyEditorForm({
   position,
   transitionSteps,
   selectedElement,
@@ -628,7 +605,7 @@ function EditorForm({
   transitionSteps: FlowEditorTransitionStep[];
   selectedElement: FlowEditorElementRef | null;
   positionLoading: boolean;
-  designSymbols: ReturnType<typeof designSymbolsFromDrafts>;
+  designSymbols: LegacyDesignSymbols;
   onInsert: (step: FlowEditorDraftStep) => void;
 }) {
   const [kind, setKind] = useState<FlowEditorStepKind>("assertion");
@@ -932,6 +909,7 @@ export default function FlowEditor() {
   const [activePosition, setActivePosition] = useState<EditorPosition | null>(null);
   const [selectedElement, setSelectedElement] = useState<FlowEditorElementRef | null>(null);
   const [hoveredElement, setHoveredElement] = useState<FlowEditorElementRef | null>(null);
+  const [inspectorElements, setInspectorElements] = useState<FlowEditorElementRef[]>([]);
   const [inspectorEnabled, setInspectorEnabled] = useState(true);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
   const [positionLoading, setPositionLoading] = useState(false);
@@ -945,6 +923,7 @@ export default function FlowEditor() {
   useEffect(() => {
     if (!editorQuery.data) return;
     setDraftSteps(editorQuery.data.editorSteps);
+    setInspectorElements(mergeElementCatalog(editorQuery.data.editorSteps.map((step) => step.element)));
   }, [editorQuery.data]);
 
   useEffect(() => {
@@ -971,6 +950,11 @@ export default function FlowEditor() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
     ws.send(JSON.stringify(payload));
     return true;
+  }, []);
+
+  const rememberElement = useCallback((element: FlowEditorElementRef | null | undefined) => {
+    if (!element) return;
+    setInspectorElements((current) => mergeElementCatalog([...current, element]));
   }, []);
 
   const openPosition = useCallback(
@@ -1025,10 +1009,12 @@ export default function FlowEditor() {
 
       if (payload.type === "inspector.hovered") {
         setHoveredElement(payload.element ?? null);
+        rememberElement(payload.element);
       }
 
       if (payload.type === "inspector.selected") {
         setSelectedElement(payload.element ?? null);
+        rememberElement(payload.element);
         setActiveTab("editor");
         setInspectorDrawerOpen(true);
       }
@@ -1043,7 +1029,7 @@ export default function FlowEditor() {
         setError(payload.message ?? "Flow editor websocket error");
       }
     },
-    [drawFrame, send],
+    [drawFrame, rememberElement, send],
   );
 
   useEffect(() => {
@@ -1104,7 +1090,17 @@ export default function FlowEditor() {
     const source = editorQuery.data?.editorSteps ?? [];
     return JSON.stringify(source) !== JSON.stringify(draftSteps);
   }, [draftSteps, editorQuery.data?.editorSteps]);
-  const designSymbols = useMemo(() => designSymbolsFromDrafts(draftSteps), [draftSteps]);
+  const elementOptions = useMemo(
+    () =>
+      buildElementTokenOptions([
+        ...inspectorElements,
+        ...draftSteps.map((step) => step.element),
+        selectedElement,
+        hoveredElement,
+      ]),
+    [draftSteps, hoveredElement, inspectorElements, selectedElement],
+  );
+  const designClassOptions = useMemo(() => buildDesignClassTokenOptions(draftSteps), [draftSteps]);
 
   const draftsByPosition = useMemo(() => {
     const groups = new Map<string, FlowEditorDraftStep[]>();
@@ -1160,6 +1156,9 @@ export default function FlowEditor() {
   };
 
   const insertDraft = (step: FlowEditorDraftStep) => {
+    if (step.element) {
+      setInspectorElements((current) => mergeElementCatalog([...current, step.element]));
+    }
     setDraftSteps((current) => [...current, step]);
     setActiveTab("flow");
   };
@@ -1353,7 +1352,7 @@ export default function FlowEditor() {
               onClick={() => setActiveTab("editor")}
             >
               <PencilLine className={styles.tabIcon} />
-              Editor
+              Edits
             </button>
           </div>
 
@@ -1370,12 +1369,17 @@ export default function FlowEditor() {
           {activeTab === "editor" && (
             <div className={`${styles.tabContent} ${styles.editorTabContent}`}>
               <div className={styles.editorTabScroll}>
-                <EditorForm
+                <FlowEditorEditsForm
                   position={activePosition}
                   transitionSteps={transitionSteps}
                   selectedElement={selectedElement}
                   positionLoading={positionLoading}
-                  designSymbols={designSymbols}
+                  elementOptions={elementOptions}
+                  designClassOptions={designClassOptions}
+                  designOperationTypes={DESIGN_CLASS_OPERATION_TYPES}
+                  assertionOperators={ASSERTION_OPERATORS}
+                  hookCommands={HOOK_COMMANDS}
+                  elementHookCommands={ELEMENT_HOOK_COMMANDS}
                   onInsert={insertDraft}
                 />
               </div>

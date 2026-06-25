@@ -799,16 +799,16 @@
 }
 
 .token_var {
-  color: var(--success);
-  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
   padding: 0 0.375rem;
   border-radius: 0.25rem;
   font-weight: 700;
 }
 
 .token_sel {
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
   padding: 0 0.375rem;
   border-radius: 0.25rem;
 }
@@ -988,6 +988,186 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* ─── Edits form ────────────────────────────────────────────────────────────── */
+
+.editsTypeTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+.editsTypeTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: 0;
+  min-height: 2.375rem;
+  padding: 0 0.5rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.editsTypeTab:hover {
+  color: var(--foreground);
+  border-color: var(--flow-strong-border);
+}
+
+.editsTypeTabActive {
+  color: var(--success);
+  background: var(--flow-success-tint);
+  border-color: var(--success);
+}
+
+.editsTypeIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: 0 0 auto;
+}
+
+.editsFormSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.editsCodeEditor {
+  width: 100%;
+  min-height: 12rem;
+  resize: vertical;
+  padding: 0.75rem;
+  color: var(--foreground);
+  background: var(--input-background);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  outline: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.editsCodeEditor:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
+}
+
+.functionSignature {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  color: var(--foreground);
+  background: var(--input-background);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.functionNameToken {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 0.375rem;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--border));
+  border-radius: 0.25rem;
+  font-weight: 700;
+}
+
+.functionNameToken:focus-within {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 18%, transparent);
+}
+
+.functionNameToken input {
+  min-width: 0;
+  max-width: min(16rem, 100%);
+  padding: 0;
+  color: currentColor;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-weight: 700;
+}
+
+.functionClosingBrace {
+  display: block;
+  width: max-content;
+  padding: 0 0.375rem;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+
+.functionSignature {
+  font-family: "JetBrains Mono", monospace;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* keywords */
+.keyword {
+  color: #c586c0;   // purple
+}
+
+/* editable function name */
+.functionInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #9cdcfe;   // blue
+  font-family: inherit;
+  padding: 0 2px;
+}
+
+/* parameters */
+.parameter {
+  color: #a58ee9;   // light gray
+}
+
+/* types */
+.type {
+  color: #dcdcaa;   // teal/green
+}
+
+/* punctuation */
+.punctuation {
+  color: #d4d4d4;   // white-ish
+}
+
+/* braces */
+.brace {
+  color: #daaadc;   // yellow
+}
+
+.hiddenMeasure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  font: inherit;
 }
 
 /* ─── Type picker ───────────────────────────────────────────────────────────── */
