@@ -4,10 +4,18 @@
 
 import { useUIStore } from "@app/store";
 import { useIntegrationStatus } from "@features/integrations";
-import { useConnectManualSession, useTargetApplications } from "@features/target-applications";
+import {
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+  useConnectManualSession,
+  useTargetApplications,
+} from "@features/target-applications";
 import { env } from "@shared/config/env";
 import { ROUTES } from "@shared/config/routes";
-import { toast } from "@shared/ui";
+import { formatElapsed, statusLabel } from "@shared/lib/live-session-formatters";
+import { LiveSessionHeader, toast } from "@shared/ui";
 import {
   useCallback,
   useEffect,
@@ -25,6 +33,7 @@ import {
   eventKey,
   eventLabel,
   isGroupedPendingEvent,
+  isPublishablePendingEvent,
   mergePendingEvent,
   numericRevision,
   stepEventKeys,
@@ -53,7 +62,6 @@ import {
   ManualSessionConfirmationModal,
   type ManualSessionConfirmationKind,
 } from "./components/ManualSessionConfirmationModal";
-import { ManualSessionHeader } from "./components/ManualSessionHeader";
 import { ManualSessionPanel } from "./components/ManualSessionPanel";
 import { ManualSessionViewport } from "./components/ManualSessionViewport";
 import styles from "./ManualSession.module.scss";
@@ -68,13 +76,31 @@ function buildWsUrl(sessionId: string, ticket: string) {
   return `${base}/ws/manual-recordings/${encodeURIComponent(sessionId)}?ticket=${encodeURIComponent(ticket)}`;
 }
 
+function updateSearchParams(
+  searchParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string | null>,
+  replace = true,
+) {
+  const next = new URLSearchParams(searchParams);
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!value) next.delete(key);
+    else next.set(key, value);
+  });
+  setSearchParams(next, { replace });
+}
+
 function ManualSession() {
   const params = useParams<RouteParams>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedProject = useUIStore((state) => state.selectedProject);
-  const { data: applications = [] } = useTargetApplications(selectedProject?.id ?? null);
+  const selectedApplicationContext = useUIStore((state) => state.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((state) => state.setSelectedApplicationContext);
+  const { data: applications = [], isPlaceholderData: applicationsPlaceholderData } = useTargetApplications(
+    selectedProject?.id ?? null,
+  );
   const connectManualSession = useConnectManualSession();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -91,8 +117,12 @@ function ManualSession() {
   const ticket = searchParams.get("ticket") ?? "";
   const connectionKey = `${sessionId}:${ticket}`;
   const wsUrl = useMemo(() => (sessionId && ticket ? buildWsUrl(sessionId, ticket) : ""), [sessionId, ticket]);
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(params.applicationId ?? null);
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(params.versionId ?? null);
+  const routeApplicationId = params.applicationId ?? null;
+  const routeVersionId = params.versionId ?? null;
+  const requestedApplicationId = routeApplicationId ?? searchParams.get("appId");
+  const requestedVersionId = routeVersionId ?? searchParams.get("versionId");
+  const projectId = selectedProject?.id ?? null;
+  const contextProjectId = params.projectId ?? projectId;
 
   const [activeTab, setActiveTab] = useState<"record" | "bug">("record");
   const [status, setStatus] = useState("connecting");
@@ -111,22 +141,43 @@ function ManualSession() {
   const [steps, setSteps] = useState<RecordedStep[]>([]);
   const [pendingEvents, setPendingEvents] = useState<PendingRecordedEvent[]>([]);
   const [pendingEventClock, setPendingEventClock] = useState(() => Date.now());
-  const [bugSummary, setBugSummary] = useState("");
+  const [bugTitle, setBugTitle] = useState("");
+  const [bugDescription, setBugDescription] = useState("");
   const [bugSeverity, setBugSeverity] = useState("medium");
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [pendingAction, setPendingActionState] = useState<ManualAction | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
 
   const selectedApplication = useMemo(
-    () => typedApplications.find((application) => application.id === selectedApplicationId) ?? null,
-    [selectedApplicationId, typedApplications],
+    () =>
+      routeApplicationId
+        ? (typedApplications.find((application) => application.id === routeApplicationId) ?? null)
+        : resolveApplicationSelection({
+            applications: typedApplications,
+            projectId,
+            requestedApplicationId,
+            storedContext: selectedApplicationContext,
+          }),
+    [projectId, requestedApplicationId, routeApplicationId, selectedApplicationContext, typedApplications],
   );
+  const selectedApplicationId = routeApplicationId ?? selectedApplication?.id ?? null;
   const jiraStatusQuery = useIntegrationStatus(selectedProject?.id ?? null, "jira");
   const availableVersions = useMemo(() => selectedApplication?.versions ?? [], [selectedApplication]);
   const selectedVersion = useMemo(
-    () => availableVersions.find((version) => version.id === selectedVersionId) ?? null,
-    [availableVersions, selectedVersionId],
+    () =>
+      routeVersionId
+        ? (availableVersions.find((version) => version.id === routeVersionId) ?? null)
+        : resolveVersionSelection({
+            versions: availableVersions,
+            projectId,
+            applicationId: selectedApplicationId,
+            requestedVersionId,
+            storedContext: selectedApplicationContext,
+            requireVersion: true,
+          }),
+    [availableVersions, projectId, requestedVersionId, routeVersionId, selectedApplicationContext, selectedApplicationId],
   );
+  const selectedVersionId = routeVersionId ?? selectedVersion?.id ?? null;
   const initialCanvasUrl = state.applicationBaseUrl ?? selectedApplication?.baseUrl ?? "";
   initialCanvasUrlRef.current = initialCanvasUrl;
   const hasLiveSession = Boolean(sessionId);
@@ -141,8 +192,14 @@ function ManualSession() {
     () => pendingEvents.some((event) => pendingEventClock - event.receivedAt >= PENDING_EVENT_BLOCK_MS),
     [pendingEventClock, pendingEvents],
   );
+  const hasPublishablePendingEvents = useMemo(
+    () => pendingEvents.some(isPublishablePendingEvent),
+    [pendingEvents],
+  );
   const pendingEventBlockerMessage = hasStalePendingEvents
-    ? "Waiting for pending browser events to finalize before creating a TestFlow."
+    ? hasPublishablePendingEvents
+      ? "Publish the pending typing step before creating a TestFlow."
+      : "Waiting for pending browser events to finalize before creating a TestFlow."
     : null;
   const canFinishFlow = Boolean(canSend && flowStarted && hasRecordedSteps && !hasStalePendingEvents);
   const jiraReportingEnabled =
@@ -153,7 +210,7 @@ function ManualSession() {
     : jiraStatusQuery.isError
       ? "Jira reporting status could not be loaded."
       : "Enable Jira reporting in project integrations to queue bug flows.";
-  const canReportBug = Boolean(jiraReportingEnabled && bugSummary.trim() && canFinishFlow && !hasPendingAction);
+  const canReportBug = Boolean(jiraReportingEnabled && bugTitle.trim() && canFinishFlow && !hasPendingAction);
   const visibleSteps = useMemo<VisibleStepItem[]>(
     () => [
       ...steps.flatMap((step, index) => {
@@ -174,6 +231,7 @@ function ManualSession() {
               pending: false,
               finalizedEvent: false,
               canContinue: true,
+              canPublish: false,
               step,
             },
           ];
@@ -187,6 +245,7 @@ function ManualSession() {
           pending: false,
           finalizedEvent: true,
           canContinue: eventIndex === finalizedEvents.length - 1,
+          canPublish: false,
           step: eventIndex === finalizedEvents.length - 1 ? step : null,
         }));
       }),
@@ -198,6 +257,7 @@ function ManualSession() {
         pending: true,
         finalizedEvent: false,
         canContinue: false,
+        canPublish: isPublishablePendingEvent(event),
         step: null,
       })),
     ],
@@ -215,36 +275,66 @@ function ManualSession() {
   }, [pendingEvents.length]);
 
   useEffect(() => {
-    if (params.applicationId) {
-      setSelectedApplicationId(params.applicationId);
+    if (!contextProjectId) return;
+
+    if (routeApplicationId || routeVersionId) {
+      const nextContext = {
+        projectId: contextProjectId,
+        applicationId: routeApplicationId ?? selectedApplication?.id ?? "",
+        applicationName: state.applicationName || selectedApplication?.name || routeApplicationId || "Select application",
+        versionId: routeVersionId,
+        versionName: state.versionName || selectedVersion?.version || routeVersionId,
+      };
+
+      if (nextContext.applicationId && !applicationContextEquals(selectedApplicationContext, nextContext)) {
+        setSelectedApplicationContext(nextContext);
+      }
       return;
     }
+
+    if (applicationsPlaceholderData) return;
 
     if (!typedApplications.length) {
-      setSelectedApplicationId(null);
+      if (selectedApplicationContext?.projectId === contextProjectId) setSelectedApplicationContext(null);
+      if (requestedApplicationId || requestedVersionId) {
+        updateSearchParams(searchParams, setSearchParams, { appId: null, versionId: null });
+      }
       return;
     }
 
-    if (!selectedApplicationId || !typedApplications.some((application) => application.id === selectedApplicationId)) {
-      setSelectedApplicationId(typedApplications[0].id);
-    }
-  }, [params.applicationId, selectedApplicationId, typedApplications]);
+    if (!selectedApplication) return;
 
-  useEffect(() => {
-    if (params.versionId) {
-      setSelectedVersionId(params.versionId);
-      return;
+    const nextContext = buildApplicationContext(contextProjectId, selectedApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
     }
 
-    if (!availableVersions.length) {
-      setSelectedVersionId(null);
-      return;
-    }
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== selectedApplication.id) updates.appId = selectedApplication.id;
+    if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
+    if (!selectedVersionId && requestedVersionId) updates.versionId = null;
 
-    if (!selectedVersionId || !availableVersions.some((version) => version.id === selectedVersionId)) {
-      setSelectedVersionId(availableVersions[0].id);
+    if (Object.keys(updates).length > 0) {
+      updateSearchParams(searchParams, setSearchParams, updates);
     }
-  }, [availableVersions, params.versionId, selectedVersionId]);
+  }, [
+    applicationsPlaceholderData,
+    contextProjectId,
+    requestedApplicationId,
+    requestedVersionId,
+    routeApplicationId,
+    routeVersionId,
+    searchParams,
+    selectedApplication,
+    selectedApplicationContext,
+    selectedVersion,
+    selectedVersionId,
+    setSearchParams,
+    setSelectedApplicationContext,
+    state.applicationName,
+    state.versionName,
+    typedApplications.length,
+  ]);
 
   const drawFrame = useCallback((dataUrl: string) => {
     const canvas = canvasRef.current;
@@ -475,6 +565,20 @@ function ManualSession() {
             return true;
           });
         });
+        if (pendingActionRef.current === "publish") {
+          completeAction("Typing step published.");
+        }
+      }
+
+      if (payload.type === "flow.pending_published") {
+        const count = Number(payload.stepCount);
+        if (pendingActionRef.current === "publish") {
+          completeAction(
+            Number.isFinite(count) && count > 0
+              ? "Typing step published."
+              : "No pending typing step to publish.",
+          );
+        }
       }
 
       if (payload.type === "flow.rewound") {
@@ -657,7 +761,7 @@ function ManualSession() {
   );
 
   const sendMouse = useCallback(
-    (event: MouseEvent<HTMLCanvasElement>, action: "move" | "down" | "up") => {
+    (event: MouseEvent<HTMLCanvasElement>, action: "down" | "up") => {
       if (!canSend) return;
       const point = canvasPoint(event);
       send({
@@ -665,6 +769,24 @@ function ManualSession() {
         input: {
           kind: "mouse",
           action,
+          x: point.x,
+          y: point.y,
+          button: event.button,
+        },
+      });
+    },
+    [canSend, canvasPoint, send],
+  );
+
+  const sendHover = useCallback(
+    (event: MouseEvent<HTMLCanvasElement>) => {
+      if (!canSend) return;
+      const point = canvasPoint(event);
+      send({
+        type: "browser.input",
+        input: {
+          kind: "mouse",
+          action: "hover",
           x: point.x,
           y: point.y,
           button: event.button,
@@ -771,14 +893,26 @@ function ManualSession() {
     startActionTimeout("continue", "Continue timed out. The session is still connected.", REWIND_ACTION_TIMEOUT_MS);
   };
 
+  const handlePublishPendingStep = () => {
+    if (!canSend || !flowStarted || hasPendingAction) return;
+    startAction("publish", "Publishing typing step...");
+    const sent = send({ type: "flow.publish_pending" });
+    if (!sent) {
+      cancelActionSilently();
+      return;
+    }
+    startActionTimeout("publish", "Publish timed out. The session is still connected.");
+  };
+
   const handleReportBug = () => {
-    if (!jiraReportingEnabled || !bugSummary.trim() || !canFinishFlow || hasPendingAction || hasStalePendingEvents) return;
+    if (!jiraReportingEnabled || !bugTitle.trim() || !canFinishFlow || hasPendingAction || hasStalePendingEvents) return;
     startAction("bug", "Queueing bug flow...");
     setPendingEvents([]);
+    const summary = [bugTitle.trim(), bugDescription.trim()].filter(Boolean).join("\n\n");
     const sent = send({
       type: "bug.report",
       bug: {
-        summary: bugSummary.trim(),
+        summary,
         severity: bugSeverity,
         includeScreenshot: false,
         includeSteps: true,
@@ -875,18 +1009,49 @@ function ManualSession() {
     handleReportBug();
   };
 
+  const handleApplicationChange = (applicationId: string | null) => {
+    const application = applicationId ? (typedApplications.find((item) => item.id === applicationId) ?? null) : null;
+    const version = application?.versions?.[0] ?? null;
+
+    updateSearchParams(
+      searchParams,
+      setSearchParams,
+      {
+        appId: application?.id ?? null,
+        versionId: version?.id ?? null,
+      },
+      false,
+    );
+
+    if (contextProjectId && application) {
+      setSelectedApplicationContext(buildApplicationContext(contextProjectId, application, version));
+    } else {
+      setSelectedApplicationContext(null);
+    }
+  };
+
+  const handleVersionChange = (versionId: string | null) => {
+    const version = versionId ? (availableVersions.find((item) => item.id === versionId) ?? null) : null;
+    updateSearchParams(searchParams, setSearchParams, { versionId: version?.id ?? null }, false);
+
+    if (contextProjectId && selectedApplication) {
+      setSelectedApplicationContext(buildApplicationContext(contextProjectId, selectedApplication, version));
+    }
+  };
+
   return (
     <main className={styles.shell}>
-      <ManualSessionHeader
-        appName={appName}
-        versionName={versionName}
+      <LiveSessionHeader
+        title="Manual Recording"
+        detail={`${appName} / ${versionName}${sessionId ? ` / ${sessionId}` : ""}`}
         sessionId={sessionId}
         currentUrl={currentUrl}
         currentTitle={currentTitle}
         isLive={isLive}
-        status={status}
-        ttlRemainingSeconds={ttlRemainingSeconds}
-        elapsedSeconds={elapsedSeconds}
+        statusLabel={statusLabel(status)}
+        ttlRemainingLabel={ttlRemainingSeconds !== null ? `Idle ${formatElapsed(ttlRemainingSeconds)}` : null}
+        elapsedLabel={formatElapsed(elapsedSeconds)}
+        backLabel="Back to applications"
         onBack={handleBack}
       />
 
@@ -898,7 +1063,7 @@ function ManualSession() {
           error={error}
           hasLiveSession={hasLiveSession}
           status={status}
-          onMouseMove={(event) => sendMouse(event, "move")}
+          onHover={sendHover}
           onMouseDown={(event) => sendMouse(event, "down")}
           onMouseUp={(event) => sendMouse(event, "up")}
           onWheel={handleWheel}
@@ -931,18 +1096,21 @@ function ManualSession() {
           visibleSteps={visibleSteps}
           jiraReportingEnabled={jiraReportingEnabled}
           jiraReportingMessage={jiraReportingMessage}
-          bugSummary={bugSummary}
+          bugTitle={bugTitle}
+          bugDescription={bugDescription}
           bugSeverity={bugSeverity}
           canReportBug={canReportBug}
-          onApplicationChange={setSelectedApplicationId}
-          onVersionChange={setSelectedVersionId}
+          onApplicationChange={handleApplicationChange}
+          onVersionChange={handleVersionChange}
           onConnectionAction={handleConnectionAction}
           onTabChange={setActiveTab}
           onRewindToCheckpoint={handleRewindToCheckpoint}
           onStartFlow={handleStartFlow}
           onFinishFlow={openFinishConfirmation}
           onContinueFromStep={handleContinueFromStep}
-          onBugSummaryChange={setBugSummary}
+          onPublishPendingStep={handlePublishPendingStep}
+          onBugTitleChange={setBugTitle}
+          onBugDescriptionChange={setBugDescription}
           onBugSeverityChange={setBugSeverity}
           onReportBug={openBugConfirmation}
           onBack={handleBack}

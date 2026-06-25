@@ -13,7 +13,9 @@ import {
   Play,
   Power,
   RotateCcw,
+  Upload,
 } from "lucide-react";
+import { LiveSessionTabBar } from "@shared/ui";
 import type {
   ActionFeedback,
   ApplicationVersionView,
@@ -25,6 +27,11 @@ import type {
 import styles from "../ManualSession.module.scss";
 
 type ManualSessionTab = "record" | "bug";
+
+const MANUAL_SESSION_TABS = [
+  { value: "record", label: "Record", Icon: ListChecks },
+  { value: "bug", label: "Report Bug", Icon: Bug },
+] satisfies Array<{ value: ManualSessionTab; label: string; Icon: typeof ListChecks }>;
 
 type ManualSessionPanelProps = {
   appName: string;
@@ -52,7 +59,8 @@ type ManualSessionPanelProps = {
   visibleSteps: VisibleStepItem[];
   jiraReportingEnabled: boolean;
   jiraReportingMessage: string;
-  bugSummary: string;
+  bugTitle: string;
+  bugDescription: string;
   bugSeverity: string;
   canReportBug: boolean;
   onApplicationChange: (applicationId: string | null) => void;
@@ -63,7 +71,9 @@ type ManualSessionPanelProps = {
   onStartFlow: () => void;
   onFinishFlow: () => void;
   onContinueFromStep: (step: RecordedStep) => void;
-  onBugSummaryChange: (summary: string) => void;
+  onPublishPendingStep: () => void;
+  onBugTitleChange: (title: string) => void;
+  onBugDescriptionChange: (description: string) => void;
   onBugSeverityChange: (severity: string) => void;
   onReportBug: () => void;
   onBack: () => void;
@@ -95,7 +105,8 @@ export function ManualSessionPanel({
   visibleSteps,
   jiraReportingEnabled,
   jiraReportingMessage,
-  bugSummary,
+  bugTitle,
+  bugDescription,
   bugSeverity,
   canReportBug,
   onApplicationChange,
@@ -106,7 +117,9 @@ export function ManualSessionPanel({
   onStartFlow,
   onFinishFlow,
   onContinueFromStep,
-  onBugSummaryChange,
+  onPublishPendingStep,
+  onBugTitleChange,
+  onBugDescriptionChange,
   onBugSeverityChange,
   onReportBug,
   onBack,
@@ -182,24 +195,12 @@ export function ManualSessionPanel({
         </div>
       </section>
 
-      <div className={styles.tabBar}>
-        <button
-          type="button"
-          className={activeTab === "record" ? styles.tabButtonActive : styles.tabButton}
-          onClick={() => onTabChange("record")}
-        >
-          <ListChecks className={styles.tabIcon} />
-          Record
-        </button>
-        <button
-          type="button"
-          className={activeTab === "bug" ? styles.tabButtonActive : styles.tabButton}
-          onClick={() => onTabChange("bug")}
-        >
-          <Bug className={styles.tabIcon} />
-          Report Bug
-        </button>
-      </div>
+      <LiveSessionTabBar
+        tabs={MANUAL_SESSION_TABS}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        ariaLabel="Manual session sections"
+      />
 
       {actionFeedback && (
         <div
@@ -320,6 +321,21 @@ export function ManualSessionPanel({
                     )}
                     {pendingAction === "continue" ? "Continuing..." : "Continue"}
                   </button>
+                ) : item.canPublish ? (
+                  <button
+                    type="button"
+                    className={styles.stepIconButton}
+                    onClick={onPublishPendingStep}
+                    disabled={!canSend || !flowStarted || hasPendingAction}
+                    title="Publish typing step"
+                    aria-label="Publish typing step"
+                  >
+                    {pendingAction === "publish" ? (
+                      <LoaderCircle className={styles.spinnerIcon} />
+                    ) : (
+                      <Upload className={styles.stepActionIcon} />
+                    )}
+                  </button>
                 ) : (
                   <span className={item.pending ? styles.pendingBadge : styles.recordedBadge}>
                     {item.pending ? "Pending" : "Recorded"}
@@ -345,10 +361,21 @@ export function ManualSessionPanel({
             </div>
           )}
 
-          <label className={styles.field}>
-            <span>Summary</span>
-            <textarea value={bugSummary} onChange={(event) => onBugSummaryChange(event.target.value)} rows={5} />
-          </label>
+          <div className={styles.fieldGroup}>
+            <input
+              value={bugTitle}
+              onChange={(event) => onBugTitleChange(event.target.value)}
+              placeholder="Title"
+              aria-label="Bug title"
+            />
+            <textarea
+              value={bugDescription}
+              onChange={(event) => onBugDescriptionChange(event.target.value)}
+              placeholder="Description"
+              aria-label="Bug description"
+              rows={5}
+            />
+          </div>
 
           <label className={styles.field}>
             <span>Severity</span>

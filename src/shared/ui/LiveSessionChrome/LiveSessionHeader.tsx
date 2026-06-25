@@ -3,46 +3,44 @@
 // See LICENSE file in the project root for full license information.
 
 import { ArrowLeft, Wifi, WifiOff } from "lucide-react";
-import { formatElapsed, statusLabel } from "../../lib/manual-session-formatters";
-import styles from "../ManualSession.module.scss";
+import styles from "./LiveSessionChrome.module.scss";
 
-type ManualSessionHeaderProps = {
-  appName: string;
-  versionName: string;
+type LiveSessionHeaderProps = {
+  title: string;
+  detail: string;
   sessionId: string;
   currentUrl: string;
   currentTitle: string;
   isLive: boolean;
-  status: string;
-  ttlRemainingSeconds: number | null;
-  elapsedSeconds: number;
+  statusLabel: string;
+  ttlRemainingLabel?: string | null;
+  elapsedLabel: string;
+  backLabel: string;
   onBack: () => void;
 };
 
-export function ManualSessionHeader({
-  appName,
-  versionName,
+export function LiveSessionHeader({
+  title,
+  detail,
   sessionId,
   currentUrl,
   currentTitle,
   isLive,
-  status,
-  ttlRemainingSeconds,
-  elapsedSeconds,
+  statusLabel,
+  ttlRemainingLabel = null,
+  elapsedLabel,
+  backLabel,
   onBack,
-}: ManualSessionHeaderProps) {
+}: LiveSessionHeaderProps) {
   return (
     <header className={styles.statusBar}>
       <div className={styles.headerIdentity}>
-        <button type="button" className={styles.headerBackButton} onClick={onBack} aria-label="Back to applications">
-          <ArrowLeft className={styles.buttonIcon} />
+        <button type="button" className={styles.headerBackButton} onClick={onBack} aria-label={backLabel}>
+          <ArrowLeft className={styles.statusIcon} />
         </button>
-        <div className={styles.recordingTitle}>
-          <strong>Manual Recording</strong>
-          <span>
-            {appName} / {versionName}
-            {sessionId ? ` / ${sessionId}` : ""}
-          </span>
+        <div className={styles.headerTitle}>
+          <strong>{title}</strong>
+          <span>{detail}</span>
         </div>
       </div>
 
@@ -53,14 +51,14 @@ export function ManualSessionHeader({
         <span className={styles.statusGroup}>
           {isLive ? <Wifi className={styles.statusIcon} /> : <WifiOff className={styles.statusIcon} />}
           <span className={isLive ? styles.statusDotLive : styles.statusDotIdle} />
-          <span className={styles.statusText}>{statusLabel(status)}</span>
+          <span className={styles.statusText}>{statusLabel}</span>
         </span>
-        {ttlRemainingSeconds !== null && (
+        {ttlRemainingLabel ? (
           <span className={styles.idleTimer} title="Idle session time remaining">
-            Idle {formatElapsed(ttlRemainingSeconds)}
+            {ttlRemainingLabel}
           </span>
-        )}
-        <span className={styles.timer}>{formatElapsed(elapsedSeconds)}</span>
+        ) : null}
+        <span className={styles.timer}>{elapsedLabel}</span>
       </div>
     </header>
   );

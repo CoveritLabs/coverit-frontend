@@ -92,10 +92,11 @@ export type VisibleStepItem = {
   pending: boolean;
   finalizedEvent: boolean;
   canContinue: boolean;
+  canPublish: boolean;
   step: RecordedStep | null;
 };
 
-export type ManualAction = "start" | "reset" | "continue" | "finish" | "bug" | "disconnect";
+export type ManualAction = "start" | "reset" | "continue" | "publish" | "finish" | "bug" | "disconnect";
 
 export type ActionFeedback = {
   kind: "pending" | "success" | "error";

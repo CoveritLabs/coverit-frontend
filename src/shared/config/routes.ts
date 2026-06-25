@@ -16,6 +16,7 @@ export const ROUTES = {
   PROJECT_INTEGRATIONS: "/projects/:projectId/integrations",
   REGRESSION_RUNS: "/runs",
   TEST_FLOWS: "/test-flows",
+  TEST_FLOW_EDITOR: "/test-flows/:flowId/editor",
   USER_GUIDES: "/user-guides",
 
   DASHBOARD: "/dashboard",

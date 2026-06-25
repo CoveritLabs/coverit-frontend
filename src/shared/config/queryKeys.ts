@@ -65,6 +65,8 @@ const testFlowKeys = {
   lists: (projectId: string, applicationId: string) => [...testFlowKeys.all, "list", projectId, applicationId] as const,
   list: (projectId: string, applicationId: string, filters: Record<string, unknown>) =>
     [...testFlowKeys.lists(projectId, applicationId), filters] as const,
+  editor: (projectId: string, applicationId: string, flowId: string) =>
+    [...testFlowKeys.all, "editor", projectId, applicationId, flowId] as const,
 };
 
 const userGuideKeys = {
@@ -85,7 +87,7 @@ const integrationKeys = {
 
 const dashboardKeys = {
   all: ["dashboard"] as const,
-  detail: (projectId: string, versionId: string) => [...dashboardKeys.all, "detail", projectId, versionId] as const,
+  detail: (projectId: string) => [...dashboardKeys.all, "detail", projectId] as const,
 };
 
 export const queryKeys = {

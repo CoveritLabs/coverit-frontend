@@ -6,7 +6,7 @@ export type Payload<T> = T extends (infer U)[]
   ? Payload<U>[]
   : T extends object
     ? {
-        [K in keyof T as K extends "$typeName" ? never : K]: Payload<T[K]>;
+        [K in keyof T as K extends "$typeName" | "$unknown" ? never : K]: Payload<T[K]>;
       }
     : T;
 

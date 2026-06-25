@@ -1165,8 +1165,8 @@
 }
 
 .sessionStatusProgress {
-  color: var(--primary);
-  border-color: color-mix(in oklab, var(--primary) 42%, var(--border));
+  color: #d97706;
+  border-color: color-mix(in oklab, #d97706 42%, var(--border));
   background: transparent;
 }
 
@@ -1633,6 +1633,106 @@
     border-color: var(--ring);
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 22%, transparent);
   }
+}
+
+.configJsonTextarea {
+  min-height: 24rem;
+  resize: vertical;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: $font-size-xs;
+  line-height: 1.5;
+
+  &:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 22%, transparent);
+  }
+}
+
+.configModeSwitch {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: $space-1;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--muted);
+  gap: $space-1;
+}
+
+.configModeButton,
+.configModeButtonActive {
+  min-width: 4.5rem;
+  border: 0;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+}
+
+.configModeButtonActive {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.formSection {
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.formSectionSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-4;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::after {
+    content: ">";
+    color: var(--muted-foreground);
+    font-size: $font-size-lg;
+    transform: rotate(90deg);
+    transition: transform 0.16s ease;
+  }
+}
+
+.formSection[open] .formSectionSummary {
+  border-bottom: 1px solid var(--border);
+
+  &::after {
+    transform: rotate(270deg);
+  }
+}
+
+.formSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+}
+
+.disabledSection {
+  opacity: 0.55;
 }
 
 .modalCheckbox {

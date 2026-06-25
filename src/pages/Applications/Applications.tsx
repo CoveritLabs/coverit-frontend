@@ -38,6 +38,10 @@ import {
   useTargetApplications,
   useToggleCrawlSchedule,
   useUpdateTargetApplication,
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
 } from "@features/target-applications";
 import { ROUTES } from "@shared/config/routes";
 import { GRADIENTS } from "@shared/constants/gradients";
@@ -69,7 +73,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Applications.module.scss";
 import {
   AddApplicationModal,
@@ -100,6 +104,7 @@ type ModalState =
   | { type: "deleteSession" };
 
 type ModalAction = { type: ModalState["type"] };
+type SessionConfigMode = "form" | "json";
 
 interface ApplicationVersionView {
   id: string;
@@ -189,6 +194,87 @@ function isActiveSession(status: CrawlSessionStatus) {
   return status === "running" || status === "in_progress";
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function numberOrDefault(value: unknown, defaultValue: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isObjectRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, String(item)]));
+}
+
+function normalizeRerunInputDefaults(value: unknown): CreateCrawlSessionInput["crawlConfig"]["inputDefaults"] {
+  if (!isObjectRecord(value)) return undefined;
+
+  const fieldPatterns = stringRecord(value.fieldPatterns);
+  const typeFallbacks = stringRecord(value.typeFallbacks);
+  if (Object.keys(fieldPatterns).length === 0 && Object.keys(typeFallbacks).length === 0) return undefined;
+
+  return { fieldPatterns, typeFallbacks };
+}
+
+function buildRerunInitialData(session: CrawlSession): CreateCrawlSessionInput {
+  const crawlConfig = session.crawlConfig;
+  const testFlowGeneration = isObjectRecord(crawlConfig.testFlowGeneration) ? crawlConfig.testFlowGeneration : {};
+  const crawlerSettings = isObjectRecord(crawlConfig.crawlerSettings) ? crawlConfig.crawlerSettings : {};
+
+  return {
+    trigger: "on_demand",
+    crawlConfig: {
+      maxStates: numberOrDefault(crawlConfig.maxStates, 1000),
+      timeoutSeconds: numberOrDefault(crawlConfig.timeoutSeconds, 3600),
+      generateTestFlows: crawlConfig.generateTestFlows !== false,
+      generateTestCode: crawlConfig.generateTestCode === true,
+      testFlowGeneration: {
+        coveragePercentage: numberOrDefault(testFlowGeneration.coveragePercentage, 100),
+        numOfTf: numberOrDefault(testFlowGeneration.numOfTf, 1),
+        maxNumOfTf: numberOrDefault(testFlowGeneration.maxNumOfTf, 10000),
+        numOfStates: numberOrDefault(testFlowGeneration.numOfStates, 20),
+        minNumOfStatesPerTf: numberOrDefault(testFlowGeneration.minNumOfStatesPerTf, 3),
+      },
+      crawlerSettings: {
+        ...crawlerSettings,
+        maxTransitions: numberOrDefault(crawlerSettings.maxTransitions, 5000),
+        maxElementsPerState: numberOrDefault(crawlerSettings.maxElementsPerState, 50),
+        maxActionRepeatsPerUrl: numberOrDefault(crawlerSettings.maxActionRepeatsPerUrl, 10),
+        useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
+      },
+      inputDefaults: normalizeRerunInputDefaults(crawlConfig.inputDefaults),
+    },
+    codegenConfig: isObjectRecord(session.codegenConfig)
+      ? {
+          codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
+          prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
+          prTitle: String(session.codegenConfig.prTitle ?? ""),
+          prBody: String(session.codegenConfig.prBody ?? ""),
+          prDraft: session.codegenConfig.prDraft !== false,
+        }
+      : undefined,
+  };
+}
+
+function rerunNeedsJsonMode(session: CrawlSession) {
+  const crawlerSettings = isObjectRecord(session.crawlConfig.crawlerSettings) ? session.crawlConfig.crawlerSettings : {};
+  const inputDefaults = isObjectRecord(session.crawlConfig.inputDefaults) ? session.crawlConfig.inputDefaults : {};
+  const typeFallbacks = isObjectRecord(inputDefaults.typeFallbacks) ? inputDefaults.typeFallbacks : {};
+  const formCrawlerSettings = new Set([
+    "maxTransitions",
+    "maxElementsPerState",
+    "maxActionRepeatsPerUrl",
+    "useSemanticDiversity",
+  ]);
+
+  return (
+    Object.keys(crawlerSettings).some((key) => !formCrawlerSettings.has(key)) ||
+    Object.keys(typeFallbacks).length > 0
+  );
+}
+
 function manualSessionRoute(projectId: string, applicationId: string, versionId: string, sessionId: string) {
   return ROUTES.MANUAL_RECORDING.replace(":projectId", projectId)
     .replace(":applicationId", applicationId)
@@ -209,6 +295,32 @@ function safeJson(value: unknown) {
   } catch {
     return String(value);
   }
+}
+
+function updateSearchParams(
+  searchParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string | null>,
+  replace = true,
+) {
+  const next = new URLSearchParams(searchParams);
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!value) next.delete(key);
+    else next.set(key, value);
+  });
+  setSearchParams(next, { replace });
+}
+
+function getApplicationDetailTab(value: string | null): ApplicationDetailTab {
+  return value === "schedules" ? "schedules" : "crawl-sessions";
+}
+
+function getStatusFilter(value: string | null): CrawlSessionStatusFilter {
+  return STATUS_FILTERS.some((filter) => filter.value === value) ? (value as CrawlSessionStatusFilter) : "all";
+}
+
+function getTriggerFilter(value: string | null): CrawlSessionTriggerFilter {
+  return TRIGGER_FILTERS.some((filter) => filter.value === value) ? (value as CrawlSessionTriggerFilter) : "all";
 }
 
 function StatCard({
@@ -757,12 +869,16 @@ function LabelText({ children }: { children: ReactNode }) {
 
 const Applications = () => {
   const selectedProject = useUIStore((s) => s.selectedProject);
+  const selectedApplicationContext = useUIStore((s) => s.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((s) => s.setSelectedApplicationContext);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     data: applications = [],
     isLoading,
     isError,
     isFetching: applicationsFetching,
+    isPlaceholderData: applicationsPlaceholderData,
     refetch: refetchApplications,
   } = useTargetApplications(selectedProject?.id ?? null);
   const createTargetApplication = useCreateTargetApplication();
@@ -781,19 +897,14 @@ const Applications = () => {
   const deleteCrawlSchedule = useDeleteCrawlSchedule();
   const user = useAuthStore((state) => state.user);
 
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [rotatedApiKey, setRotatedApiKey] = useState<string | null>(null);
   const [modal, dispatchModal] = useReducer(modalReducer, { type: "none" });
-  const [activeTab, setActiveTab] = useState<ApplicationDetailTab>("crawl-sessions");
   const [applicationSearch, setApplicationSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CrawlSessionStatusFilter>("all");
-  const [triggerFilter, setTriggerFilter] = useState<CrawlSessionTriggerFilter>("all");
   const [editingSchedule, setEditingSchedule] = useState<CrawlSchedule | null>(null);
   const [scheduleToDelete, setScheduleToDelete] = useState<CrawlSchedule | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<CrawlSession | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [sessionFormInitialData, setSessionFormInitialData] = useState<CreateCrawlSessionInput | undefined>(undefined);
+  const [sessionFormInitialMode, setSessionFormInitialMode] = useState<SessionConfigMode>("form");
   const [savedRegressionApiKeys, setSavedRegressionApiKeys] = useState<Record<string, string>>({});
 
   const closeModal = () => dispatchModal({ type: "none" });
@@ -821,13 +932,39 @@ const Applications = () => {
     });
   }, [applicationCards, applicationSearch]);
 
-  const selectedApplicationCard = useMemo(
-    () => applicationCards.find((card) => card.application.id === selectedApplicationId) ?? null,
-    [applicationCards, selectedApplicationId],
+  const requestedApplicationId = searchParams.get("appId");
+  const requestedVersionId = searchParams.get("versionId");
+  const activeTab = getApplicationDetailTab(searchParams.get("tab"));
+  const statusFilter = getStatusFilter(searchParams.get("status"));
+  const triggerFilter = getTriggerFilter(searchParams.get("trigger"));
+  const selectedSessionId = searchParams.get("sessionId");
+  const projectId = selectedProject?.id ?? null;
+
+  const selectedApplication = useMemo(
+    () =>
+      resolveApplicationSelection({
+        applications: typedApplications,
+        projectId,
+        requestedApplicationId,
+        storedContext: selectedApplicationContext,
+      }),
+    [projectId, requestedApplicationId, selectedApplicationContext, typedApplications],
   );
-  const selectedApplication = selectedApplicationCard?.application ?? null;
+  const selectedApplicationId = selectedApplication?.id ?? null;
   const currentVersions = useMemo(() => selectedApplication?.versions ?? [], [selectedApplication?.versions]);
-  const selectedVersion = currentVersions.find((version) => version.id === selectedVersionId) ?? null;
+  const selectedVersion = useMemo(
+    () =>
+      resolveVersionSelection({
+        versions: currentVersions,
+        projectId,
+        applicationId: selectedApplicationId,
+        requestedVersionId,
+        storedContext: selectedApplicationContext,
+        requireVersion: true,
+      }),
+    [currentVersions, projectId, requestedVersionId, selectedApplicationContext, selectedApplicationId],
+  );
+  const selectedVersionId = selectedVersion?.id ?? null;
   const userRole = useMemo(
     () => getProjectUserRole(selectedProject as Parameters<typeof getProjectUserRole>[0], user?.id),
     [selectedProject, user?.id],
@@ -870,7 +1007,7 @@ const Applications = () => {
     isFetching: schedulesFetching,
     refetch: refetchSchedules,
   } = useCrawlSchedules(selectedProject?.id ?? null, selectedApplication?.id ?? null);
-  const { data: detailedSelectedSession } = useCrawlSession(
+  const { data: detailedSelectedSession, refetch: refetchSelectedSession } = useCrawlSession(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -887,25 +1024,58 @@ const Applications = () => {
   const schedules = queriedSchedules;
 
   useEffect(() => {
-    if (!applicationCards.length) {
-      setSelectedApplicationId(null);
+    if (isLoading || applicationsPlaceholderData || !projectId) return;
+
+    if (!typedApplications.length) {
+      if (selectedApplicationContext?.projectId === projectId) {
+        setSelectedApplicationContext(null);
+      }
+      if (requestedApplicationId || requestedVersionId || selectedSessionId) {
+        updateSearchParams(searchParams, setSearchParams, {
+          appId: null,
+          versionId: null,
+          sessionId: null,
+        });
+      }
       return;
     }
-    if (!selectedApplicationId || !applicationCards.some((card) => card.application.id === selectedApplicationId)) {
-      setSelectedApplicationId(applicationCards[0].application.id);
-    }
-  }, [applicationCards, selectedApplicationId]);
 
-  useEffect(() => {
-    if (!currentVersions.length) {
-      setSelectedVersionId(null);
-      return;
+    if (!selectedApplication) return;
+
+    const nextContext = buildApplicationContext(projectId, selectedApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
     }
 
-    if (!selectedVersionId || !currentVersions.some((version) => version.id === selectedVersionId)) {
-      setSelectedVersionId(currentVersions[0].id);
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== selectedApplication.id) updates.appId = selectedApplication.id;
+    if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
+    if (!selectedVersionId && requestedVersionId) updates.versionId = null;
+    if (selectedSessionId && !sessionsFetching && !queriedSessions.some((session) => session.id === selectedSessionId)) {
+      updates.sessionId = null;
     }
-  }, [currentVersions, selectedVersionId]);
+
+    if (Object.keys(updates).length > 0) {
+      updateSearchParams(searchParams, setSearchParams, updates);
+    }
+  }, [
+    isLoading,
+    applicationsPlaceholderData,
+    projectId,
+    queriedSessions,
+    requestedApplicationId,
+    requestedVersionId,
+    searchParams,
+    selectedApplication,
+    selectedApplicationContext,
+    selectedSessionId,
+    selectedVersion,
+    selectedVersionId,
+    sessionsFetching,
+    setSearchParams,
+    setSelectedApplicationContext,
+    typedApplications.length,
+  ]);
 
   const selectedSession = useMemo(
     () => detailedSelectedSession ?? queriedSessions.find((session) => session.id === selectedSessionId) ?? null,
@@ -950,9 +1120,58 @@ const Applications = () => {
       refetchApplications(),
       refetchApplicationDetails(),
       refetchSessions(),
+      selectedSessionId ? refetchSelectedSession() : Promise.resolve(),
       refetchRegressionConfig(),
       refetchSchedules(),
     ]);
+  };
+
+  const handleSelectApplication = (applicationId: string | null) => {
+    const application = applicationId ? (typedApplications.find((item) => item.id === applicationId) ?? null) : null;
+    const version = application?.versions?.[0] ?? null;
+
+    updateSearchParams(
+      searchParams,
+      setSearchParams,
+      {
+        appId: application?.id ?? null,
+        versionId: version?.id ?? null,
+        sessionId: null,
+      },
+      false,
+    );
+
+    if (projectId && application) {
+      setSelectedApplicationContext(buildApplicationContext(projectId, application, version));
+    } else {
+      setSelectedApplicationContext(null);
+    }
+  };
+
+  const handleSelectVersion = (versionId: string | null) => {
+    const version = versionId ? (currentVersions.find((item) => item.id === versionId) ?? null) : null;
+
+    updateSearchParams(searchParams, setSearchParams, { versionId: version?.id ?? null, sessionId: null }, false);
+
+    if (projectId && selectedApplication) {
+      setSelectedApplicationContext(buildApplicationContext(projectId, selectedApplication, version));
+    }
+  };
+
+  const handleActiveTabChange = (tab: ApplicationDetailTab) => {
+    updateSearchParams(searchParams, setSearchParams, { tab }, false);
+  };
+
+  const handleStatusFilterChange = (value: CrawlSessionStatusFilter) => {
+    updateSearchParams(searchParams, setSearchParams, { status: value === "all" ? null : value }, false);
+  };
+
+  const handleTriggerFilterChange = (value: CrawlSessionTriggerFilter) => {
+    updateSearchParams(searchParams, setSearchParams, { trigger: value === "all" ? null : value }, false);
+  };
+
+  const handleSelectSession = (sessionId: string | null) => {
+    updateSearchParams(searchParams, setSearchParams, { sessionId }, false);
   };
 
   const isApplicationNameDuplicate = (name: string, ignoreId?: string) => {
@@ -972,7 +1191,23 @@ const Applications = () => {
       { projectId: selectedProject!.id, data: { name, baseUrl } },
       {
         onSuccess: (data) => {
-          setSelectedApplicationId(data.id);
+          updateSearchParams(
+            searchParams,
+            setSearchParams,
+            {
+              appId: data.id,
+              versionId: null,
+              sessionId: null,
+            },
+            false,
+          );
+          setSelectedApplicationContext({
+            projectId: selectedProject!.id,
+            applicationId: data.id,
+            applicationName: name,
+            versionId: null,
+            versionName: null,
+          });
           setRotatedApiKey(data.apiKey || null);
         },
       },
@@ -998,7 +1233,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           closeModal();
-          setSelectedApplicationId(null);
+          handleSelectApplication(null);
         },
       },
     );
@@ -1032,7 +1267,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           closeModal();
-          setSelectedVersionId(remainingVersions[0]?.id ?? null);
+          handleSelectVersion(remainingVersions[0]?.id ?? null);
         },
       },
     );
@@ -1070,8 +1305,9 @@ const Applications = () => {
     );
   };
 
-  const handleOpenCreateSession = (initialData?: CreateCrawlSessionInput) => {
+  const handleOpenCreateSession = (initialData?: CreateCrawlSessionInput, initialMode: SessionConfigMode = "form") => {
     setSessionFormInitialData(initialData);
+    setSessionFormInitialMode(initialMode);
     dispatchModal({ type: "createSession" });
   };
 
@@ -1089,6 +1325,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           setSessionFormInitialData(undefined);
+          setSessionFormInitialMode("form");
           closeModal();
         },
       },
@@ -1123,7 +1360,7 @@ const Applications = () => {
       },
       {
         onSuccess: () => {
-          if (selectedSessionId === sessionToDelete.id) setSelectedSessionId(null);
+          if (selectedSessionId === sessionToDelete.id) handleSelectSession(null);
           setSessionToDelete(null);
           closeModal();
         },
@@ -1201,49 +1438,8 @@ const Applications = () => {
   };
 
   const handleRerun = (session: CrawlSession) => {
-    const crawlerSettings =
-      session.crawlConfig.crawlerSettings && typeof session.crawlConfig.crawlerSettings === "object"
-        ? (session.crawlConfig.crawlerSettings as Record<string, unknown>)
-        : {};
-    const inputDefaults =
-      session.crawlConfig.inputDefaults && typeof session.crawlConfig.inputDefaults === "object"
-        ? (session.crawlConfig.inputDefaults as CreateCrawlSessionInput["crawlConfig"]["inputDefaults"])
-        : undefined;
-    const testFlowGeneration =
-      session.crawlConfig.testFlowGeneration && typeof session.crawlConfig.testFlowGeneration === "object"
-        ? (session.crawlConfig.testFlowGeneration as Record<string, unknown>)
-        : {};
-
-    handleOpenCreateSession({
-      trigger: "manual",
-      crawlConfig: {
-        maxStates: Number(session.crawlConfig.maxStates ?? 1000),
-        timeoutSeconds: Number(session.crawlConfig.timeoutSeconds ?? 3600),
-        generateTestFlows: session.crawlConfig.generateTestFlows !== false,
-        testFlowGeneration: {
-          coveragePercentage: Number(testFlowGeneration.coveragePercentage ?? 100),
-          numOfTf: Number(testFlowGeneration.numOfTf ?? 1),
-          numOfStates: Number(testFlowGeneration.numOfStates ?? 20),
-          minNumOfStatesPerTf: Number(testFlowGeneration.minNumOfStatesPerTf ?? 3),
-        },
-        crawlerSettings: {
-          maxTransitions: Number(crawlerSettings.maxTransitions ?? 5000),
-          useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
-        },
-        inputDefaults,
-      },
-      codegenConfig:
-        Object.keys(session.codegenConfig).length > 0
-          ? {
-              codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
-              prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
-              prTitle: String(session.codegenConfig.prTitle ?? ""),
-              prBody: String(session.codegenConfig.prBody ?? ""),
-              prDraft: Boolean(session.codegenConfig.prDraft ?? true),
-            }
-          : undefined,
-    });
-    setSelectedSessionId(null);
+    handleOpenCreateSession(buildRerunInitialData(session), rerunNeedsJsonMode(session) ? "json" : "form");
+    handleSelectSession(null);
   };
 
   const handleReattach = (session: CrawlSession) => {
@@ -1268,7 +1464,7 @@ const Applications = () => {
               },
             },
           );
-          setSelectedSessionId(null);
+          handleSelectSession(null);
         },
       },
     );
@@ -1333,7 +1529,7 @@ const Applications = () => {
             {filteredApplicationCards.map((card) => (
               <button
                 key={card.application.id}
-                onClick={() => setSelectedApplicationId(card.application.id)}
+                onClick={() => handleSelectApplication(card.application.id)}
                 className={cn(
                   styles.projectItem,
                   selectedApplication?.id === card.application.id && styles.projectItemActive,
@@ -1438,9 +1634,7 @@ const Applications = () => {
                         return (
                           <button
                             key={version.id}
-                            onClick={() => {
-                              setSelectedVersionId(version.id);
-                            }}
+                            onClick={() => handleSelectVersion(version.id)}
                             className={cn(styles.versionChip, isSelected && styles.versionChipActive)}
                           >
                             <span className={styles.versionChipMain}>
@@ -1496,10 +1690,10 @@ const Applications = () => {
                 </div>
 
                 <div className={styles.detailTabs}>
-                  <TabButton active={activeTab === "crawl-sessions"} onClick={() => setActiveTab("crawl-sessions")}>
+                  <TabButton active={activeTab === "crawl-sessions"} onClick={() => handleActiveTabChange("crawl-sessions")}>
                     Crawl Sessions
                   </TabButton>
-                  <TabButton active={activeTab === "schedules"} onClick={() => setActiveTab("schedules")}>
+                  <TabButton active={activeTab === "schedules"} onClick={() => handleActiveTabChange("schedules")}>
                     Schedules
                   </TabButton>
                 </div>
@@ -1517,8 +1711,8 @@ const Applications = () => {
                       totalSessions={queriedSessions.length}
                       statusFilter={statusFilter}
                       triggerFilter={triggerFilter}
-                      onStatusFilterChange={setStatusFilter}
-                      onTriggerFilterChange={setTriggerFilter}
+                      onStatusFilterChange={handleStatusFilterChange}
+                      onTriggerFilterChange={handleTriggerFilterChange}
                       onCreate={() => handleOpenCreateSession()}
                       canCreate={Boolean(regressionConfig?.id && selectedVersion)}
                       createDisabledReason={
@@ -1527,7 +1721,7 @@ const Applications = () => {
                           : "Configure a codebase first."
                       }
                       canDelete={isAdmin}
-                      onView={setSelectedSessionId}
+                      onView={handleSelectSession}
                       onStart={handleStartSession}
                       onDelete={handleOpenDeleteSession}
                       startingSessionId={startCrawlSession.variables?.sessionId ?? null}
@@ -1599,7 +1793,7 @@ const Applications = () => {
           session={selectedSession}
           appName={selectedApplication.name}
           selectedVersionName={selectedVersion?.version}
-          onClose={() => setSelectedSessionId(null)}
+          onClose={() => handleSelectSession(null)}
           onRerun={handleRerun}
           onReattach={handleReattach}
           reattaching={
@@ -1675,9 +1869,11 @@ const Applications = () => {
       {modal.type === "createSession" && (
         <CreateCrawlSessionModal
           initialData={sessionFormInitialData}
+          initialMode={sessionFormInitialMode}
           onConfirm={handleCreateSession}
           onClose={() => {
             setSessionFormInitialData(undefined);
+            setSessionFormInitialMode("form");
             closeModal();
           }}
         />

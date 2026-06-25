@@ -2,8 +2,8 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { RefreshCw } from "lucide-react";
-import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
+import { Copy, PencilLine, RefreshCw } from "lucide-react";
+import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow, toast } from "@shared/ui";
 import type { TestFlow } from "../../model/types/test-flows.types";
 import styles from "../TestFlows.module.scss";
 
@@ -27,6 +27,43 @@ function shortId(value: string) {
   return value.slice(0, 8);
 }
 
+async function copyFullId(value: string, label: string) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard is unavailable.");
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} copied`);
+  } catch (error) {
+    toast.error(`Failed to copy ${label.toLowerCase()}`, error instanceof Error ? error.message : undefined);
+  }
+}
+
+function CopyableShortId({
+  value,
+  label,
+  prefix,
+  variant = "text",
+}: {
+  value: string;
+  label: string;
+  prefix?: string;
+  variant?: "text" | "code";
+}) {
+  const displayValue = `${prefix ?? ""}${shortId(value)}`;
+
+  return (
+    <button
+      type="button"
+      className={variant === "code" ? styles.copyCodeButton : styles.copyTextButton}
+      title={value}
+      aria-label={`Copy ${label}`}
+      onClick={() => void copyFullId(value, label)}
+    >
+      {variant === "code" ? <code>{displayValue}</code> : <span>{displayValue}</span>}
+      <Copy size={12} aria-hidden="true" />
+    </button>
+  );
+}
+
 export function TestFlowsTable({
   flows,
   formatDateTime,
@@ -37,6 +74,7 @@ export function TestFlowsTable({
   onPreviousPage,
   onNextPage,
   onGenerate,
+  onEdit,
   generatingFlowId,
 }: {
   flows: TestFlow[];
@@ -48,6 +86,7 @@ export function TestFlowsTable({
   onPreviousPage: () => void;
   onNextPage: () => void;
   onGenerate: (flow: TestFlow) => void;
+  onEdit: (flow: TestFlow) => void;
   generatingFlowId?: string | null;
 }) {
   const showEmptyState = flows.length === 0 && !hasPreviousPage && !hasNextPage;
@@ -82,9 +121,9 @@ export function TestFlowsTable({
               flows.map((flow) => (
                 <TableRow key={flow.id}>
                   <TableCell>
-                    <div className={styles.flowIdCell} title={flow.id}>
-                      <span>TestFlow #{shortId(flow.id)}</span>
-                      <code>{shortId(flow.checkpointStateHash)}</code>
+                    <div className={styles.flowIdCell}>
+                      <CopyableShortId value={flow.id} label="TestFlow ID" prefix="TestFlow #" />
+                      <CopyableShortId value={flow.checkpointStateHash} label="checkpoint hash" variant="code" />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -93,7 +132,10 @@ export function TestFlowsTable({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className={styles.stepCount}>{flow.stepCount}</span>
+                    <span className={styles.stepCount}>
+                      {flow.stepCount}
+                      {flow.editorStepCount > 0 ? ` + ${flow.editorStepCount} draft` : ""}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -114,8 +156,8 @@ export function TestFlowsTable({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className={styles.sessionCell} title={flow.crawlSessionId}>
-                      <code>{shortId(flow.crawlSessionId)}</code>
+                    <div className={styles.sessionCell}>
+                      <CopyableShortId value={flow.crawlSessionId} label="crawl session ID" variant="code" />
                       <span>
                         {flow.crawlSession.triggerType} / {flow.crawlSession.status}
                       </span>
@@ -125,21 +167,33 @@ export function TestFlowsTable({
                     <span className={styles.dateText}>{formatDateTime(flow.createdAt)}</span>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={styles.generateButton}
-                      onClick={() => onGenerate(flow)}
-                      disabled={flow.status === "GENERATED" || generatingFlowId === flow.id}
-                      title={
-                        flow.status === "GENERATED"
-                          ? "This flow is up to date"
-                          : `Generate from ${flow.transitionRefs.length} transition(s)`
-                      }
-                    >
-                      <RefreshCw size={14} />
-                      Generate
-                    </Button>
+                    <div className={styles.rowActions}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={styles.generateButton}
+                        onClick={() => onEdit(flow)}
+                        title="Edit flow"
+                      >
+                        <PencilLine size={14} />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={styles.generateButton}
+                        onClick={() => onGenerate(flow)}
+                        disabled={flow.status === "GENERATED" || generatingFlowId === flow.id}
+                        title={
+                          flow.status === "GENERATED"
+                            ? "This flow is up to date"
+                            : `Generate from ${flow.transitionRefs.length} transition(s)`
+                        }
+                      >
+                        <RefreshCw size={14} />
+                        Generate
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

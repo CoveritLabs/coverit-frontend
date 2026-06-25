@@ -12,11 +12,21 @@ interface SelectedProject {
   name: string;
 }
 
+export interface SelectedApplicationContext {
+  projectId: string;
+  applicationId: string;
+  applicationName: string;
+  versionId: string | null;
+  versionName: string | null;
+}
+
 interface UIState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   selectedProject: SelectedProject | null;
   setSelectedProject: (project: SelectedProject | null) => void;
+  selectedApplicationContext: SelectedApplicationContext | null;
+  setSelectedApplicationContext: (context: SelectedApplicationContext | null) => void;
   userRole: ProjectRole | null;
   setUserRole: (role: ProjectRole | null) => void;
 }
@@ -34,12 +44,26 @@ export const useUIStore = create<UIState>()(
       (set) => ({
         theme: "system",
         selectedProject: null,
+        selectedApplicationContext: null,
         userRole: null,
         setTheme: (theme) => {
           set({ theme }, false, "ui/setTheme");
         },
         setSelectedProject: (project) => {
-          set({ selectedProject: project }, false, "ui/setSelectedProject");
+          set(
+            (state) => ({
+              selectedProject: project,
+              selectedApplicationContext:
+                state.selectedApplicationContext?.projectId === project?.id
+                  ? state.selectedApplicationContext
+                  : null,
+            }),
+            false,
+            "ui/setSelectedProject",
+          );
+        },
+        setSelectedApplicationContext: (context) => {
+          set({ selectedApplicationContext: context }, false, "ui/setSelectedApplicationContext");
         },
         setUserRole: (role) => {
           set({ userRole: role }, false, "ui/setUserRole");
@@ -47,6 +71,12 @@ export const useUIStore = create<UIState>()(
       }),
       {
         name: "coverit-ui",
+        partialize: (state) => ({
+          theme: state.theme,
+          selectedProject: state.selectedProject,
+          selectedApplicationContext: state.selectedApplicationContext,
+          userRole: state.userRole,
+        }),
       },
     ),
     { name: "UIStore" },

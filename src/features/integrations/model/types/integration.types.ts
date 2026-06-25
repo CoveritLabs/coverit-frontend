@@ -15,7 +15,7 @@ export type IntegrationProvider = Payload<ContractIntegrationStatusResponse>["pr
 
 export type JiraReportingConfig = Payload<ContractJiraReportingConfig>;
 export type JiraIssueProject = NonNullable<JiraReportingConfig["project"]>;
-export type JiraIssueType = NonNullable<JiraReportingConfig["issueType"]>;
+export type JiraIssueType = NonNullable<JiraReportingConfig["issueType"]> & { projectId: string };
 
 export type IntegrationReportingConfig = Payload<ContractIntegrationReportingConfigResponse>["config"];
 export type IntegrationReportingOptions = Payload<ContractIntegrationReportingOptionsResponse>["options"];

@@ -23,20 +23,44 @@ export interface RegressionCodebaseConfig {
   apiKey?: string;
 }
 
+export interface CrawlerSettingsInput {
+  headless?: boolean;
+  timeoutMs?: number;
+  maxStates?: number;
+  maxTransitions?: number;
+  maxElementsPerState?: number;
+  maxSelectOptionsPerElement?: number;
+  maxActionRepeatsPerUrl?: number;
+  actionRetryCount?: number;
+  replayRetryCount?: number;
+  popupTimeoutMs?: number;
+  domQuietMs?: number;
+  domSettleTimeoutMs?: number;
+  useDomQuiescence?: boolean;
+  pageLoadState?: string;
+  clickNonHttpLinks?: boolean;
+  deferDestructiveActions?: boolean;
+  destructiveKeywords?: string;
+  useSemanticDiversity?: boolean;
+  semanticDiversityThreshold?: number;
+  semanticUncertaintyMargin?: number;
+  semanticMaxBankSize?: number;
+  semanticArtifactDir?: string;
+}
+
 export interface CrawlConfigInput {
   maxStates: number;
   timeoutSeconds: number;
   generateTestFlows: boolean;
+  generateTestCode?: boolean;
   testFlowGeneration?: {
     coveragePercentage?: number;
     numOfTf?: number;
+    maxNumOfTf?: number;
     numOfStates?: number;
     minNumOfStatesPerTf?: number;
   };
-  crawlerSettings?: {
-    maxTransitions?: number;
-    useSemanticDiversity?: boolean;
-  };
+  crawlerSettings?: CrawlerSettingsInput;
   inputDefaults?: {
     fieldPatterns: Record<string, string>;
     typeFallbacks: Record<string, string>;

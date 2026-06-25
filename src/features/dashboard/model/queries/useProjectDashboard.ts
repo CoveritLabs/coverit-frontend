@@ -7,18 +7,17 @@ import { queryKeys } from "@shared/config/queryKeys";
 import { dashboardService } from "../../api/dashboardService";
 import type { ProjectDashboardResponse } from "../types/dashboard.types";
 
-export function useProjectDashboard(projectId: string | null, versionId?: string) {
+export function useProjectDashboard(projectId: string | null) {
   const queryClient = useQueryClient();
   const safeProjectId = projectId ?? "__missing__";
-  const safeVersionId = versionId ?? "latest";
 
   return useQuery({
-    queryKey: queryKeys.dashboard.detail(safeProjectId, safeVersionId),
-    queryFn: () => dashboardService.getProjectDashboard(safeProjectId, versionId),
+    queryKey: queryKeys.dashboard.detail(safeProjectId),
+    queryFn: () => dashboardService.getProjectDashboard(safeProjectId),
     enabled: Boolean(projectId),
     placeholderData: () =>
       projectId
-        ? queryClient.getQueryData<ProjectDashboardResponse>(queryKeys.dashboard.detail(projectId, safeVersionId))
+        ? queryClient.getQueryData<ProjectDashboardResponse>(queryKeys.dashboard.detail(projectId))
         : undefined,
   });
 }
