@@ -2,4 +2,6 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-export { default } from "@features/test-flows/ui/flow-editor/FlowEditor";
+export { LiveCanvasFrame } from "./LiveCanvasFrame";
+export { LiveSessionHeader } from "./LiveSessionHeader";
+export { LiveSessionTabBar, type LiveSessionTab } from "./LiveSessionTabBar";

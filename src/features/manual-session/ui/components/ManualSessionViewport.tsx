@@ -4,7 +4,8 @@
 
 import { AlertCircle, MousePointerClick } from "lucide-react";
 import type { KeyboardEvent, MouseEvent, RefObject, WheelEvent } from "react";
-import { statusLabel } from "../../lib/manual-session-formatters";
+import { statusLabel } from "@shared/lib/live-session-formatters";
+import { LiveCanvasFrame } from "@shared/ui";
 import styles from "../ManualSession.module.scss";
 
 type ManualSessionViewportProps = {
@@ -38,39 +39,33 @@ export function ManualSessionViewport({
   onKeyDown,
 }: ManualSessionViewportProps) {
   return (
-    <div className={styles.viewportWrapper}>
-      <div className={styles.viewportFrame}>
-        {!hasFrame && (
-          <div className={styles.viewportEmpty}>
-            {error ? <AlertCircle className={styles.emptyIcon} /> : <MousePointerClick className={styles.emptyIcon} />}
-            <span>{error ?? (hasLiveSession ? statusLabel(status) : "Select an application and version, then connect.")}</span>
-          </div>
-        )}
-        <canvas
-          ref={canvasRef}
-          width={viewport.width}
-          height={viewport.height}
-          tabIndex={0}
-          className={styles.browserCanvas}
-          onContextMenu={(event) => event.preventDefault()}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            canvasRef.current?.focus();
-            if (event.button === 2) {
-              onHover(event);
-              return;
-            }
-            onMouseDown(event);
-          }}
-          onMouseUp={(event) => {
-            event.preventDefault();
-            if (event.button === 2) return;
-            onMouseUp(event);
-          }}
-          onWheel={onWheel}
-          onKeyDown={onKeyDown}
-        />
-      </div>
-    </div>
+    <LiveCanvasFrame
+      canvasRef={canvasRef}
+      viewport={viewport}
+      hasFrame={hasFrame}
+      tabIndex={0}
+      emptyState={
+        <>
+          {error ? <AlertCircle className={styles.emptyIcon} /> : <MousePointerClick className={styles.emptyIcon} />}
+          <span>{error ?? (hasLiveSession ? statusLabel(status) : "Select an application and version, then connect.")}</span>
+        </>
+      }
+      onMouseDown={(event) => {
+        event.preventDefault();
+        canvasRef.current?.focus();
+        if (event.button === 2) {
+          onHover(event);
+          return;
+        }
+        onMouseDown(event);
+      }}
+      onMouseUp={(event) => {
+        event.preventDefault();
+        if (event.button === 2) return;
+        onMouseUp(event);
+      }}
+      onWheel={onWheel}
+      onKeyDown={onKeyDown}
+    />
   );
 }

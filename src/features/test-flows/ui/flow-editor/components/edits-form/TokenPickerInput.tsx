@@ -4,7 +4,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import type { TokenPickerOption } from "@features/manual-session/lib/flow-editor-token-options";
+import type { TokenPickerOption } from "@features/test-flows/lib/flow-editor-token-options";
 import { Badge } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
 import styles from "./TokenPickerInput.module.scss";

@@ -13,7 +13,9 @@ import {
   Play,
   Power,
   RotateCcw,
+  Upload,
 } from "lucide-react";
+import { LiveSessionTabBar } from "@shared/ui";
 import type {
   ActionFeedback,
   ApplicationVersionView,
@@ -25,6 +27,11 @@ import type {
 import styles from "../ManualSession.module.scss";
 
 type ManualSessionTab = "record" | "bug";
+
+const MANUAL_SESSION_TABS = [
+  { value: "record", label: "Record", Icon: ListChecks },
+  { value: "bug", label: "Report Bug", Icon: Bug },
+] satisfies Array<{ value: ManualSessionTab; label: string; Icon: typeof ListChecks }>;
 
 type ManualSessionPanelProps = {
   appName: string;
@@ -64,6 +71,7 @@ type ManualSessionPanelProps = {
   onStartFlow: () => void;
   onFinishFlow: () => void;
   onContinueFromStep: (step: RecordedStep) => void;
+  onPublishPendingStep: () => void;
   onBugTitleChange: (title: string) => void;
   onBugDescriptionChange: (description: string) => void;
   onBugSeverityChange: (severity: string) => void;
@@ -109,6 +117,7 @@ export function ManualSessionPanel({
   onStartFlow,
   onFinishFlow,
   onContinueFromStep,
+  onPublishPendingStep,
   onBugTitleChange,
   onBugDescriptionChange,
   onBugSeverityChange,
@@ -186,24 +195,12 @@ export function ManualSessionPanel({
         </div>
       </section>
 
-      <div className={styles.tabBar}>
-        <button
-          type="button"
-          className={activeTab === "record" ? styles.tabButtonActive : styles.tabButton}
-          onClick={() => onTabChange("record")}
-        >
-          <ListChecks className={styles.tabIcon} />
-          Record
-        </button>
-        <button
-          type="button"
-          className={activeTab === "bug" ? styles.tabButtonActive : styles.tabButton}
-          onClick={() => onTabChange("bug")}
-        >
-          <Bug className={styles.tabIcon} />
-          Report Bug
-        </button>
-      </div>
+      <LiveSessionTabBar
+        tabs={MANUAL_SESSION_TABS}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        ariaLabel="Manual session sections"
+      />
 
       {actionFeedback && (
         <div
@@ -323,6 +320,21 @@ export function ManualSessionPanel({
                       <CornerDownRight className={styles.stepActionIcon} />
                     )}
                     {pendingAction === "continue" ? "Continuing..." : "Continue"}
+                  </button>
+                ) : item.canPublish ? (
+                  <button
+                    type="button"
+                    className={styles.stepIconButton}
+                    onClick={onPublishPendingStep}
+                    disabled={!canSend || !flowStarted || hasPendingAction}
+                    title="Publish typing step"
+                    aria-label="Publish typing step"
+                  >
+                    {pendingAction === "publish" ? (
+                      <LoaderCircle className={styles.spinnerIcon} />
+                    ) : (
+                      <Upload className={styles.stepActionIcon} />
+                    )}
                   </button>
                 ) : (
                   <span className={item.pending ? styles.pendingBadge : styles.recordedBadge}>

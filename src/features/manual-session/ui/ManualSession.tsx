@@ -14,7 +14,8 @@ import {
 } from "@features/target-applications";
 import { env } from "@shared/config/env";
 import { ROUTES } from "@shared/config/routes";
-import { toast } from "@shared/ui";
+import { formatElapsed, statusLabel } from "@shared/lib/live-session-formatters";
+import { LiveSessionHeader, toast } from "@shared/ui";
 import {
   useCallback,
   useEffect,
@@ -32,6 +33,7 @@ import {
   eventKey,
   eventLabel,
   isGroupedPendingEvent,
+  isPublishablePendingEvent,
   mergePendingEvent,
   numericRevision,
   stepEventKeys,
@@ -60,7 +62,6 @@ import {
   ManualSessionConfirmationModal,
   type ManualSessionConfirmationKind,
 } from "./components/ManualSessionConfirmationModal";
-import { ManualSessionHeader } from "./components/ManualSessionHeader";
 import { ManualSessionPanel } from "./components/ManualSessionPanel";
 import { ManualSessionViewport } from "./components/ManualSessionViewport";
 import styles from "./ManualSession.module.scss";
@@ -191,8 +192,14 @@ function ManualSession() {
     () => pendingEvents.some((event) => pendingEventClock - event.receivedAt >= PENDING_EVENT_BLOCK_MS),
     [pendingEventClock, pendingEvents],
   );
+  const hasPublishablePendingEvents = useMemo(
+    () => pendingEvents.some(isPublishablePendingEvent),
+    [pendingEvents],
+  );
   const pendingEventBlockerMessage = hasStalePendingEvents
-    ? "Waiting for pending browser events to finalize before creating a TestFlow."
+    ? hasPublishablePendingEvents
+      ? "Publish the pending typing step before creating a TestFlow."
+      : "Waiting for pending browser events to finalize before creating a TestFlow."
     : null;
   const canFinishFlow = Boolean(canSend && flowStarted && hasRecordedSteps && !hasStalePendingEvents);
   const jiraReportingEnabled =
@@ -224,6 +231,7 @@ function ManualSession() {
               pending: false,
               finalizedEvent: false,
               canContinue: true,
+              canPublish: false,
               step,
             },
           ];
@@ -237,6 +245,7 @@ function ManualSession() {
           pending: false,
           finalizedEvent: true,
           canContinue: eventIndex === finalizedEvents.length - 1,
+          canPublish: false,
           step: eventIndex === finalizedEvents.length - 1 ? step : null,
         }));
       }),
@@ -248,6 +257,7 @@ function ManualSession() {
         pending: true,
         finalizedEvent: false,
         canContinue: false,
+        canPublish: isPublishablePendingEvent(event),
         step: null,
       })),
     ],
@@ -555,6 +565,20 @@ function ManualSession() {
             return true;
           });
         });
+        if (pendingActionRef.current === "publish") {
+          completeAction("Typing step published.");
+        }
+      }
+
+      if (payload.type === "flow.pending_published") {
+        const count = Number(payload.stepCount);
+        if (pendingActionRef.current === "publish") {
+          completeAction(
+            Number.isFinite(count) && count > 0
+              ? "Typing step published."
+              : "No pending typing step to publish.",
+          );
+        }
       }
 
       if (payload.type === "flow.rewound") {
@@ -869,6 +893,17 @@ function ManualSession() {
     startActionTimeout("continue", "Continue timed out. The session is still connected.", REWIND_ACTION_TIMEOUT_MS);
   };
 
+  const handlePublishPendingStep = () => {
+    if (!canSend || !flowStarted || hasPendingAction) return;
+    startAction("publish", "Publishing typing step...");
+    const sent = send({ type: "flow.publish_pending" });
+    if (!sent) {
+      cancelActionSilently();
+      return;
+    }
+    startActionTimeout("publish", "Publish timed out. The session is still connected.");
+  };
+
   const handleReportBug = () => {
     if (!jiraReportingEnabled || !bugTitle.trim() || !canFinishFlow || hasPendingAction || hasStalePendingEvents) return;
     startAction("bug", "Queueing bug flow...");
@@ -1006,16 +1041,17 @@ function ManualSession() {
 
   return (
     <main className={styles.shell}>
-      <ManualSessionHeader
-        appName={appName}
-        versionName={versionName}
+      <LiveSessionHeader
+        title="Manual Recording"
+        detail={`${appName} / ${versionName}${sessionId ? ` / ${sessionId}` : ""}`}
         sessionId={sessionId}
         currentUrl={currentUrl}
         currentTitle={currentTitle}
         isLive={isLive}
-        status={status}
-        ttlRemainingSeconds={ttlRemainingSeconds}
-        elapsedSeconds={elapsedSeconds}
+        statusLabel={statusLabel(status)}
+        ttlRemainingLabel={ttlRemainingSeconds !== null ? `Idle ${formatElapsed(ttlRemainingSeconds)}` : null}
+        elapsedLabel={formatElapsed(elapsedSeconds)}
+        backLabel="Back to applications"
         onBack={handleBack}
       />
 
@@ -1072,6 +1108,7 @@ function ManualSession() {
           onStartFlow={handleStartFlow}
           onFinishFlow={openFinishConfirmation}
           onContinueFromStep={handleContinueFromStep}
+          onPublishPendingStep={handlePublishPendingStep}
           onBugTitleChange={setBugTitle}
           onBugDescriptionChange={setBugDescription}
           onBugSeverityChange={setBugSeverity}

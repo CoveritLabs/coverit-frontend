@@ -2,9 +2,25 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
+import type {
+  FlowEditorConnectResponse as ContractFlowEditorConnectResponse,
+  FlowEditorDetailResponse as ContractFlowEditorDetailResponse,
+  FlowEditorDraftStep as ContractFlowEditorDraftStep,
+  FlowEditorElementRef as ContractFlowEditorElementRef,
+  FlowEditorStepStateLabel as ContractFlowEditorStepStateLabel,
+  FlowEditorTestFlowSummary as ContractFlowEditorTestFlowSummary,
+  FlowEditorTransitionStep as ContractFlowEditorTransitionStep,
+  SaveFlowEditorStepsRequest as ContractSaveFlowEditorStepsRequest,
+  SaveFlowEditorStepsResponse as ContractSaveFlowEditorStepsResponse,
+} from "@coveritlabs/contracts";
+import type { Payload } from "@shared/types/common";
+
 export type TestFlowType = "MANUAL" | "BUG_REPRODUCTION" | "COVERAGE";
 export type TestFlowTypeFilter = "all" | TestFlowType;
 export type TestFlowStatus = "NEEDS_GENERATION" | "STALE" | "GENERATED";
+export type FlowEditorStepKind = "design-class" | "design-operation" | "assertion" | "action-hook" | "group";
+export type FlowEditorPositionEdge = "before" | "after";
+export type FlowEditorLabelingStatus = "COMPLETED" | "PENDING" | "QUEUED" | "MISSING";
 
 export interface ListTestFlowsRequest {
   versionId?: string;
@@ -14,20 +30,19 @@ export interface ListTestFlowsRequest {
   limit?: number;
 }
 
-export interface TestFlow {
-  id: string;
-  crawlSessionId: string;
-  appVersionId: string;
-  appVersionName: string;
-  checkpointStateHash: string;
-  transitionRefs: string[];
+type ContractTestFlow = Payload<ContractFlowEditorTestFlowSummary>;
+type ContractElementRef = Payload<ContractFlowEditorElementRef>;
+type ContractDraftStep = Payload<ContractFlowEditorDraftStep>;
+type ContractStepStateLabel = Payload<ContractFlowEditorStepStateLabel>;
+type ContractTransitionStep = Payload<ContractFlowEditorTransitionStep>;
+type ContractDetailResponse = Payload<ContractFlowEditorDetailResponse>;
+type ContractSaveRequest = Payload<ContractSaveFlowEditorStepsRequest>;
+type ContractSaveResponse = Payload<ContractSaveFlowEditorStepsResponse>;
+
+export type TestFlow = Omit<ContractTestFlow, "testFlowType" | "status" | "generatedAt" | "crawlSession"> & {
   testFlowType: TestFlowType;
-  stepCount: number;
-  editorStepCount: number;
   status: TestFlowStatus;
-  createdAt: string;
   generatedAt: string | null;
-  modifiedAt: string;
   crawlSession: {
     id: string;
     triggerType: string;
@@ -61,47 +76,13 @@ export interface GenerateTestFlowResponse {
   jobId: string;
 }
 
-export type FlowEditorStepKind = "design-class" | "design-operation" | "assertion" | "action-hook" | "group";
-export type FlowEditorPositionEdge = "before" | "after";
-export type FlowEditorLabelingStatus = "COMPLETED" | "PENDING" | "QUEUED" | "MISSING";
-export type FlowEditorValueType = "string" | "number" | "integer" | "currency" | "boolean" | "date" | "json" | "array" | "object";
-export type FlowEditorCodeLanguage = "typescript";
-
-export type FlowEditorValueSpec =
-  | { literal: unknown }
-  | { from: string }
-  | { source: "extract"; id: string }
-  | { source: "element"; selector: string; token?: string }
-  | { source: "store" | "arg" | "context" | "env"; path: string }
-  | { expressionId: string; args?: Record<string, FlowEditorValueSpec> }
-  | { functionId: string; args?: Record<string, FlowEditorValueSpec> }
-  | { code: FlowEditorInlineCodeBlock; args?: Record<string, FlowEditorValueSpec> }
-  | { fields: Record<string, FlowEditorValueSpec> }
-  | { list: FlowEditorValueSpec[] };
-
-export interface FlowEditorInlineCodeBlock {
-  language: FlowEditorCodeLanguage;
-  body: string;
-  imports?: string[];
-  inputSchema?: unknown;
-  outputSchema?: unknown;
-}
-
-export interface FlowEditorStepStateLabel {
-  stateHash: string;
-  label: string;
+export type FlowEditorStepStateLabel = Omit<ContractStepStateLabel, "labelingStatus"> & {
   labelingStatus: FlowEditorLabelingStatus;
-}
+};
 
-export interface FlowEditorElementRef {
-  selector?: string;
+export type FlowEditorElementRef = Omit<ContractElementRef, "selectorCandidates" | "attributes" | "box" | "viewport"> & {
   selectorCandidates?: string[];
-  tag?: string | null;
-  text?: string;
-  accessibleName?: string;
   attributes?: Record<string, string>;
-  pageUrl?: string;
-  stateHash?: string;
   box?: {
     x: number;
     y: number;
@@ -112,49 +93,39 @@ export interface FlowEditorElementRef {
     width: number;
     height: number;
   };
-}
+};
 
-export interface FlowEditorDraftStep {
-  id: string;
+export type FlowEditorDraftStep = Omit<ContractDraftStep, "kind" | "position" | "element" | "definition"> & {
   kind: FlowEditorStepKind;
   position: {
     edge: FlowEditorPositionEdge;
     transitionId: string;
   };
-  order: number;
-  label: string;
   element?: FlowEditorElementRef;
   definition: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
+};
 
-export interface FlowEditorTransitionStep {
-  id: string;
-  index: number;
-  transitionId: string;
-  label: string;
-  action?: string;
+export type FlowEditorTransitionStep = Omit<ContractTransitionStep, "labelingStatus" | "fromState" | "toState"> & {
   labelingStatus: FlowEditorLabelingStatus;
   fromState?: FlowEditorStepStateLabel;
   toState?: FlowEditorStepStateLabel;
-}
+};
 
-export interface FlowEditorDetailResponse {
+export type FlowEditorDetailResponse = Omit<ContractDetailResponse, "flow" | "transitionSteps" | "editorSteps"> & {
   flow: TestFlow;
   transitionSteps: FlowEditorTransitionStep[];
   editorSteps: FlowEditorDraftStep[];
-}
+};
 
-export interface SaveFlowEditorStepsResponse {
+export type SaveFlowEditorStepsRequest = Omit<ContractSaveRequest, "editorSteps"> & {
   editorSteps: FlowEditorDraftStep[];
-  editorStepCount: number;
-}
+};
 
-export interface FlowEditorConnectResponse {
-  editorSessionId: string;
-  wsTicket: string;
-}
+export type SaveFlowEditorStepsResponse = Omit<ContractSaveResponse, "editorSteps"> & {
+  editorSteps: FlowEditorDraftStep[];
+};
+
+export type FlowEditorConnectResponse = Payload<ContractFlowEditorConnectResponse>;
 
 export interface RegressionCodebaseOption {
   id: string;

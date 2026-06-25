@@ -60,6 +60,10 @@ function isInputEvent(event: RecordedEvent) {
   return ["input", "change"].includes(eventAction(event));
 }
 
+export function isPublishablePendingEvent(event: RecordedEvent) {
+  return isInputEvent(event);
+}
+
 function selectorSetsIntersect(left: Set<string>, right: Set<string>) {
   for (const selector of left) {
     if (right.has(selector)) return true;
