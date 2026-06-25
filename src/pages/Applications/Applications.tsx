@@ -26,8 +26,10 @@ import {
   useCreateTargetApplication,
   useCreateTargetApplicationVersion,
   useDeleteCrawlSchedule,
+  useDeleteCrawlSession,
   useDeleteTargetApplication,
   useDeleteTargetApplicationVersion,
+  useReattachManualSession,
   useRegressionConfig,
   useRotateTargetApplicationApiKey,
   useSaveCrawlSchedule,
@@ -36,7 +38,12 @@ import {
   useTargetApplications,
   useToggleCrawlSchedule,
   useUpdateTargetApplication,
+  applicationContextEquals,
+  buildApplicationContext,
+  resolveApplicationSelection,
+  resolveVersionSelection,
 } from "@features/target-applications";
+import { ROUTES } from "@shared/config/routes";
 import { GRADIENTS } from "@shared/constants/gradients";
 import { Badge, Button, Card, Input } from "@shared/ui";
 import { cn } from "@shared/utils/cn";
@@ -57,6 +64,7 @@ import {
   Network,
   Play,
   Plus,
+  RefreshCw,
   Search,
   Tag,
   Trash2,
@@ -65,12 +73,14 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Applications.module.scss";
 import {
   AddApplicationModal,
   AddVersionModal,
   CreateCrawlSessionModal,
   DeleteApplicationModal,
+  DeleteCrawlSessionModal,
   DeleteScheduleModal,
   DeleteVersionModal,
   EditApplicationModal,
@@ -90,9 +100,11 @@ type ModalState =
   | { type: "regressionConfig" }
   | { type: "createSession" }
   | { type: "scheduleConfig" }
-  | { type: "deleteSchedule" };
+  | { type: "deleteSchedule" }
+  | { type: "deleteSession" };
 
 type ModalAction = { type: ModalState["type"] };
+type SessionConfigMode = "form" | "json";
 
 interface ApplicationVersionView {
   id: string;
@@ -123,6 +135,7 @@ const TRIGGER_FILTERS: Array<{ value: CrawlSessionTriggerFilter; label: string }
   { value: "all", label: "All Triggers" },
   { value: "manual", label: "Manual" },
   { value: "scheduled", label: "Scheduled" },
+  { value: "on_demand", label: "On Demand" },
 ];
 
 const DEFAULT_STATS: ApplicationDetailStats = {
@@ -177,6 +190,97 @@ function getStatusIcon(status: CrawlSessionStatus) {
   return Clock;
 }
 
+function isActiveSession(status: CrawlSessionStatus) {
+  return status === "running" || status === "in_progress";
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function numberOrDefault(value: unknown, defaultValue: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isObjectRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, String(item)]));
+}
+
+function normalizeRerunInputDefaults(value: unknown): CreateCrawlSessionInput["crawlConfig"]["inputDefaults"] {
+  if (!isObjectRecord(value)) return undefined;
+
+  const fieldPatterns = stringRecord(value.fieldPatterns);
+  const typeFallbacks = stringRecord(value.typeFallbacks);
+  if (Object.keys(fieldPatterns).length === 0 && Object.keys(typeFallbacks).length === 0) return undefined;
+
+  return { fieldPatterns, typeFallbacks };
+}
+
+function buildRerunInitialData(session: CrawlSession): CreateCrawlSessionInput {
+  const crawlConfig = session.crawlConfig;
+  const testFlowGeneration = isObjectRecord(crawlConfig.testFlowGeneration) ? crawlConfig.testFlowGeneration : {};
+  const crawlerSettings = isObjectRecord(crawlConfig.crawlerSettings) ? crawlConfig.crawlerSettings : {};
+
+  return {
+    trigger: "on_demand",
+    crawlConfig: {
+      maxStates: numberOrDefault(crawlConfig.maxStates, 1000),
+      timeoutSeconds: numberOrDefault(crawlConfig.timeoutSeconds, 3600),
+      generateTestFlows: crawlConfig.generateTestFlows !== false,
+      generateTestCode: crawlConfig.generateTestCode === true,
+      testFlowGeneration: {
+        coveragePercentage: numberOrDefault(testFlowGeneration.coveragePercentage, 100),
+        numOfTf: numberOrDefault(testFlowGeneration.numOfTf, 1),
+        maxNumOfTf: numberOrDefault(testFlowGeneration.maxNumOfTf, 10000),
+        numOfStates: numberOrDefault(testFlowGeneration.numOfStates, 20),
+        minNumOfStatesPerTf: numberOrDefault(testFlowGeneration.minNumOfStatesPerTf, 3),
+      },
+      crawlerSettings: {
+        ...crawlerSettings,
+        maxTransitions: numberOrDefault(crawlerSettings.maxTransitions, 5000),
+        maxElementsPerState: numberOrDefault(crawlerSettings.maxElementsPerState, 50),
+        maxActionRepeatsPerUrl: numberOrDefault(crawlerSettings.maxActionRepeatsPerUrl, 10),
+        useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
+      },
+      inputDefaults: normalizeRerunInputDefaults(crawlConfig.inputDefaults),
+    },
+    codegenConfig: isObjectRecord(session.codegenConfig)
+      ? {
+          codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
+          prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
+          prTitle: String(session.codegenConfig.prTitle ?? ""),
+          prBody: String(session.codegenConfig.prBody ?? ""),
+          prDraft: session.codegenConfig.prDraft !== false,
+        }
+      : undefined,
+  };
+}
+
+function rerunNeedsJsonMode(session: CrawlSession) {
+  const crawlerSettings = isObjectRecord(session.crawlConfig.crawlerSettings) ? session.crawlConfig.crawlerSettings : {};
+  const inputDefaults = isObjectRecord(session.crawlConfig.inputDefaults) ? session.crawlConfig.inputDefaults : {};
+  const typeFallbacks = isObjectRecord(inputDefaults.typeFallbacks) ? inputDefaults.typeFallbacks : {};
+  const formCrawlerSettings = new Set([
+    "maxTransitions",
+    "maxElementsPerState",
+    "maxActionRepeatsPerUrl",
+    "useSemanticDiversity",
+  ]);
+
+  return (
+    Object.keys(crawlerSettings).some((key) => !formCrawlerSettings.has(key)) ||
+    Object.keys(typeFallbacks).length > 0
+  );
+}
+
+function manualSessionRoute(projectId: string, applicationId: string, versionId: string, sessionId: string) {
+  return ROUTES.MANUAL_RECORDING.replace(":projectId", projectId)
+    .replace(":applicationId", applicationId)
+    .replace(":versionId", versionId)
+    .replace(":sessionId", sessionId);
+}
 
 function createEmptyRegressionConfig(): RegressionCodebaseConfig {
   return {
@@ -191,6 +295,32 @@ function safeJson(value: unknown) {
   } catch {
     return String(value);
   }
+}
+
+function updateSearchParams(
+  searchParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string | null>,
+  replace = true,
+) {
+  const next = new URLSearchParams(searchParams);
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!value) next.delete(key);
+    else next.set(key, value);
+  });
+  setSearchParams(next, { replace });
+}
+
+function getApplicationDetailTab(value: string | null): ApplicationDetailTab {
+  return value === "schedules" ? "schedules" : "crawl-sessions";
+}
+
+function getStatusFilter(value: string | null): CrawlSessionStatusFilter {
+  return STATUS_FILTERS.some((filter) => filter.value === value) ? (value as CrawlSessionStatusFilter) : "all";
+}
+
+function getTriggerFilter(value: string | null): CrawlSessionTriggerFilter {
+  return TRIGGER_FILTERS.some((filter) => filter.value === value) ? (value as CrawlSessionTriggerFilter) : "all";
 }
 
 function StatCard({
@@ -300,7 +430,6 @@ function DetailsTop({
   return (
     <>
       <div className={styles.detailStatsGrid}>
-        <StatCard icon={Tag} value={stats.versionCount} label="VERSIONS" />
         <StatCard icon={BadgeCheck} value={stats.crawledCount} label="CRAWLED" tone="success" />
         <StatCard icon={Network} value={stats.statesDiscovered} label="STATES DISCOVERED" />
         <StatCard icon={Clock} value={stats.lastCrawlDate} label="LAST CRAWL" />
@@ -321,9 +450,12 @@ function SessionsTable({
   onCreate,
   canCreate,
   createDisabledReason,
+  canDelete,
   onView,
   onStart,
+  onDelete,
   startingSessionId,
+  deletingSessionId,
 }: {
   sessions: CrawlSession[];
   totalSessions: number;
@@ -334,9 +466,12 @@ function SessionsTable({
   onCreate: () => void;
   canCreate: boolean;
   createDisabledReason?: string;
+  canDelete: boolean;
   onView: (sessionId: string) => void;
   onStart: (sessionId: string) => void;
+  onDelete: (session: CrawlSession) => void;
   startingSessionId?: string | null;
+  deletingSessionId?: string | null;
 }) {
   return (
     <Card className={styles.sessionsPanel}>
@@ -420,7 +555,7 @@ function SessionsTable({
               {sessions.map((session) => {
                 const StatusIcon = getStatusIcon(session.status);
                 const statusClass = getStatusClass(session.status);
-                const isRunning = session.status === "running";
+                const isRunning = isActiveSession(session.status);
                 return (
                   <tr key={session.id}>
                     <td>
@@ -451,7 +586,7 @@ function SessionsTable({
                     </td>
                     <td>
                       <span className={styles.durationCell}>
-                        {session.durationMinutes ? (
+                        {session.durationMinutes !== null && session.durationMinutes !== undefined ? (
                           <>
                             <Clock className={styles.iconTinyMuted} />
                             {session.durationMinutes}m
@@ -484,6 +619,19 @@ function SessionsTable({
                         >
                           <ChevronRight className={styles.iconSmall} />
                         </Button>
+                        {canDelete && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className={cn(styles.iconButton, styles.dangerButton)}
+                            onClick={() => onDelete(session)}
+                            disabled={deletingSessionId === session.id}
+                            aria-label={`Delete session ${session.id}`}
+                            title="Delete"
+                          >
+                            <Trash2 className={styles.iconSmall} />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -592,17 +740,22 @@ function SessionDetailsPanel({
   selectedVersionName,
   onClose,
   onRerun,
+  onReattach,
+  reattaching,
 }: {
   session: CrawlSession;
   appName: string;
   selectedVersionName?: string;
   onClose: () => void;
   onRerun: (session: CrawlSession) => void;
+  onReattach: (session: CrawlSession) => void;
+  reattaching: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const StatusIcon = getStatusIcon(session.status);
   const statusClass = getStatusClass(session.status);
-  const isInProgress = session.status === "in_progress";
+  const isInProgress = isActiveSession(session.status);
+  const canReattach = session.trigger === "manual" && isActiveSession(session.status);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(session.applicationBaseUrl);
@@ -644,7 +797,11 @@ function SessionDetailsPanel({
           </span>
           <span>
             <small>DURATION</small>
-            <strong>{session.durationMinutes ? `${session.durationMinutes}m` : "In progress"}</strong>
+            <strong>
+              {session.durationMinutes !== null && session.durationMinutes !== undefined
+                ? `${session.durationMinutes}m`
+                : "In progress"}
+            </strong>
           </span>
           <span>
             <small>TRIGGER</small>
@@ -696,9 +853,9 @@ function SessionDetailsPanel({
         )}
 
         <div className={styles.detailsFooter}>
-          <Button onClick={() => onRerun(session)}>
+          <Button onClick={() => (canReattach ? onReattach(session) : onRerun(session))} disabled={reattaching}>
             <Play className={styles.iconSmall} />
-            Re-run Crawl
+            {canReattach ? (reattaching ? "Reattaching..." : "Reattach") : "Re-run Crawl"}
           </Button>
         </div>
       </aside>
@@ -712,7 +869,18 @@ function LabelText({ children }: { children: ReactNode }) {
 
 const Applications = () => {
   const selectedProject = useUIStore((s) => s.selectedProject);
-  const { data: applications = [], isLoading, isError } = useTargetApplications(selectedProject?.id ?? null);
+  const selectedApplicationContext = useUIStore((s) => s.selectedApplicationContext);
+  const setSelectedApplicationContext = useUIStore((s) => s.setSelectedApplicationContext);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    data: applications = [],
+    isLoading,
+    isError,
+    isFetching: applicationsFetching,
+    isPlaceholderData: applicationsPlaceholderData,
+    refetch: refetchApplications,
+  } = useTargetApplications(selectedProject?.id ?? null);
   const createTargetApplication = useCreateTargetApplication();
   const updateTargetApplication = useUpdateTargetApplication();
   const deleteTargetApplication = useDeleteTargetApplication();
@@ -722,23 +890,22 @@ const Applications = () => {
   const saveRegressionCodebaseConfig = useSaveRegressionCodebaseConfig();
   const createCrawlSession = useCreateCrawlSession();
   const startCrawlSession = useStartCrawlSession();
+  const deleteCrawlSession = useDeleteCrawlSession();
+  const reattachManualSession = useReattachManualSession();
   const saveCrawlSchedule = useSaveCrawlSchedule();
   const toggleCrawlSchedule = useToggleCrawlSchedule();
   const deleteCrawlSchedule = useDeleteCrawlSchedule();
   const user = useAuthStore((state) => state.user);
 
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [rotatedApiKey, setRotatedApiKey] = useState<string | null>(null);
   const [modal, dispatchModal] = useReducer(modalReducer, { type: "none" });
-  const [activeTab, setActiveTab] = useState<ApplicationDetailTab>("crawl-sessions");
   const [applicationSearch, setApplicationSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CrawlSessionStatusFilter>("all");
-  const [triggerFilter, setTriggerFilter] = useState<CrawlSessionTriggerFilter>("all");
   const [editingSchedule, setEditingSchedule] = useState<CrawlSchedule | null>(null);
   const [scheduleToDelete, setScheduleToDelete] = useState<CrawlSchedule | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<CrawlSession | null>(null);
   const [sessionFormInitialData, setSessionFormInitialData] = useState<CreateCrawlSessionInput | undefined>(undefined);
+  const [sessionFormInitialMode, setSessionFormInitialMode] = useState<SessionConfigMode>("form");
+  const [savedRegressionApiKeys, setSavedRegressionApiKeys] = useState<Record<string, string>>({});
 
   const closeModal = () => dispatchModal({ type: "none" });
   const typedApplications = useMemo(() => applications as ApplicationView[], [applications]);
@@ -749,7 +916,7 @@ const Applications = () => {
         application,
         gradient: GRADIENTS[index % GRADIENTS.length],
         versionCount: application.versions?.length ?? 0,
-        baseUrl: application.baseUrl?.trim() || "No description"
+        baseUrl: application.baseUrl?.trim() || "No description",
       })),
     [typedApplications],
   );
@@ -765,20 +932,51 @@ const Applications = () => {
     });
   }, [applicationCards, applicationSearch]);
 
-  const selectedApplicationCard = useMemo(
-    () => applicationCards.find((card) => card.application.id === selectedApplicationId) ?? null,
-    [applicationCards, selectedApplicationId],
+  const requestedApplicationId = searchParams.get("appId");
+  const requestedVersionId = searchParams.get("versionId");
+  const activeTab = getApplicationDetailTab(searchParams.get("tab"));
+  const statusFilter = getStatusFilter(searchParams.get("status"));
+  const triggerFilter = getTriggerFilter(searchParams.get("trigger"));
+  const selectedSessionId = searchParams.get("sessionId");
+  const projectId = selectedProject?.id ?? null;
+
+  const selectedApplication = useMemo(
+    () =>
+      resolveApplicationSelection({
+        applications: typedApplications,
+        projectId,
+        requestedApplicationId,
+        storedContext: selectedApplicationContext,
+      }),
+    [projectId, requestedApplicationId, selectedApplicationContext, typedApplications],
   );
-  const selectedApplication = selectedApplicationCard?.application ?? null;
+  const selectedApplicationId = selectedApplication?.id ?? null;
   const currentVersions = useMemo(() => selectedApplication?.versions ?? [], [selectedApplication?.versions]);
-  const selectedVersion = currentVersions.find((version) => version.id === selectedVersionId) ?? null;
+  const selectedVersion = useMemo(
+    () =>
+      resolveVersionSelection({
+        versions: currentVersions,
+        projectId,
+        applicationId: selectedApplicationId,
+        requestedVersionId,
+        storedContext: selectedApplicationContext,
+        requireVersion: true,
+      }),
+    [currentVersions, projectId, requestedVersionId, selectedApplicationContext, selectedApplicationId],
+  );
+  const selectedVersionId = selectedVersion?.id ?? null;
   const userRole = useMemo(
     () => getProjectUserRole(selectedProject as Parameters<typeof getProjectUserRole>[0], user?.id),
     [selectedProject, user?.id],
   );
   const isAdmin = userRole === "ADMIN";
+  const isMember = userRole === "ADMIN" || userRole === "MEMBER";
 
-  const { data: applicationDetails } = useApplicationDetails(
+  const {
+    data: applicationDetails,
+    isFetching: applicationDetailsFetching,
+    refetch: refetchApplicationDetails,
+  } = useApplicationDetails(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -787,7 +985,11 @@ const Applications = () => {
     selectedApplication?.baseUrl ?? "",
     selectedVersion?.version,
   );
-  const { data: queriedSessions = [] } = useCrawlSessions(
+  const {
+    data: queriedSessions = [],
+    isFetching: sessionsFetching,
+    refetch: refetchSessions,
+  } = useCrawlSessions(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -795,15 +997,17 @@ const Applications = () => {
     selectedApplication?.baseUrl ?? "",
     selectedVersion?.version,
   );
-  const { data: queriedRegressionConfig } = useRegressionConfig(
-    selectedProject?.id ?? null,
-    selectedApplication?.id ?? null,
-  );
-  const { data: queriedSchedules = [] } = useCrawlSchedules(
-    selectedProject?.id ?? null,
-    selectedApplication?.id ?? null,
-  );
-  const { data: detailedSelectedSession } = useCrawlSession(
+  const {
+    data: queriedRegressionConfig,
+    isFetching: regressionConfigFetching,
+    refetch: refetchRegressionConfig,
+  } = useRegressionConfig(selectedProject?.id ?? null, selectedApplication?.id ?? null);
+  const {
+    data: queriedSchedules = [],
+    isFetching: schedulesFetching,
+    refetch: refetchSchedules,
+  } = useCrawlSchedules(selectedProject?.id ?? null, selectedApplication?.id ?? null);
+  const { data: detailedSelectedSession, refetch: refetchSelectedSession } = useCrawlSession(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -812,29 +1016,66 @@ const Applications = () => {
     selectedApplication?.baseUrl ?? "",
     selectedVersion?.version,
   );
-  const regressionConfig = queriedRegressionConfig;
+  const regressionConfig = useMemo(() => {
+    if (!queriedRegressionConfig) return queriedRegressionConfig;
+    const savedApiKey = savedRegressionApiKeys[queriedRegressionConfig.id ?? ""];
+    return savedApiKey ? { ...queriedRegressionConfig, apiKey: savedApiKey } : queriedRegressionConfig;
+  }, [queriedRegressionConfig, savedRegressionApiKeys]);
   const schedules = queriedSchedules;
 
   useEffect(() => {
-    if (!applicationCards.length) {
-      setSelectedApplicationId(null);
+    if (isLoading || applicationsPlaceholderData || !projectId) return;
+
+    if (!typedApplications.length) {
+      if (selectedApplicationContext?.projectId === projectId) {
+        setSelectedApplicationContext(null);
+      }
+      if (requestedApplicationId || requestedVersionId || selectedSessionId) {
+        updateSearchParams(searchParams, setSearchParams, {
+          appId: null,
+          versionId: null,
+          sessionId: null,
+        });
+      }
       return;
     }
-    if (!selectedApplicationId || !applicationCards.some((card) => card.application.id === selectedApplicationId)) {
-      setSelectedApplicationId(applicationCards[0].application.id);
-    }
-  }, [applicationCards, selectedApplicationId]);
 
-  useEffect(() => {
-    if (!currentVersions.length) {
-      setSelectedVersionId(null);
-      return;
+    if (!selectedApplication) return;
+
+    const nextContext = buildApplicationContext(projectId, selectedApplication, selectedVersion);
+    if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
+      setSelectedApplicationContext(nextContext);
     }
 
-    if (!selectedVersionId || !currentVersions.some((version) => version.id === selectedVersionId)) {
-      setSelectedVersionId(currentVersions[0].id);
+    const updates: Record<string, string | null> = {};
+    if (requestedApplicationId !== selectedApplication.id) updates.appId = selectedApplication.id;
+    if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
+    if (!selectedVersionId && requestedVersionId) updates.versionId = null;
+    if (selectedSessionId && !sessionsFetching && !queriedSessions.some((session) => session.id === selectedSessionId)) {
+      updates.sessionId = null;
     }
-  }, [currentVersions, selectedVersionId]);
+
+    if (Object.keys(updates).length > 0) {
+      updateSearchParams(searchParams, setSearchParams, updates);
+    }
+  }, [
+    isLoading,
+    applicationsPlaceholderData,
+    projectId,
+    queriedSessions,
+    requestedApplicationId,
+    requestedVersionId,
+    searchParams,
+    selectedApplication,
+    selectedApplicationContext,
+    selectedSessionId,
+    selectedVersion,
+    selectedVersionId,
+    sessionsFetching,
+    setSearchParams,
+    setSelectedApplicationContext,
+    typedApplications.length,
+  ]);
 
   const selectedSession = useMemo(
     () => detailedSelectedSession ?? queriedSessions.find((session) => session.id === selectedSessionId) ?? null,
@@ -867,6 +1108,72 @@ const Applications = () => {
     [queriedSessions, statusFilter, triggerFilter],
   );
 
+  const isRefreshing =
+    applicationsFetching ||
+    applicationDetailsFetching ||
+    sessionsFetching ||
+    regressionConfigFetching ||
+    schedulesFetching;
+
+  const handleRefresh = () => {
+    void Promise.all([
+      refetchApplications(),
+      refetchApplicationDetails(),
+      refetchSessions(),
+      selectedSessionId ? refetchSelectedSession() : Promise.resolve(),
+      refetchRegressionConfig(),
+      refetchSchedules(),
+    ]);
+  };
+
+  const handleSelectApplication = (applicationId: string | null) => {
+    const application = applicationId ? (typedApplications.find((item) => item.id === applicationId) ?? null) : null;
+    const version = application?.versions?.[0] ?? null;
+
+    updateSearchParams(
+      searchParams,
+      setSearchParams,
+      {
+        appId: application?.id ?? null,
+        versionId: version?.id ?? null,
+        sessionId: null,
+      },
+      false,
+    );
+
+    if (projectId && application) {
+      setSelectedApplicationContext(buildApplicationContext(projectId, application, version));
+    } else {
+      setSelectedApplicationContext(null);
+    }
+  };
+
+  const handleSelectVersion = (versionId: string | null) => {
+    const version = versionId ? (currentVersions.find((item) => item.id === versionId) ?? null) : null;
+
+    updateSearchParams(searchParams, setSearchParams, { versionId: version?.id ?? null, sessionId: null }, false);
+
+    if (projectId && selectedApplication) {
+      setSelectedApplicationContext(buildApplicationContext(projectId, selectedApplication, version));
+    }
+  };
+
+  const handleActiveTabChange = (tab: ApplicationDetailTab) => {
+    updateSearchParams(searchParams, setSearchParams, { tab }, false);
+  };
+
+  const handleStatusFilterChange = (value: CrawlSessionStatusFilter) => {
+    updateSearchParams(searchParams, setSearchParams, { status: value === "all" ? null : value }, false);
+  };
+
+  const handleTriggerFilterChange = (value: CrawlSessionTriggerFilter) => {
+    updateSearchParams(searchParams, setSearchParams, { trigger: value === "all" ? null : value }, false);
+  };
+
+  const handleSelectSession = (sessionId: string | null) => {
+    updateSearchParams(searchParams, setSearchParams, { sessionId }, false);
+  };
+
   const isApplicationNameDuplicate = (name: string, ignoreId?: string) => {
     const normalized = name.trim().toLowerCase();
     if (!normalized) return false;
@@ -884,7 +1191,23 @@ const Applications = () => {
       { projectId: selectedProject!.id, data: { name, baseUrl } },
       {
         onSuccess: (data) => {
-          setSelectedApplicationId(data.id);
+          updateSearchParams(
+            searchParams,
+            setSearchParams,
+            {
+              appId: data.id,
+              versionId: null,
+              sessionId: null,
+            },
+            false,
+          );
+          setSelectedApplicationContext({
+            projectId: selectedProject!.id,
+            applicationId: data.id,
+            applicationName: name,
+            versionId: null,
+            versionName: null,
+          });
           setRotatedApiKey(data.apiKey || null);
         },
       },
@@ -910,7 +1233,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           closeModal();
-          setSelectedApplicationId(null);
+          handleSelectApplication(null);
         },
       },
     );
@@ -944,7 +1267,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           closeModal();
-          setSelectedVersionId(remainingVersions[0]?.id ?? null);
+          handleSelectVersion(remainingVersions[0]?.id ?? null);
         },
       },
     );
@@ -971,12 +1294,20 @@ const Applications = () => {
         versionId: selectedVersion?.id,
         config,
       },
-      { onSuccess: closeModal },
+      {
+        onSuccess: (savedConfig) => {
+          if (config.apiKey && savedConfig.id) {
+            setSavedRegressionApiKeys((keys) => ({ ...keys, [savedConfig.id!]: config.apiKey! }));
+          }
+          closeModal();
+        },
+      },
     );
   };
 
-  const handleOpenCreateSession = (initialData?: CreateCrawlSessionInput) => {
+  const handleOpenCreateSession = (initialData?: CreateCrawlSessionInput, initialMode: SessionConfigMode = "form") => {
     setSessionFormInitialData(initialData);
+    setSessionFormInitialMode(initialMode);
     dispatchModal({ type: "createSession" });
   };
 
@@ -994,6 +1325,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           setSessionFormInitialData(undefined);
+          setSessionFormInitialMode("form");
           closeModal();
         },
       },
@@ -1009,6 +1341,31 @@ const Applications = () => {
       versionId: selectedVersion.id,
       sessionId,
     });
+  };
+
+  const handleOpenDeleteSession = (session: CrawlSession) => {
+    setSessionToDelete(session);
+    dispatchModal({ type: "deleteSession" });
+  };
+
+  const handleConfirmDeleteSession = () => {
+    if (!selectedProject || !selectedApplication || !selectedVersion || !sessionToDelete) return;
+
+    deleteCrawlSession.mutate(
+      {
+        projectId: selectedProject.id,
+        applicationId: selectedApplication.id,
+        versionId: selectedVersion.id,
+        sessionId: sessionToDelete.id,
+      },
+      {
+        onSuccess: () => {
+          if (selectedSessionId === sessionToDelete.id) handleSelectSession(null);
+          setSessionToDelete(null);
+          closeModal();
+        },
+      },
+    );
   };
 
   const handleOpenAddSchedule = () => {
@@ -1081,29 +1438,36 @@ const Applications = () => {
   };
 
   const handleRerun = (session: CrawlSession) => {
-    handleOpenCreateSession({
-      trigger: "manual",
-      crawlConfig: {
-        maxStates: Number(session.crawlConfig.maxStates ?? 1000),
-        maxDepth: Number(session.crawlConfig.maxDepth ?? 10),
-        includeUrlPatterns: Array.isArray(session.crawlConfig.includeUrlPatterns)
-          ? (session.crawlConfig.includeUrlPatterns as string[])
-          : [],
-        excludeUrlPatterns: Array.isArray(session.crawlConfig.excludeUrlPatterns)
-          ? (session.crawlConfig.excludeUrlPatterns as string[])
-          : [],
-        enableSemanticDecisions: Boolean(session.crawlConfig.enableSemanticDecisions),
-        timeoutSeconds: Number(session.crawlConfig.timeoutSeconds ?? 3600),
+    handleOpenCreateSession(buildRerunInitialData(session), rerunNeedsJsonMode(session) ? "json" : "form");
+    handleSelectSession(null);
+  };
+
+  const handleReattach = (session: CrawlSession) => {
+    if (!selectedProject || !selectedApplication || !selectedVersion) return;
+
+    reattachManualSession.mutate(
+      {
+        projectId: selectedProject.id,
+        applicationId: selectedApplication.id,
+        versionId: selectedVersion.id,
+        sessionId: session.id,
       },
-      codegenConfig: {
-        codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
-        prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
-        prTitle: String(session.codegenConfig.prTitle ?? ""),
-        prBody: String(session.codegenConfig.prBody ?? ""),
-        prDraft: Boolean(session.codegenConfig.prDraft ?? true),
+      {
+        onSuccess: ({ sessionId, wsTicket }) => {
+          navigate(
+            `${manualSessionRoute(selectedProject.id, selectedApplication.id, selectedVersion.id, sessionId)}?ticket=${encodeURIComponent(wsTicket)}`,
+            {
+              state: {
+                applicationName: selectedApplication.name,
+                applicationBaseUrl: selectedApplication.baseUrl ?? "",
+                versionName: selectedVersion.version,
+              },
+            },
+          );
+          handleSelectSession(null);
+        },
       },
-    });
-    setSelectedSessionId(null);
+    );
   };
 
   return (
@@ -1115,16 +1479,31 @@ const Applications = () => {
             <div className={styles.sidebarTitle}>
               <h2 className={styles.sidebarHeading}>Applications</h2>
             </div>
-            {isAdmin && (
+
+            <div className={styles.actionButtons}>
               <Button
                 size="sm"
                 variant="ghost"
                 className={styles.iconButton}
-                onClick={() => dispatchModal({ type: "addApplication" })}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                aria-label="Refresh applications"
+                title="Refresh"
               >
-                <Plus className={styles.iconSmall} />
+                <RefreshCw className={cn(styles.iconSmall, isRefreshing && styles.spinIcon)} />
               </Button>
-            )}
+
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={styles.iconButton}
+                  onClick={() => dispatchModal({ type: "addApplication" })}
+                >
+                  <Plus className={styles.iconSmall} />
+                </Button>
+              )}
+            </div>
           </div>
           <div className={styles.applicationSearch}>
             <Search className={styles.searchIcon} />
@@ -1150,7 +1529,7 @@ const Applications = () => {
             {filteredApplicationCards.map((card) => (
               <button
                 key={card.application.id}
-                onClick={() => setSelectedApplicationId(card.application.id)}
+                onClick={() => handleSelectApplication(card.application.id)}
                 className={cn(
                   styles.projectItem,
                   selectedApplication?.id === card.application.id && styles.projectItemActive,
@@ -1184,7 +1563,7 @@ const Applications = () => {
                   </div>
                 </div>
 
-                {isAdmin && (
+                {isAdmin ? (
                   <div className={styles.applicationActions}>
                     <Button
                       size="sm"
@@ -1226,7 +1605,19 @@ const Applications = () => {
                       Add Version
                     </Button>
                   </div>
-                )}
+                ) : isMember ? (
+                  <div className={styles.applicationActions}>
+                    <Button
+                      size="sm"
+                      onClick={() => dispatchModal({ type: "addVersion" })}
+                      aria-label="Add application version"
+                      title="Add application version"
+                    >
+                      <Plus className={styles.iconLarge} />
+                      Add Version
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1243,9 +1634,7 @@ const Applications = () => {
                         return (
                           <button
                             key={version.id}
-                            onClick={() => {
-                              setSelectedVersionId(version.id);
-                            }}
+                            onClick={() => handleSelectVersion(version.id)}
                             className={cn(styles.versionChip, isSelected && styles.versionChipActive)}
                           >
                             <span className={styles.versionChipMain}>
@@ -1278,17 +1667,18 @@ const Applications = () => {
                         );
                       })}
 
-                      <button
-                        className={styles.versionAddButton}
-                        onClick={() => {
-                          dispatchModal({ type: "addVersion" });
-                        }}
-                      >
-                        <Plus className={styles.versionChipIcon} />
-                        <span>Add Version</span>
-                      </button>
+                      {isMember && (
+                        <button
+                          className={styles.versionAddButton}
+                          onClick={() => {
+                            dispatchModal({ type: "addVersion" });
+                          }}
+                        >
+                          <Plus className={styles.versionChipIcon} />
+                          <span>Add Version</span>
+                        </button>
+                      )}
                     </div>
-
                     <div className={styles.versionSessionSummary}>
                       <span>{sessionSummary.total} sessions</span>
                       <span className={styles.summaryDotSuccess} />
@@ -1300,10 +1690,10 @@ const Applications = () => {
                 </div>
 
                 <div className={styles.detailTabs}>
-                  <TabButton active={activeTab === "crawl-sessions"} onClick={() => setActiveTab("crawl-sessions")}>
+                  <TabButton active={activeTab === "crawl-sessions"} onClick={() => handleActiveTabChange("crawl-sessions")}>
                     Crawl Sessions
                   </TabButton>
-                  <TabButton active={activeTab === "schedules"} onClick={() => setActiveTab("schedules")}>
+                  <TabButton active={activeTab === "schedules"} onClick={() => handleActiveTabChange("schedules")}>
                     Schedules
                   </TabButton>
                 </div>
@@ -1321,8 +1711,8 @@ const Applications = () => {
                       totalSessions={queriedSessions.length}
                       statusFilter={statusFilter}
                       triggerFilter={triggerFilter}
-                      onStatusFilterChange={setStatusFilter}
-                      onTriggerFilterChange={setTriggerFilter}
+                      onStatusFilterChange={handleStatusFilterChange}
+                      onTriggerFilterChange={handleTriggerFilterChange}
                       onCreate={() => handleOpenCreateSession()}
                       canCreate={Boolean(regressionConfig?.id && selectedVersion)}
                       createDisabledReason={
@@ -1330,9 +1720,12 @@ const Applications = () => {
                           ? "Select a version before creating a session."
                           : "Configure a codebase first."
                       }
-                      onView={setSelectedSessionId}
+                      canDelete={isAdmin}
+                      onView={handleSelectSession}
                       onStart={handleStartSession}
+                      onDelete={handleOpenDeleteSession}
                       startingSessionId={startCrawlSession.variables?.sessionId ?? null}
+                      deletingSessionId={deleteCrawlSession.variables?.sessionId ?? null}
                     />
                   ) : (
                     <SchedulesPanel
@@ -1356,15 +1749,24 @@ const Applications = () => {
                 <Card className={styles.noVersionsPanel}>
                   <Tag className={styles.noVersionsIcon} />
                   <h3>No versions yet</h3>
-                  <p>Create your first version to start crawling</p>
-                  <Button
-                    onClick={() => {
-                      dispatchModal({ type: "addVersion" });
-                    }}
-                  >
-                    <Plus className={styles.iconSmall} />
-                    Add First Version
-                  </Button>
+                  {isMember ? (
+                    <>
+                      <p className={styles.emptyText}>Create your first application version to start crawl sessions.</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          dispatchModal({ type: "addVersion" });
+                        }}
+                      >
+                        <Plus className={styles.iconSmall} />
+                        Add Version
+                      </Button>
+                    </>
+                  ) : (
+                    <p className={styles.emptyText}>
+                      Contact a project admin or member to create your first application version.
+                    </p>
+                  )}
                 </Card>
               </div>
             )}
@@ -1391,8 +1793,12 @@ const Applications = () => {
           session={selectedSession}
           appName={selectedApplication.name}
           selectedVersionName={selectedVersion?.version}
-          onClose={() => setSelectedSessionId(null)}
+          onClose={() => handleSelectSession(null)}
           onRerun={handleRerun}
+          onReattach={handleReattach}
+          reattaching={
+            reattachManualSession.variables?.sessionId === selectedSession.id && reattachManualSession.isPending
+          }
         />
       )}
 
@@ -1426,7 +1832,7 @@ const Applications = () => {
         />
       )}
 
-      {modal.type === "addVersion" && selectedApplication && isAdmin && (
+      {modal.type === "addVersion" && selectedApplication && (
         <AddVersionModal isNameDuplicate={isVersionNameDuplicate} onConfirm={handleAddVersion} onClose={closeModal} />
       )}
 
@@ -1463,9 +1869,11 @@ const Applications = () => {
       {modal.type === "createSession" && (
         <CreateCrawlSessionModal
           initialData={sessionFormInitialData}
+          initialMode={sessionFormInitialMode}
           onConfirm={handleCreateSession}
           onClose={() => {
             setSessionFormInitialData(undefined);
+            setSessionFormInitialMode("form");
             closeModal();
           }}
         />
@@ -1488,6 +1896,19 @@ const Applications = () => {
           onConfirm={handleConfirmDeleteSchedule}
           onClose={() => {
             setScheduleToDelete(null);
+            closeModal();
+          }}
+        />
+      )}
+
+      {modal.type === "deleteSession" && sessionToDelete && (
+        <DeleteCrawlSessionModal
+          sessionId={sessionToDelete.id}
+          isDeleting={deleteCrawlSession.isPending}
+          onConfirm={handleConfirmDeleteSession}
+          onClose={() => {
+            if (deleteCrawlSession.isPending) return;
+            setSessionToDelete(null);
             closeModal();
           }}
         />

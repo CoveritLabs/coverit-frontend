@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ListRegressionArtifactsRequest,
   ListRegressionArtifactsResponse,
@@ -10,17 +10,22 @@ import type {
   ListRegressionEventsResponse,
   ListRegressionRunsRequest,
   ListRegressionRunsResponse,
-  ListRegressionScenariosResponse,
   RegressionArtifact as RegressionArtifactResponse,
   RegressionRun as RegressionRunResponse,
-  RegressionScenario as RegressionScenarioResponse,
 } from "@coveritlabs/contracts";
 import { queryKeys } from "@shared/config/queryKeys";
+import { toast } from "@shared/ui";
 import type { Payload } from "@shared/types/common";
 import { regressionRunService } from "../../api/regressionRunService";
+import type {
+  CreateScenarioIntegrationReportRequest,
+  CreateScenarioIntegrationReportResponse,
+  ListRegressionScenariosWithReportsResponse,
+  RegressionScenarioWithReports,
+} from "../types/regression-runs.types";
 
 const emptyRunsResponse = { runs: [] } as unknown as ListRegressionRunsResponse;
-const emptyScenariosResponse = { scenarios: [] } as unknown as ListRegressionScenariosResponse;
+const emptyScenariosResponse = { scenarios: [] } as ListRegressionScenariosWithReportsResponse;
 const emptyEventsResponse = { events: [] } as unknown as ListRegressionEventsResponse;
 const emptyArtifactsResponse = {
   artifacts: [],
@@ -80,7 +85,7 @@ export function useRegressionScenarios(projectId: string | null, applicationId: 
     enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(runId),
     placeholderData: () =>
       projectId && applicationId && runId
-        ? (queryClient.getQueryData<ListRegressionScenariosResponse>(
+        ? (queryClient.getQueryData<ListRegressionScenariosWithReportsResponse>(
             queryKeys.regressionRuns.scenarios(projectId, applicationId, runId),
           ) ?? emptyScenariosResponse)
         : emptyScenariosResponse,
@@ -105,7 +110,7 @@ export function useRegressionScenario(
     enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(runId) && Boolean(scenarioId),
     placeholderData: () =>
       projectId && applicationId && runId && scenarioId
-        ? queryClient.getQueryData<RegressionScenarioResponse>(
+        ? queryClient.getQueryData<RegressionScenarioWithReports>(
             queryKeys.regressionRuns.scenario(projectId, applicationId, runId, scenarioId),
           )
         : undefined,
@@ -126,13 +131,7 @@ export function useRegressionScenarioEvents(
   const safeScenarioId = scenarioId ?? "__missing__";
 
   return useQuery({
-    queryKey: queryKeys.regressionRuns.events(
-      safeProjectId,
-      safeApplicationId,
-      safeRunId,
-      safeScenarioId,
-      filters,
-    ),
+    queryKey: queryKeys.regressionRuns.events(safeProjectId, safeApplicationId, safeRunId, safeScenarioId, filters),
     queryFn: () =>
       regressionRunService.listScenarioEvents(safeProjectId, safeApplicationId, safeRunId, safeScenarioId, filters),
     enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(runId) && Boolean(scenarioId),
@@ -191,13 +190,7 @@ export function useRegressionScenarioArtifacts(
       filters,
     ),
     queryFn: () =>
-      regressionRunService.listScenarioArtifacts(
-        safeProjectId,
-        safeApplicationId,
-        safeRunId,
-        safeScenarioId,
-        filters,
-      ),
+      regressionRunService.listScenarioArtifacts(safeProjectId, safeApplicationId, safeRunId, safeScenarioId, filters),
     enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(runId) && Boolean(scenarioId),
     placeholderData: () =>
       projectId && applicationId && runId && scenarioId
@@ -230,5 +223,49 @@ export function useRegressionArtifact(
             queryKeys.regressionRuns.artifact(projectId, applicationId, runId, artifactId),
           )
         : undefined,
+  });
+}
+
+export function useCreateScenarioIntegrationReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CreateScenarioIntegrationReportResponse,
+    Error,
+    {
+      projectId: string;
+      applicationId: string;
+      runId: string;
+      scenarioId: string;
+      provider: "jira";
+      payload: CreateScenarioIntegrationReportRequest;
+    }
+  >({
+    mutationFn: ({ projectId, applicationId, runId, scenarioId, provider, payload }) =>
+      regressionRunService.createScenarioIntegrationReport(
+        projectId,
+        applicationId,
+        runId,
+        scenarioId,
+        provider,
+        payload,
+      ),
+    onSuccess: (_data, variables) => {
+      toast.success("Scenario report queued");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.regressionRuns.scenarios(variables.projectId, variables.applicationId, variables.runId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.regressionRuns.scenario(
+          variables.projectId,
+          variables.applicationId,
+          variables.runId,
+          variables.scenarioId,
+        ),
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to report scenario", error.message);
+    },
   });
 }

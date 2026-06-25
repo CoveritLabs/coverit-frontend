@@ -3,6 +3,9 @@
  * See LICENSE file in the project root for full license information.
  */
 
+@use "@shared/styles/tokens" as *;
+@use "@shared/styles/mixins" as *;
+
 .page {
   display: flex;
   flex-direction: column;
@@ -130,6 +133,11 @@
   overflow: hidden;
 }
 
+.contentErrorPanel {
+  flex: 1;
+  min-height: 0;
+}
+
 .overviewSidebar,
 .overviewWorkspace,
 .workspaceColumn,
@@ -172,6 +180,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -236,6 +245,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.refreshButton {
+  min-height: 1.9rem;
+}
+
+.spinIcon {
+  animation: regression-runs-spin 1s linear infinite;
+}
+
+@keyframes regression-runs-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .runTimestamp {
@@ -824,6 +851,7 @@
 
 .emptyState {
   min-height: 18rem;
+  height: 100%;
   padding: 1.5rem;
 
   h3 {
@@ -1357,6 +1385,152 @@
     font-size: 0.95rem;
     line-height: 1.25;
     overflow-wrap: anywhere;
+  }
+}
+
+.scenarioHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.reportStatusBadge {
+  text-transform: none;
+  color: var(--muted-foreground);
+}
+
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: $z-modal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-4;
+  background: rgb(0 0 0 / 0.48);
+}
+
+.reportModal {
+  width: min(100%, 38rem);
+  max-height: min(90vh, 46rem);
+  display: flex;
+  flex-direction: column;
+  padding: $space-5;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  margin-bottom: $space-4;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  overflow: auto;
+  min-height: 0;
+  @include custom-scrollbar;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  font-size: $font-size-sm;
+  color: var(--foreground);
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $space-2;
+  padding-top: $space-4;
+}
+
+.reportTextarea {
+  width: 100%;
+  min-height: 17rem;
+  resize: vertical;
+  padding: $space-3;
+  border-radius: $radius-md;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+
+  &:focus {
+    border-color: color-mix(in oklab, var(--primary) 58%, var(--border));
+    box-shadow: 0 0 0 3px rgba(var(--ring-rgb), 0.16);
+    outline: none;
+  }
+}
+
+.reportArtifactList {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  max-height: 14rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  padding: $space-2;
+  @include custom-scrollbar;
+}
+
+.reportArtifactToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  color: var(--muted-foreground);
+  font-size: $font-size-sm;
+}
+
+.reportArtifactActions {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.reportArtifactError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
+.reportArtifactItem {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  min-height: 2rem;
+  font-size: $font-size-sm;
+
+  span {
+    min-width: 0;
+    @include truncate;
   }
 }
 

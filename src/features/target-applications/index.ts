@@ -2,11 +2,23 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-export { applicationDetailsService } from "./api/applicationDetailsService";
 export { targetApplicationService } from "./api/targetApplicationService";
 export {
+  applicationContextEquals,
+  buildApplicationContext,
+  getContextVersionId,
+  getVersionLabel,
+  resolveApplicationSelection,
+  resolveVersionSelection,
+} from "./lib/applicationContext";
+export { useTargetApplication, useTargetApplications } from "./model/queries/useTargetApplication";
+export { applicationDetailsService } from "./api/applicationDetailsService";
+export {
   useCreateCrawlSession,
+  useConnectManualSession,
   useDeleteCrawlSchedule,
+  useDeleteCrawlSession,
+  useReattachManualSession,
   useSaveCrawlSchedule,
   useSaveRegressionCodebaseConfig,
   useStartCrawlSession,
@@ -27,7 +39,6 @@ export {
   useCrawlSessions,
   useRegressionConfig,
 } from "./model/queries/useApplicationDetails";
-export { useTargetApplication, useTargetApplications } from "./model/queries/useTargetApplication";
 export type {
   ApplicationDetailsData,
   ApplicationDetailStats,

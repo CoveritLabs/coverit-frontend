@@ -1,0 +1,627 @@
+/* Copyright (c) 2026 CoverIt Labs. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized use is strictly prohibited.
+ * See LICENSE file in the project root for full license information.
+ */
+
+@use "@shared/styles/tokens" as *;
+@use "@shared/styles/mixins" as *;
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  min-height: 0;
+  height: 100%;
+  padding: $space-4;
+  overflow: auto;
+  @include custom-scrollbar;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-4;
+  align-items: flex-start;
+  padding: $space-4 $space-5;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+
+  h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  p {
+    margin: 0.35rem 0 0;
+    color: var(--text-secondary);
+    font-size: $font-size-sm;
+  }
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.refreshButton {
+  justify-self: end;
+}
+
+.refreshIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.spinIcon {
+  animation: dashboard-spin 1s linear infinite;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $space-3;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  min-height: 7.25rem;
+  padding: $space-4;
+  border-left: 3px solid var(--border);
+}
+
+.kpiTop {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-2;
+  align-items: center;
+}
+
+.kpiIcon {
+  display: inline-flex;
+  color: var(--text-secondary);
+
+  svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+}
+
+.kpiLabel,
+.kpiHelper,
+.panelEmpty,
+.activityMeta,
+.sectionHeader p,
+.coverageHeader p,
+.versionEmpty,
+.versionRow em,
+.flowRow em,
+.recentRunItem span {
+  color: var(--text-secondary);
+}
+
+.kpiLabel {
+  font-size: 0.74rem;
+  font-weight: $font-weight-bold;
+  text-transform: uppercase;
+}
+
+.kpiValue {
+  color: var(--text-primary);
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.kpiHelper {
+  min-height: 2.1rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.tone_success {
+  border-left-color: var(--success);
+}
+
+.tone_warning {
+  border-left-color: #d69026;
+}
+
+.tone_danger {
+  border-left-color: var(--destructive);
+}
+
+.tone_running {
+  border-left-color: var(--primary);
+}
+
+.coverageCard,
+.sectionCard {
+  padding: $space-4;
+  border-radius: 6px;
+}
+
+.coverageHeader,
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-3;
+  align-items: flex-start;
+  margin-bottom: $space-3;
+
+  h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+  }
+}
+
+.coverageSelection {
+  max-width: 14rem;
+  @include truncate;
+}
+
+.coverageGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(18rem, 0.85fr);
+  gap: $space-4;
+  align-items: stretch;
+}
+
+.chartWrap {
+  width: 100%;
+  min-height: 14rem;
+}
+
+.versionDrilldown {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 15rem;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--background) 72%, var(--card));
+}
+
+.versionDrilldownHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $space-2;
+  margin-bottom: $space-3;
+
+  span {
+    min-width: 0;
+    color: var(--text-primary);
+    font-weight: $font-weight-bold;
+    @include truncate;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+  }
+}
+
+.versionRows {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  min-height: 0;
+  overflow: auto;
+  @include custom-scrollbar;
+}
+
+.versionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+
+  div:first-child {
+    display: flex;
+    justify-content: space-between;
+    gap: $space-2;
+    align-items: center;
+    min-width: 0;
+  }
+
+  span {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 0.86rem;
+    font-weight: $font-weight-bold;
+    @include truncate;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: 0.86rem;
+  }
+
+  em {
+    font-style: normal;
+    font-size: 0.76rem;
+  }
+}
+
+.versionTrack {
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--muted);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--chart-1);
+  }
+}
+
+.versionEmpty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  text-align: center;
+  font-size: 0.84rem;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  align-items: stretch;
+}
+
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 20rem;
+  min-width: 0;
+}
+
+.runsPanel,
+.flowBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.recentRunStrip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: $space-2;
+}
+
+.recentRunItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: $space-2;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--background) 68%, var(--card));
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  strong,
+  span {
+    @include truncate;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: 0.82rem;
+  }
+
+  span {
+    font-size: 0.74rem;
+  }
+}
+
+.flowRows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $space-2;
+}
+
+.flowRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem $space-2;
+  padding: $space-2;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--background) 68%, var(--card));
+
+  span {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: $font-weight-bold;
+    @include truncate;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+
+  em {
+    grid-column: 1 / -1;
+    font-size: 0.74rem;
+    font-style: normal;
+  }
+}
+
+.statusBadge {
+  justify-content: center;
+  width: fit-content;
+  min-width: 4.7rem;
+  font-weight: $font-weight-bold;
+}
+
+.badge_success {
+  background: rgba(53, 179, 138, 0.16);
+  color: #0c8a63;
+}
+
+.badge_warning {
+  background: rgba(214, 144, 38, 0.16);
+  color: #9a5d00;
+}
+
+.badge_danger {
+  background: rgba(var(--destructive-rgb), 0.14);
+  color: var(--destructive);
+}
+
+.badge_running {
+  background: rgba(var(--ring-rgb), 0.16);
+  color: var(--primary);
+}
+
+.badge_neutral {
+  background: var(--muted);
+  color: var(--text-secondary);
+}
+
+.panelEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 12rem;
+  margin: 0;
+  text-align: center;
+  font-size: $font-size-sm;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  overflow: auto;
+  @include custom-scrollbar;
+}
+
+.activityItem {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  gap: $space-2;
+}
+
+.activityMarker {
+  position: relative;
+  display: flex;
+  justify-content: center;
+
+  &::before {
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-top: 0.55rem;
+    border-radius: 999px;
+    background: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--ring-rgb), 0.14);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 1.2rem;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+}
+
+.activityItem:last-child .activityMarker::after {
+  display: none;
+}
+
+.activityBody {
+  min-width: 0;
+  padding: 0.45rem 0 0.85rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
+}
+
+.activityItem:last-child .activityBody {
+  border-bottom: 0;
+}
+
+.activityTitleRow {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-3;
+  min-width: 0;
+
+  strong {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 0.86rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  span {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+  }
+}
+
+.activityMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  margin-top: 0.25rem;
+  font-size: 0.76rem;
+}
+
+.chartTooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 10rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-secondary);
+  box-shadow: 0 8px 24px rgba(15, 46, 69, 0.12);
+  font-size: 0.78rem;
+
+  strong {
+    color: var(--text-primary);
+  }
+}
+
+.refreshHint {
+  position: fixed;
+  right: $space-4;
+  bottom: $space-4;
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-secondary);
+  box-shadow: 0 8px 24px rgba(15, 46, 69, 0.12);
+  font-size: 0.78rem;
+}
+
+@keyframes dashboard-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  min-height: 18rem;
+  margin: $space-4;
+  padding: $space-6;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  p {
+    max-width: 30rem;
+    margin: 0;
+    color: var(--text-secondary);
+  }
+}
+
+.plainEmptyState {
+  display: flex;
+  flex: 1;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: $space-6;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.35rem;
+  }
+
+  p {
+    max-width: 28rem;
+    margin: 0;
+    color: var(--text-secondary);
+  }
+}
+
+.emptyIcon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--primary);
+}
+
+@media (max-width: 1180px) {
+  .kpiGrid,
+  .contentGrid,
+  .coverageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recentRunStrip,
+  .flowRows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .header,
+  .kpiGrid,
+  .contentGrid,
+  .coverageGrid,
+  .recentRunStrip,
+  .flowRows,
+  .activityTitleRow {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .activityTitleRow {
+    align-items: flex-start;
+  }
+}

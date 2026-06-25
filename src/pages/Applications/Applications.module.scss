@@ -136,7 +136,7 @@
   display: flex;
   align-items: center;
   gap: $space-2;
-  margin-top: $space-3;
+  margin-top: $space-1;
   font-size: $font-size-xs;
   color: var(--muted-foreground);
 }
@@ -479,7 +479,7 @@
 
 .emptyCard {
   text-align: center;
-  max-width: 320px;
+  max-width: 360px;
 }
 
 .emptyIcon {
@@ -503,6 +503,7 @@
   margin: $space-2 0 0;
   font-size: $font-size-sm;
   color: var(--muted-foreground);
+  margin-bottom: $space-3;
 }
 
 .modalOverlay {
@@ -546,6 +547,13 @@
   display: flex;
   flex-direction: column;
   gap: $space-2;
+}
+
+.secretField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: $space-2;
+  align-items: center;
 }
 
 .modalActions {
@@ -915,7 +923,7 @@
 
 .detailStatsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $space-4;
   margin-bottom: $space-5;
 }
@@ -1157,8 +1165,8 @@
 }
 
 .sessionStatusProgress {
-  color: var(--primary);
-  border-color: color-mix(in oklab, var(--primary) 42%, var(--border));
+  color: #d97706;
+  border-color: color-mix(in oklab, #d97706 42%, var(--border));
   background: transparent;
 }
 
@@ -1169,6 +1177,10 @@
 }
 
 .sessionStatusAnimated {
+  animation: status-spin 1s linear infinite;
+}
+
+.spinIcon {
   animation: status-spin 1s linear infinite;
 }
 
@@ -1623,6 +1635,106 @@
   }
 }
 
+.configJsonTextarea {
+  min-height: 24rem;
+  resize: vertical;
+  padding: $space-3;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: $font-size-xs;
+  line-height: 1.5;
+
+  &:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 22%, transparent);
+  }
+}
+
+.configModeSwitch {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: $space-1;
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--muted);
+  gap: $space-1;
+}
+
+.configModeButton,
+.configModeButtonActive {
+  min-width: 4.5rem;
+  border: 0;
+  border-radius: $radius-sm;
+  padding: $space-2 $space-3;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+}
+
+.configModeButtonActive {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.formSection {
+  border: 1px solid var(--border);
+  border-radius: $radius-md;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.formSectionSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-4;
+  color: var(--foreground);
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::after {
+    content: ">";
+    color: var(--muted-foreground);
+    font-size: $font-size-lg;
+    transform: rotate(90deg);
+    transition: transform 0.16s ease;
+  }
+}
+
+.formSection[open] .formSectionSummary {
+  border-bottom: 1px solid var(--border);
+
+  &::after {
+    transform: rotate(270deg);
+  }
+}
+
+.formSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+}
+
+.disabledSection {
+  opacity: 0.55;
+}
+
 .modalCheckbox {
   display: inline-flex;
   align-items: center;
@@ -1635,6 +1747,33 @@
     height: 1rem;
     accent-color: var(--primary);
   }
+}
+
+.inputDefaultsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+}
+
+.inputDefaultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+}
+
+.inputDefaultsRows {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.inputDefaultsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2.25rem;
+  gap: $space-2;
+  align-items: center;
 }
 
 .fieldHelp {

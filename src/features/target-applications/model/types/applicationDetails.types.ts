@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 export type CrawlSessionStatus = "not_started" | "success" | "failed" | "running" | "in_progress";
-export type CrawlSessionTrigger = "manual" | "scheduled";
+export type CrawlSessionTrigger = "manual" | "on_demand" | "scheduled";
 export type CrawlSessionStatusFilter = CrawlSessionStatus | "all";
 export type CrawlSessionTriggerFilter = CrawlSessionTrigger | "all";
 export type ApplicationDetailTab = "crawl-sessions" | "schedules";
@@ -23,13 +23,48 @@ export interface RegressionCodebaseConfig {
   apiKey?: string;
 }
 
+export interface CrawlerSettingsInput {
+  headless?: boolean;
+  timeoutMs?: number;
+  maxStates?: number;
+  maxTransitions?: number;
+  maxElementsPerState?: number;
+  maxSelectOptionsPerElement?: number;
+  maxActionRepeatsPerUrl?: number;
+  actionRetryCount?: number;
+  replayRetryCount?: number;
+  popupTimeoutMs?: number;
+  domQuietMs?: number;
+  domSettleTimeoutMs?: number;
+  useDomQuiescence?: boolean;
+  pageLoadState?: string;
+  clickNonHttpLinks?: boolean;
+  deferDestructiveActions?: boolean;
+  destructiveKeywords?: string;
+  useSemanticDiversity?: boolean;
+  semanticDiversityThreshold?: number;
+  semanticUncertaintyMargin?: number;
+  semanticMaxBankSize?: number;
+  semanticArtifactDir?: string;
+}
+
 export interface CrawlConfigInput {
   maxStates: number;
-  maxDepth: number;
-  includeUrlPatterns: string[];
-  excludeUrlPatterns: string[];
-  enableSemanticDecisions: boolean;
   timeoutSeconds: number;
+  generateTestFlows: boolean;
+  generateTestCode?: boolean;
+  testFlowGeneration?: {
+    coveragePercentage?: number;
+    numOfTf?: number;
+    maxNumOfTf?: number;
+    numOfStates?: number;
+    minNumOfStatesPerTf?: number;
+  };
+  crawlerSettings?: CrawlerSettingsInput;
+  inputDefaults?: {
+    fieldPatterns: Record<string, string>;
+    typeFallbacks: Record<string, string>;
+  };
 }
 
 export interface CodegenConfigInput {
@@ -43,7 +78,7 @@ export interface CodegenConfigInput {
 export interface CreateCrawlSessionInput {
   trigger: CrawlSessionTrigger;
   crawlConfig: CrawlConfigInput;
-  codegenConfig: CodegenConfigInput;
+  codegenConfig?: CodegenConfigInput;
 }
 
 export interface CrawlSchedule {

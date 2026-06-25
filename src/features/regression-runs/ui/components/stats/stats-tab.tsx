@@ -44,7 +44,17 @@ function getChartTickInterval(pointCount: number) {
   return Math.max(0, Math.ceil(pointCount / 10) - 1);
 }
 
-function PrimaryKpiCard({ label, value, helper, accent }: { label: string; value: string | number; helper: string; accent?: string }) {
+function PrimaryKpiCard({
+  label,
+  value,
+  helper,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  helper: string;
+  accent?: string;
+}) {
   return (
     <Card className={styles.statsKpiCard} style={accent ? { borderLeftColor: accent } : undefined}>
       <span className={styles.statsKpiLabel}>{label}</span>
@@ -54,15 +64,7 @@ function PrimaryKpiCard({ label, value, helper, accent }: { label: string; value
   );
 }
 
-function StatsSection({
-  title,
-  caption,
-  children,
-}: {
-  title: string;
-  caption: string;
-  children: ReactNode;
-}) {
+function StatsSection({ title, caption, children }: { title: string; caption: string; children: ReactNode }) {
   return (
     <section className={styles.statsSection}>
       <div className={styles.statsSectionHeader}>
@@ -155,11 +157,7 @@ function ResultBreakdownCard({
   );
 }
 
-function ResultRatesCard({
-  items,
-}: {
-  items: Array<{ label: string; value: string | number; color: string }>;
-}) {
+function ResultRatesCard({ items }: { items: Array<{ label: string; value: string | number; color: string }> }) {
   return (
     <Card className={styles.statsChartCard}>
       <div className={styles.panelHeader}>
@@ -208,7 +206,9 @@ function StatusDistributionCard({
               <span>{item.name}</span>
               <strong>{item.value}</strong>
               <div className={styles.statusDistributionTrack}>
-                <span style={{ width: `${Math.max(item.percent * 100, item.value > 0 ? 2 : 0)}%`, background: item.color }} />
+                <span
+                  style={{ width: `${Math.max(item.percent * 100, item.value > 0 ? 2 : 0)}%`, background: item.color }}
+                />
               </div>
             </div>
           ))}
@@ -250,7 +250,11 @@ function SummaryCard({
             <span>{item.label}</span>
             <strong
               className={
-                item.tone === "good" ? styles.metricValueGood : item.tone === "bad" ? styles.metricValueBad : styles.metricValue
+                item.tone === "good"
+                  ? styles.metricValueGood
+                  : item.tone === "bad"
+                    ? styles.metricValueBad
+                    : styles.metricValue
               }
             >
               {item.value}
@@ -299,7 +303,8 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
   const stats = buildRegressionRunsStats(runs);
   const durationTrend = stats.trend.filter((run) => run.durationMs > 0);
   const chartTickInterval = getChartTickInterval(stats.trend.length);
-  const testCaseTotal = stats.summary.totalPassedCount + stats.summary.totalWarningCount + stats.summary.totalFailedCount;
+  const testCaseTotal =
+    stats.summary.totalPassedCount + stats.summary.totalWarningCount + stats.summary.totalFailedCount;
 
   return (
     <div className={styles.statsColumn}>
@@ -322,7 +327,11 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
             label="Completed pass rate"
             value={formatPercent(stats.summary.completedPassRate)}
             helper="Based on completed runs only"
-            accent={stats.summary.completedPassRate != null && stats.summary.completedPassRate < 0.5 ? RESULT_COLORS.fail : RESULT_COLORS.pass}
+            accent={
+              stats.summary.completedPassRate != null && stats.summary.completedPassRate < 0.5
+                ? RESULT_COLORS.fail
+                : RESULT_COLORS.pass
+            }
           />
         </div>
 
@@ -336,14 +345,29 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
         <StatusDistributionCard statuses={stats.statusDistribution} />
       </StatsSection>
 
-      <StatsSection title="Test case results" caption={`${testCaseTotal} assertion results captured across the filtered runs`}>
+      <StatsSection
+        title="Test case results"
+        caption={`${testCaseTotal} assertion results captured across the filtered runs`}
+      >
         <div className={styles.statsSplitGrid}>
           <ResultBreakdownCard results={stats.resultBreakdown} />
           <ResultRatesCard
             items={[
-              { label: "Pass / run", value: formatNumber(stats.summary.averagePassedPerRun), color: RESULT_COLORS.pass },
-              { label: "Warn / run", value: formatNumber(stats.summary.averageWarningsPerRun), color: RESULT_COLORS.warn },
-              { label: "Fail / run", value: formatNumber(stats.summary.averageFailuresPerRun), color: RESULT_COLORS.fail },
+              {
+                label: "Pass / run",
+                value: formatNumber(stats.summary.averagePassedPerRun),
+                color: RESULT_COLORS.pass,
+              },
+              {
+                label: "Warn / run",
+                value: formatNumber(stats.summary.averageWarningsPerRun),
+                color: RESULT_COLORS.warn,
+              },
+              {
+                label: "Fail / run",
+                value: formatNumber(stats.summary.averageFailuresPerRun),
+                color: RESULT_COLORS.fail,
+              },
             ]}
           />
         </div>
@@ -361,7 +385,10 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
                 <ChartGrid />
                 <ChartXAxis interval={chartTickInterval} />
                 <ChartYAxis />
-                <Tooltip content={<TrendTooltip />} cursor={{ fill: "color-mix(in oklab, var(--muted) 55%, transparent)" }} />
+                <Tooltip
+                  content={<TrendTooltip />}
+                  cursor={{ fill: "color-mix(in oklab, var(--muted) 55%, transparent)" }}
+                />
                 <Bar dataKey="passed" stackId="results" fill={RESULT_COLORS.pass} radius={[4, 4, 0, 0]} />
                 <Bar dataKey="warnings" stackId="results" fill={RESULT_COLORS.warn} />
                 <Bar dataKey="failed" stackId="results" fill={RESULT_COLORS.fail} />
@@ -379,7 +406,8 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
                 <h3>Duration trend</h3>
                 <p>
                   Avg {formatDurationTick(stats.summary.averageDurationMs)} / Median{" "}
-                  {formatDurationTick(stats.summary.medianDurationMs)} / P95 {formatDurationTick(stats.summary.p95DurationMs)}
+                  {formatDurationTick(stats.summary.medianDurationMs)} / P95{" "}
+                  {formatDurationTick(stats.summary.p95DurationMs)}
                 </p>
               </div>
             </div>
@@ -393,7 +421,13 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
                     <ChartXAxis interval={chartTickInterval} />
                     <ChartYAxis tickFormatter={formatDurationTick} width={64} />
                     <Tooltip content={<TrendTooltip />} cursor={{ stroke: CHART_GRID_STROKE }} />
-                    <Line type="monotone" dataKey="durationMs" stroke={CHART_RUNNING_COLOR} strokeWidth={2.25} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="durationMs"
+                      stroke={CHART_RUNNING_COLOR}
+                      strokeWidth={2.25}
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -412,7 +446,9 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
                 { label: "P95", value: formatDurationTick(stats.summary.p95DurationMs) },
                 {
                   label: "Slowest",
-                  value: stats.summary.slowestRun ? formatDurationTick(stats.summary.slowestRun.durationMs ?? 0) : "Pending",
+                  value: stats.summary.slowestRun
+                    ? formatDurationTick(stats.summary.slowestRun.durationMs ?? 0)
+                    : "Pending",
                 },
               ]}
               note={
@@ -429,7 +465,11 @@ export function RegressionStatsTab({ runs }: { runs: RegressionRunListItem[] }) 
               items={[
                 { label: "Pass", value: stats.summary.totalPassedCount, tone: "good" },
                 { label: "Warnings", value: stats.summary.totalWarningCount },
-                { label: "Failures", value: stats.summary.totalFailedCount, tone: stats.summary.totalFailedCount > 0 ? "bad" : "default" },
+                {
+                  label: "Failures",
+                  value: stats.summary.totalFailedCount,
+                  tone: stats.summary.totalFailedCount > 0 ? "bad" : "default",
+                },
               ]}
               note={
                 stats.summary.totalFailedCount === 0 && stats.summary.totalWarningCount === 0

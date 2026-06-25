@@ -25,6 +25,11 @@ interface CreateIdResponse {
   id: string;
 }
 
+export interface ManualSessionConnectResponse {
+  sessionId: string;
+  wsTicket: string;
+}
+
 type ApiTrigger = number | string;
 type ApiStatus = number | string;
 
@@ -88,6 +93,7 @@ interface ApiCrawlScheduleListResponse {
 const TRIGGER_TO_API: Record<CrawlSessionTrigger, number> = {
   manual: 1,
   scheduled: 2,
+  on_demand: 5,
 };
 
 const SCHEDULE_TYPE_TO_API = {
@@ -100,11 +106,22 @@ const SCHEDULE_MODE_TO_API = {
 
 const DEFAULT_CRAWL_CONFIG: CrawlConfigInput = {
   maxStates: 1000,
-  maxDepth: 10,
-  includeUrlPatterns: [],
-  excludeUrlPatterns: [],
-  enableSemanticDecisions: false,
   timeoutSeconds: 3600,
+  generateTestFlows: true,
+  generateTestCode: false,
+  testFlowGeneration: {
+    coveragePercentage: 100,
+    numOfTf: 1,
+    maxNumOfTf: 10000,
+    numOfStates: 20,
+    minNumOfStatesPerTf: 3,
+  },
+  crawlerSettings: {
+    maxTransitions: 5000,
+    maxElementsPerState: 50,
+    maxActionRepeatsPerUrl: 10,
+    useSemanticDiversity: true,
+  },
 };
 
 const DEFAULT_CODEGEN_CONFIG: CodegenConfigInput = {
@@ -136,7 +153,9 @@ function normalizeStatus(status: ApiStatus): CrawlSessionStatus {
 
 function normalizeTrigger(trigger: ApiTrigger): CrawlSessionTrigger {
   const value = typeof trigger === "number" ? trigger : trigger.toUpperCase();
-  return value === 2 || value === "SCHEDULED" ? "scheduled" : "manual";
+  if (value === 2 || value === "SCHEDULED") return "scheduled";
+  if (value === 5 || value === "ON_DEMAND") return "on_demand";
+  return "manual";
 }
 
 function getDurationMinutes(startedAt?: string, finishedAt?: string) {
@@ -261,13 +280,13 @@ function mapSession(
   };
 }
 
-function getStats(versionCount: number, sessions: CrawlSession[]): ApplicationDetailStats {
+function getStats(sessions: CrawlSession[]): ApplicationDetailStats {
   const crawledSessions = sessions.filter((session) => session.status === "success");
   const lastSession = [...sessions].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   const statesDiscovered = crawledSessions.reduce((total, session) => total + (session.statesDiscovered ?? 0), 0);
 
   return {
-    versionCount,
+    versionCount: 0,
     crawledCount: crawledSessions.length,
     statesDiscovered: statesDiscovered,
     lastCrawlDate: lastSession?.startedAt.slice(0, 10) ?? "—",
@@ -313,7 +332,7 @@ export const applicationDetailsService = {
     ]);
 
     return {
-      stats: getStats(params.versionCount, sessions),
+      stats: getStats(sessions),
       regressionConfig,
       sessions,
       schedules,
@@ -387,7 +406,7 @@ export const applicationDetailsService = {
         triggerType: TRIGGER_TO_API[params.data.trigger],
         crawlConfig: params.data.crawlConfig,
         regressionCodebaseId: params.regressionCodebaseId,
-        codegenConfig: buildCodegenPayload(params.data.codegenConfig),
+        codegenConfig: params.data.codegenConfig ? buildCodegenPayload(params.data.codegenConfig) : undefined,
       },
     );
 
@@ -406,6 +425,41 @@ export const applicationDetailsService = {
     return response.data;
   },
 
+  async deleteCrawlSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+    sessionId: string;
+  }): Promise<MessageResponse> {
+    const response = await apiClient.delete<MessageResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/crawl-sessions/${params.sessionId}`,
+    );
+    return response.data;
+  },
+
+  async connectManualSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+  }): Promise<ManualSessionConnectResponse> {
+    const response = await apiClient.post<ManualSessionConnectResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/manual-recordings/connect`,
+    );
+    return response.data;
+  },
+
+  async reattachManualSession(params: {
+    projectId: string;
+    applicationId: string;
+    versionId: string;
+    sessionId: string;
+  }): Promise<ManualSessionConnectResponse> {
+    const response = await apiClient.post<ManualSessionConnectResponse>(
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/manual-recordings/${params.sessionId}/reattach`,
+    );
+    return response.data;
+  },
+
   async getRegressionConfig(projectId: string, applicationId: string): Promise<RegressionCodebaseConfig | undefined> {
     const response = await apiClient.get<ApiRegressionCodebase[]>(
       `projects/${projectId}/target-applications/${applicationId}/regression-codebases`,
@@ -418,11 +472,11 @@ export const applicationDetailsService = {
     applicationId: string;
     config: RegressionCodebaseConfig;
   }): Promise<RegressionCodebaseConfig> {
-    const body = {
+    const body: { frameworkName: string; repositoryUrl: string; apiKey?: string } = {
       frameworkName: "Playwright",
       repositoryUrl: params.config.repositoryUrl,
-      apiKey: params.config.apiKey,
     };
+    if (params.config.apiKey) body.apiKey = params.config.apiKey;
 
     if (params.config.id) {
       await apiClient.put<MessageResponse>(

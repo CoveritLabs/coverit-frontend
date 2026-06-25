@@ -3,20 +3,21 @@
 // See LICENSE file in the project root for full license information.
 
 import { apiClient } from "@shared/api/client";
-import type {
-  ListRegressionEventsRequest,
-  ListRegressionEventsResponse,
-  ListRegressionScenariosResponse,
-  RegressionScenario as RegressionScenarioResponse,
-} from "@coveritlabs/contracts";
+import type { ListRegressionEventsRequest, ListRegressionEventsResponse } from "@coveritlabs/contracts";
 import type { Payload } from "@shared/types/common";
+import type {
+  CreateScenarioIntegrationReportRequest,
+  CreateScenarioIntegrationReportResponse,
+  ListRegressionScenariosWithReportsResponse,
+  RegressionScenarioWithReports,
+} from "../model/types/regression-runs.types";
 
 export async function listScenarios(
   projectId: string,
   applicationId: string,
   runId: string,
-): Promise<ListRegressionScenariosResponse> {
-  const res = await apiClient.get<ListRegressionScenariosResponse>(
+): Promise<ListRegressionScenariosWithReportsResponse> {
+  const res = await apiClient.get<ListRegressionScenariosWithReportsResponse>(
     `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios`,
   );
   return res.data;
@@ -27,8 +28,8 @@ export async function getScenario(
   applicationId: string,
   runId: string,
   scenarioId: string,
-): Promise<RegressionScenarioResponse> {
-  const res = await apiClient.get<RegressionScenarioResponse>(
+): Promise<RegressionScenarioWithReports> {
+  const res = await apiClient.get<RegressionScenarioWithReports>(
     `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios/${scenarioId}`,
   );
   return res.data;
@@ -44,6 +45,21 @@ export async function listScenarioEvents(
   const res = await apiClient.get<ListRegressionEventsResponse>(
     `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios/${scenarioId}/events`,
     { params },
+  );
+  return res.data;
+}
+
+export async function createScenarioIntegrationReport(
+  projectId: string,
+  applicationId: string,
+  runId: string,
+  scenarioId: string,
+  provider: "jira",
+  payload: CreateScenarioIntegrationReportRequest,
+): Promise<CreateScenarioIntegrationReportResponse> {
+  const res = await apiClient.post<CreateScenarioIntegrationReportResponse>(
+    `projects/${projectId}/target-applications/${applicationId}/runs/${runId}/scenarios/${scenarioId}/reports/${provider}`,
+    payload,
   );
   return res.data;
 }

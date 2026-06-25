@@ -2,45 +2,54 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useAuthStore, useUIStore } from "@app/store";
+import type { Member } from "@coveritlabs/contracts";
+import type { ProjectRole } from "@features/projects";
 import {
-  Users,
-  Plus,
-  Settings,
-  ChevronRight,
-  UserPlus,
-  FolderKanban,
-  Search,
-  Edit2,
-  Trash2,
-  LogOut,
-} from "lucide-react";
-import { Button, Input } from "@shared/ui";
-import { cn } from "@shared/utils/cn";
-import { useProjects } from "@features/projects";
-import {
+  DEFAULT_PROJECT_ROLE,
+  getProjectUserRole,
+  normalizeProjectRole,
   useAddProjectMembers,
   useCreateProject,
   useDeleteProject,
   useLeaveProject,
+  useProjects,
   useRemoveProjectMembers,
   useUpdateProject,
   useUpdateProjectMember,
 } from "@features/projects";
-import type { ProjectRole } from "@features/projects";
-import { DEFAULT_PROJECT_ROLE } from "@features/projects";
-import { getProjectUserRole, normalizeProjectRole } from "@features/projects";
+import { queryKeys } from "@shared/config/queryKeys";
 import { GRADIENTS } from "@shared/constants/gradients";
+import { Button, toast } from "@shared/ui";
+import { cn } from "@shared/utils/cn";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  ChevronRight,
+  Edit2,
+  FolderKanban,
+  LogOut,
+  Plug,
+  Plus,
+  RefreshCw,
+  Settings,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import styles from "./Administration.module.scss";
+import { AdministrationIntegrations } from "./AdministrationIntegrations";
 import { AdministrationMembersTable } from "./AdministrationMembersTable";
 import {
-  AddProjectModal,
-  EditProjectModal,
-  DeleteProjectModal,
   AddMemberModal,
+  AddProjectModal,
+  DeleteProjectModal,
+  EditProjectModal,
   LeaveProjectModal,
 } from "./AdministrationModals";
-import { useAuthStore, useUIStore } from "@app/store";
+
+type AdministrationTab = "members" | "integrations";
 
 type ModalState =
   | { type: "none" }
@@ -56,7 +65,10 @@ const modalReducer = (_: ModalState, action: ModalAction): ModalState =>
   action.type === "none" ? { type: "none" } : { type: action.type };
 
 const Administration = () => {
-  const { data: projects = [], isLoading, isError } = useProjects();
+  const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const { data: projects = [], isLoading, isError, isFetching, refetch: refetchProjects } = useProjects();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -67,11 +79,14 @@ const Administration = () => {
   const user = useAuthStore((state) => state.user);
 
   const storeSelectedProject = useUIStore((s) => s.selectedProject);
+  const setStoreSelectedProject = useUIStore((s) => s.setSelectedProject);
   const setUserRole = useUIStore((s) => s.setUserRole);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, dispatchModal] = useReducer(modalReducer, { type: "none" });
+  const [activeTab, setActiveTab] = useState<AdministrationTab>("members");
+  const handledIntegrationRedirect = useRef<string | null>(null);
 
   const closeModal = () => dispatchModal({ type: "none" });
 
@@ -91,12 +106,12 @@ const Administration = () => {
     [projectCards, selectedProjectId],
   );
   const selectedProject = selectedProjectCard?.project ?? null;
-  const currentMembers = selectedProject?.members ?? [];
+  const currentMembers = useMemo<Member[]>(() => selectedProject?.members ?? [], [selectedProject]);
   const userRole = useMemo(() => getProjectUserRole(selectedProject, user?.id), [selectedProject, user?.id]);
   const isAdmin = userRole === "ADMIN";
   const canLeaveProject = Boolean(selectedProject && userRole && user?.email);
   const adminCount = useMemo(
-    () => currentMembers.filter((member) => normalizeProjectRole(member.role) === "ADMIN").length,
+    () => currentMembers.filter((member: Member) => normalizeProjectRole(member.role) === "ADMIN").length,
     [currentMembers],
   );
   const isOnlyAdmin = Boolean(user?.id && isAdmin && adminCount === 1);
@@ -108,14 +123,47 @@ const Administration = () => {
       setSelectedProjectId(null);
       return;
     }
+
+    if (routeProjectId) {
+      if (projectCards.some((card) => card.project.id === routeProjectId)) {
+        setSelectedProjectId(routeProjectId);
+        setActiveTab("integrations");
+      }
+      return;
+    }
+
     if (!selectedProjectId || !projectCards.some((card) => card.project.id === selectedProjectId)) {
       setSelectedProjectId(projectCards[0].project.id);
     }
-  }, [projectCards, selectedProjectId]);
+  }, [projectCards, routeProjectId, selectedProjectId]);
+
+  useEffect(() => {
+    if (!routeProjectId) return;
+
+    const provider = searchParams.get("provider");
+    const status = searchParams.get("status");
+    const error = searchParams.get("error");
+
+    if (!provider || !status) return;
+
+    const redirectKey = `${routeProjectId}:${provider}:${status}:${error ?? ""}`;
+    if (handledIntegrationRedirect.current === redirectKey) return;
+    handledIntegrationRedirect.current = redirectKey;
+
+    queryClient.invalidateQueries({ queryKey: queryKeys.integrations.status(routeProjectId, provider) });
+
+    if (status === "connected") {
+      toast.success("Integration connected");
+    } else if (status === "error") {
+      toast.error("Failed to connect integration", error ?? undefined);
+    }
+
+    setSearchParams({}, { replace: true });
+  }, [queryClient, routeProjectId, searchParams, setSearchParams]);
 
   const filteredMembers = useMemo(
     () =>
-      currentMembers.filter((member) => {
+      currentMembers.filter((member: Member) => {
         const query = searchQuery.trim().toLowerCase();
         if (!query) return true;
         return (
@@ -130,6 +178,13 @@ const Administration = () => {
     const normalized = name.trim().toLowerCase();
     if (!normalized) return false;
     return projects.some((p) => p.id !== ignoreId && p.name.trim().toLowerCase() === normalized);
+  };
+
+  const handleRefresh = () => {
+    void refetchProjects();
+    if (selectedProjectId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all });
+    }
   };
 
   const handleAddProject = (name: string, description: string) => {
@@ -156,6 +211,10 @@ const Administration = () => {
       {
         onSuccess: () => {
           closeModal();
+          if (storeSelectedProject?.id === selectedProject.id) {
+            setStoreSelectedProject(null);
+            setUserRole(null);
+          }
           setSelectedProjectId(null);
         },
       },
@@ -214,14 +273,27 @@ const Administration = () => {
               <Settings className={styles.iconPrimary} />
               <h2 className={styles.sidebarHeading}>Administration</h2>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className={styles.iconButton}
-              onClick={() => dispatchModal({ type: "addProject" })}
-            >
-              <Plus className={styles.iconSmall} />
-            </Button>
+            <div className={styles.actionButtons}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={styles.iconButton}
+                onClick={handleRefresh}
+                disabled={isFetching}
+                aria-label="Refresh administration"
+                title="Refresh"
+              >
+                <RefreshCw className={cn(styles.iconSmall, isFetching && styles.spinIcon)} />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={styles.iconButton}
+                onClick={() => dispatchModal({ type: "addProject" })}
+              >
+                <Plus className={styles.iconSmall} />
+              </Button>
+            </div>
           </div>
           <p className={styles.sidebarSubtitle}>Manage projects and team members</p>
         </div>
@@ -333,32 +405,42 @@ const Administration = () => {
                   </div>
                 )}
               </div>
-
-              {/* Search */}
-              <div className={styles.searchWrapper}>
-                <Search className={styles.searchIcon} />
-                <Input
-                  type="text"
-                  placeholder="Search members by name or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={styles.searchInput}
-                />
+              {/* Tab Switcher */}
+              <div className={styles.tabSwitcher}>
+                <button
+                  className={cn(styles.tabButton, activeTab === "members" && styles.tabButtonActive)}
+                  onClick={() => setActiveTab("members")}
+                >
+                  <Users className={styles.iconSmall} />
+                  Members
+                </button>
+                <button
+                  className={cn(styles.tabButton, activeTab === "integrations" && styles.tabButtonActive)}
+                  onClick={() => setActiveTab("integrations")}
+                >
+                  <Plug className={styles.iconSmall} />
+                  Integrations
+                </button>
               </div>
             </div>
 
-            {/* Members Table */}
-            <AdministrationMembersTable
-              members={filteredMembers}
-              editingMemberId={editingMemberId}
-              canManage={isAdmin}
-              currentUserId={user?.id}
-              disableSelfRoleEdit={isOnlyAdmin}
-              onStartEdit={setEditingMemberId}
-              onCancelEdit={() => setEditingMemberId(null)}
-              onUpdateRole={handleUpdateRole}
-              onRemoveMember={handleRemoveMember}
-            />
+            {activeTab === "members" ? (
+              <AdministrationMembersTable
+                members={filteredMembers}
+                searchQuery={searchQuery}
+                editingMemberId={editingMemberId}
+                canManage={isAdmin}
+                currentUserId={user?.id}
+                disableSelfRoleEdit={isOnlyAdmin}
+                onSearchChange={setSearchQuery}
+                onStartEdit={setEditingMemberId}
+                onCancelEdit={() => setEditingMemberId(null)}
+                onUpdateRole={handleUpdateRole}
+                onRemoveMember={handleRemoveMember}
+              />
+            ) : (
+              <AdministrationIntegrations projectId={selectedProject.id} canManage={isAdmin} />
+            )}
           </>
         ) : (
           <div className={styles.emptyState}>

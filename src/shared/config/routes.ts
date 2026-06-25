@@ -13,10 +13,17 @@ export const ROUTES = {
 
   PROFILE: "/profile",
   ADMINISTRATE: "/administrate",
+  PROJECT_INTEGRATIONS: "/projects/:projectId/integrations",
   REGRESSION_RUNS: "/runs",
+  TEST_FLOWS: "/test-flows",
+  TEST_FLOW_EDITOR: "/test-flows/:flowId/editor",
+  USER_GUIDES: "/user-guides",
 
   DASHBOARD: "/dashboard",
   APPLICATIONS: "/applications",
+  MANUAL_RECORDINGS: "/manual-recordings",
+  MANUAL_RECORDING:
+    "/manual-recordings/projects/:projectId/applications/:applicationId/versions/:versionId/sessions/:sessionId",
 
   NOT_FOUND: "*",
 } as const;

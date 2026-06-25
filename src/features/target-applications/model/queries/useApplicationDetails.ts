@@ -7,6 +7,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { applicationDetailsService } from "../../api/applicationDetailsService";
 import type { CrawlSession } from "../types/applicationDetails.types";
 
+function shouldPollSession(session?: CrawlSession) {
+  return session?.status === "running" || session?.status === "in_progress";
+}
+
 export function useApplicationDetails(
   projectId: string | null,
   applicationId: string | null,
@@ -96,6 +100,9 @@ export function useCrawlSession(
         versionName,
       }),
     enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(versionId) && Boolean(sessionId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchInterval: (query) => (shouldPollSession(query.state.data) ? 5000 : false),
     placeholderData: () => {
       if (!projectId || !applicationId || !versionId || !sessionId) return undefined;
       const sessions = queryClient.getQueryData<CrawlSession[]>(

@@ -9,9 +9,13 @@ import { AuthLayout } from "@app/layouts/AuthLayout/AuthLayout";
 import {
   LazyDashboard,
   LazyApplications,
+  LazyManualSession,
   LazyAdministration,
   LazyRegressionRuns,
+  LazyTestFlows,
+  LazyUserGuides,
   LazyForgotPasswordPage,
+  LazyFlowEditor,
   LazyLoginPage,
   LazyNotFound,
   LazyOAuthCallbackPage,
@@ -30,7 +34,11 @@ const OAuthCallbackPage = withSuspense(LazyOAuthCallbackPage);
 
 const Dashboard = withSuspense(LazyDashboard);
 const Applications = withSuspense(LazyApplications);
+const ManualSession = withSuspense(LazyManualSession);
 const RegressionRuns = withSuspense(LazyRegressionRuns);
+const TestFlows = withSuspense(LazyTestFlows);
+const FlowEditor = withSuspense(LazyFlowEditor);
+const UserGuides = withSuspense(LazyUserGuides);
 const Administration = withSuspense(LazyAdministration);
 const NotFound = withSuspense(LazyNotFound);
 
@@ -47,8 +55,14 @@ const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: ROUTES.DASHBOARD, element: <Dashboard /> },
           { path: ROUTES.APPLICATIONS, element: <Applications /> },
+          { path: ROUTES.MANUAL_RECORDINGS, element: <ManualSession /> },
+          { path: ROUTES.MANUAL_RECORDING, element: <ManualSession /> },
           { path: ROUTES.ADMINISTRATE, element: <Administration /> },
+          { path: ROUTES.PROJECT_INTEGRATIONS, element: <Administration /> },
           { path: ROUTES.REGRESSION_RUNS, element: <RegressionRuns /> },
+          { path: ROUTES.TEST_FLOWS, element: <TestFlows /> },
+          { path: ROUTES.TEST_FLOW_EDITOR, element: <FlowEditor /> },
+          { path: ROUTES.USER_GUIDES, element: <UserGuides /> },
         ],
       },
     ],

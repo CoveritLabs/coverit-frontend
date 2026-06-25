@@ -47,17 +47,21 @@
   --ring-rgb: 79, 195, 198;
 
   /* Status */
-  --success: #35b38a;
+  --success: #11a37f;
   --warning: #f4a261;
   --destructive: #e13e15;
   --destructive-rgb: 231, 111, 81;
   --destructive-foreground: #ffffff;
 
+  /* Integrations */
+  --integration-logo-background: #eef5ff;
+  --integration-detail-background: #f7fbfc;
+
   /* Charts */
   --chart-1: #1e4a6a;
   --chart-2: #4fc3c6;
   --chart-3: #7edfe1;
-  --chart-4: #35b38a;
+  --chart-4: #11a37f;
   --chart-5: #f4a261;
 
   /* Sidebar */
@@ -69,4 +73,18 @@
   --sidebar-accent-foreground: #0f2e45;
   --sidebar-border: #d4e6ea;
   --sidebar-ring: #4fc3c6;
+
+  /* Manual Session */
+  --manual-session-viewport-shell: #dfeaec;
+  --manual-session-viewport-bg: #e8f3f5;
+  --manual-session-grid: rgb(255 255 255 / 0.72);
+
+  /* Terminal */
+  --terminal-bg: #f7fbfc;
+  --terminal-header-bg: #edf4f6;
+  --terminal-header-fg: #0f2e45;
+  --terminal-text: #0f2e45;
+  --terminal-muted: #6b8a9a;
+  --terminal-border: #c8dce1;
+  --terminal-cursor: #1e4a6a;
 }
