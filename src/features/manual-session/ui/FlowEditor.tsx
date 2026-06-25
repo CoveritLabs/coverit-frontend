@@ -44,7 +44,28 @@ import {
 import type { ComponentType, JSX, MouseEvent, WheelEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { FlowEditorEditsForm } from "./components/FlowEditorEditsForm";
+import {
+  FlowEditorEditsForm,
+  ASSERTION_OPERATORS,
+  HOOK_COMMANDS,
+  ELEMENT_HOOK_COMMANDS,
+  DESIGN_CLASS_OPERATION_TYPES,
+  type DesignOperation,
+  type EditsTab,
+  type DesignMode,
+  type DesignValueType,
+  type AssertionTargetType,
+  buildLabelTokens,
+  isVariableFlagged,
+  positionLabel,
+  elementName,
+  elementSelector,
+  cssLocator,
+  coerceLiteral,
+  formatLabel,
+  safeFunctionIdentifier,
+  renderLabelTokens,
+} from "./components/FlowEditorEditsForm";
 import { ManualSessionHeader } from "./components/ManualSessionHeader";
 import styles from "./FlowEditor.module.scss";
 
@@ -90,54 +111,30 @@ type FormValues = {
 };
 
 const DEFAULT_VIEWPORT = { width: 1365, height: 768 };
-const EXTRACT_SOURCES = ["text", "innerText", "html", "attribute", "property", "value", "checked", "visible", "count", "list"];
-const ASSERTION_OPERATORS = [
-  "visibility",
+const EXTRACT_SOURCES = [
   "text",
-  "text-exact",
-  "text-matches",
+  "innerText",
+  "html",
   "attribute",
+  "property",
   "value",
-  "count",
-  "enabled",
-  "disabled",
   "checked",
-  "unchecked",
-  "editable",
-  "focused",
-  "exists",
+  "visible",
+  "count",
+  "list",
 ];
-const HOOK_COMMANDS = [
-  "wait",
-  "refresh",
-  "reload",
-  "go-back",
-  "go-forward",
-  "wait-for-url",
-  "wait-for-load-state",
-  "click",
-  "dblclick",
-  "fill",
-  "clear",
-  "hover",
-  "select",
-  "check",
-  "uncheck",
-  "press",
-  "focus",
-  "blur",
-];
-const ELEMENT_HOOK_COMMANDS = new Set(["click", "dblclick", "fill", "clear", "hover", "select", "check", "uncheck", "press", "focus", "blur"]);
-const DESIGN_OPERATION_TYPES = ["set", "append", "merge", "delete", "clear", "call-function", "extract"] as const;
-const STEP_KINDS = ["design-operation", "assertion", "action-hook"] as const;
+const STEP_KINDS = ["design-class", "design-operation", "assertion", "action-hook"] as const;
 
-type DesignOperationInputType = (typeof DESIGN_OPERATION_TYPES)[number];
-type DesignClassOperationType = Exclude<DesignOperationInputType, "call-function" | "extract">;
+// ─── Types derived from shared source of truth (FlowEditorEditsForm) ─────────
+
+type DesignOperationInputType = (typeof DESIGN_CLASS_OPERATION_TYPES)[number] | "call-function" | "extract";
 type ValueInputMode = "literal" | "store" | "function" | "expression";
 
-const DESIGN_CLASS_OPERATION_TYPES = DESIGN_OPERATION_TYPES.filter(
-  (operation): operation is DesignClassOperationType => operation !== "call-function" && operation !== "extract",
-);
+const DESIGN_OPERATION_TYPES: readonly (typeof DESIGN_CLASS_OPERATION_TYPES)[number] | "call-function" | "extract"[] = [
+  ...DESIGN_CLASS_OPERATION_TYPES,
+  "call-function",
+  "extract",
+] as const;
 
 const DEFAULT_FORM_VALUES: FormValues = {
   variableName: "SELECTED_VALUE",
@@ -186,13 +183,6 @@ function kindMeta(kind: FlowEditorStepKind): {
   return { label: "Assertion", description: "Validate an element or stored value", Icon: Equal };
 }
 
-function positionLabel(position: EditorPosition | null, steps: FlowEditorTransitionStep[]) {
-  if (!position) return "No insertion point selected";
-  const step = steps.find((item) => item.transitionId === position.transitionId);
-  const index = step?.index ?? "?";
-  return `${position.edge === "before" ? "Before" : "After"} transition ${index}`;
-}
-
 function compactId(value: string) {
   return value.length > 10 ? value.slice(0, 10) : value;
 }
@@ -202,27 +192,6 @@ function labelingStatusLabel(status: FlowEditorTransitionStep["labelingStatus"])
   if (status === "QUEUED") return "Queued";
   if (status === "PENDING") return "Pending";
   return "Missing";
-}
-
-function elementName(element: FlowEditorElementRef | null) {
-  if (!element) return "No element selected";
-  return element.accessibleName || element.text || element.selector || element.tag || "Selected element";
-}
-
-function elementSelector(element: FlowEditorElementRef | null, fallback: string) {
-  return element?.selector || fallback.trim();
-}
-
-function cssLocator(selector: string) {
-  return selector ? { cssSelector: selector } : undefined;
-}
-
-function coerceLiteral(value: string) {
-  const trimmed = value.trim();
-  if (trimmed === "true") return true;
-  if (trimmed === "false") return false;
-  if (trimmed && !Number.isNaN(Number(trimmed))) return Number(trimmed);
-  return value;
 }
 
 function valueSpec(mode: ValueInputMode, rawValue: string, values: FormValues): FlowEditorValueSpec {
@@ -259,9 +228,7 @@ function buildDefinition(kind: FlowEditorStepKind, values: FormValues, selectedE
         type: "call-function",
         functionId: values.functionId.trim() || "userFunction",
         assignTo: values.assignTo.trim() || values.variableName.trim() || undefined,
-        args: values.valueInput.trim()
-          ? { value: valueSpec(values.valueMode, values.valueInput, values) }
-          : undefined,
+        args: values.valueInput.trim() ? { value: valueSpec(values.valueMode, values.valueInput, values) } : undefined,
       };
     }
     if (values.operationType === "delete" || values.operationType === "clear") {
@@ -428,12 +395,7 @@ function ElementInfoDrawer({
 
   return (
     <section className={`${styles.inspectorDrawer} ${isOpen ? styles.inspectorDrawerOpen : ""}`}>
-      <button
-        type="button"
-        className={styles.inspectorDrawerToggle}
-        onClick={onToggle}
-        aria-expanded={isOpen}
-      >
+      <button type="button" className={styles.inspectorDrawerToggle} onClick={onToggle} aria-expanded={isOpen}>
         <span className={styles.inspectorDrawerTitle}>
           <Crosshair className={styles.inspectorDrawerIcon} />
           <span>Selected Element</span>
@@ -496,15 +458,87 @@ function ElementInfoDrawer({
   );
 }
 
-function FlowBlock({ step, onRemove }: { step: FlowEditorDraftStep; onRemove: (id: string) => void }) {
+/**
+ * Compute the set of variable names established by design steps
+ * that appear BEFORE a given step in the flow order.
+ */
+function computePriorKeys(
+  step: FlowEditorDraftStep,
+  draftsByPosition: Map<string, FlowEditorDraftStep[]>,
+  transitionSteps: FlowEditorTransitionStep[],
+): Set<string> {
+  const keys = new Set<string>();
+  const stepPosition = step.position;
+  if (!stepPosition) return keys;
+
+  // Walk transitions in order, collecting "before" drafts and "after" drafts
+  // up to (but not including) the position of the current step.
+  for (const ts of transitionSteps) {
+    // Before-drafts for this transition
+    const beforeKey = `before:${ts.transitionId}`;
+    const beforeDrafts = draftsByPosition.get(beforeKey);
+    if (beforeDrafts) {
+      for (const draft of beforeDrafts) {
+        // If this draft IS the step, stop before collecting it
+        if (draft.id === step.id) return keys;
+        collectSetKeys(draft, keys);
+      }
+    }
+
+    // If the step is positioned "before" this transition, we're done
+    if (stepPosition.edge === "before" && stepPosition.transitionId === ts.transitionId) return keys;
+
+    // The transition itself doesn't create store keys
+
+    // After-drafts for this transition
+    const afterKey = `after:${ts.transitionId}`;
+    const afterDrafts = draftsByPosition.get(afterKey);
+    if (afterDrafts) {
+      for (const draft of afterDrafts) {
+        if (draft.id === step.id) return keys;
+        collectSetKeys(draft, keys);
+      }
+    }
+
+    // If the step is positioned "after" this transition, we're done
+    if (stepPosition.edge === "after" && stepPosition.transitionId === ts.transitionId) return keys;
+  }
+
+  return keys;
+}
+
+function collectSetKeys(step: FlowEditorDraftStep, keys: Set<string>) {
+  const def = step.definition as Record<string, unknown> | undefined;
+  if (!def) return;
+  const type = def.type as string | undefined;
+  // Only "set", "append", "prepend", "merge" actually establish a variable
+  if (type && ["set", "append", "prepend", "merge"].includes(type)) {
+    const key = def.key as string | undefined;
+    if (key?.trim()) keys.add(key.trim());
+  }
+}
+
+/**
+ * FlowBlock — renders a single draft step with syntax-highlighted label.
+ */
+function FlowBlock({
+  step,
+  priorKeys,
+  onRemove,
+}: {
+  step: FlowEditorDraftStep;
+  priorKeys: ReadonlySet<string>;
+  onRemove: (id: string) => void;
+}) {
   const meta = kindMeta(step.kind);
   const accentClass = styles[`blockAccent_${step.kind}`] ?? "";
+  const tokens = useMemo(() => buildLabelTokens(step, priorKeys), [step, priorKeys]);
   return (
     <li className={`${styles.block} ${styles[`block_${step.kind}`]} ${accentClass}`}>
       <meta.Icon className={styles.blockIcon} />
       <div className={styles.blockBody}>
         <span className={styles.blockKind}>{meta.label}</span>
-        <span className={styles.blockLabel}>{step.label}</span>
+        <span className={styles.blockLabel}>{renderLabelTokens(tokens)}</span>
         <code className={styles.blockSelector}>{step.element?.selector ?? "No element needed"}</code>
       </div>
       <button
@@ -544,45 +578,102 @@ function InjectorRow({
   );
 }
 
+/**
+ * TransitionItem — renders a transition step with its surrounding injectors.
+ *
+ * Layout (no drafts):
+ *   [+]-------
+ *   Transition
+ *   [+]-------
+ *
+ * Layout (with drafts):
+ *   [+]-------
+ *   Design Step
+ *   Assertion Step
+ *   Transition
+ *   Action Step
+ *   [+]-------
+ *
+ * The (+)--- injector only shows when hovering the nearest edge element
+ * (first draft or last draft, or the transition itself).
+ */
 function TransitionItem({
   step,
   activeEdge,
   replaying,
+  allDraftSteps,
+  priorKeysMap,
   onBefore,
   onAfter,
+  onRemoveDraft,
 }: {
   step: FlowEditorTransitionStep;
   activeEdge: FlowEditorPositionEdge | null;
   replaying: boolean;
+  allDraftSteps: FlowEditorDraftStep[];
+  priorKeysMap: Map<string, Set<string>>;
   onBefore: () => void;
   onAfter: () => void;
+  onRemoveDraft: (id: string) => void;
 }) {
   const active = activeEdge !== null;
   const sourceLabel = step.fromState?.label;
   const targetLabel = step.toState?.label;
   const labelingStatus = step.labelingStatus ?? "MISSING";
 
+  const beforeKey = `before:${step.transitionId}`;
+  const afterKey = `after:${step.transitionId}`;
+  const beforeDrafts = allDraftSteps.filter((d) => positionKey(d.position) === beforeKey);
+  const afterDrafts = allDraftSteps.filter((d) => positionKey(d.position) === afterKey);
+
   return (
     <li className={styles.transitionGroup}>
+      {/* Top injector — shows when hovering first before-draft or transition (if no before-drafts) */}
       <InjectorRow
         label={`Insert before transition ${step.index}`}
         active={activeEdge === "before"}
         replaying={activeEdge === "before" && replaying}
         onClick={onBefore}
       />
+
+      {/* Before-drafts (between top injector and transition) */}
+      {beforeDrafts.map((draft) => (
+        <FlowBlock
+          key={draft.id}
+          step={draft}
+          priorKeys={priorKeysMap.get(draft.id) ?? new Set()}
+          onRemove={onRemoveDraft}
+        />
+      ))}
+
+      {/* Transition step */}
       <div className={`${styles.step} ${active ? styles.stepActive : ""} ${replaying ? styles.stepReplaying : ""}`}>
         <span className={styles.stepIndex}>{step.index}</span>
         <div className={styles.stepBody}>
           <strong>{step.label}</strong>
           <span className={styles.stepDetail}>{step.action || step.transitionId}</span>
           <span className={styles.stepUrl}>
-            {sourceLabel && targetLabel ? `${sourceLabel} -> ${targetLabel}` : `transition #${compactId(step.transitionId)}`}
+            {sourceLabel && targetLabel
+              ? `${sourceLabel} -> ${targetLabel}`
+              : `transition #${compactId(step.transitionId)}`}
           </span>
         </div>
         <span className={`${styles.stepStatus} ${styles[`stepStatus_${labelingStatus.toLowerCase()}`]}`}>
           {labelingStatusLabel(labelingStatus)}
         </span>
       </div>
+
+      {/* After-drafts (between transition and bottom injector) */}
+      {afterDrafts.map((draft) => (
+        <FlowBlock
+          key={draft.id}
+          step={draft}
+          priorKeys={priorKeysMap.get(draft.id) ?? new Set()}
+          onRemove={onRemoveDraft}
+        />
+      ))}
+
+      {/* Bottom injector — shows when hovering last after-draft or transition (if no after-drafts) */}
       <InjectorRow
         label={`Insert after transition ${step.index}`}
         active={activeEdge === "after"}
@@ -630,10 +721,7 @@ export function LegacyEditorForm({
       <div className={styles.fieldRow}>
         <label className={styles.field}>
           <span>{label} Source</span>
-          <select
-            value={values[modeKey]}
-            onChange={(event) => update(modeKey, event.target.value as ValueInputMode)}
-          >
+          <select value={values[modeKey]} onChange={(event) => update(modeKey, event.target.value as ValueInputMode)}>
             <option value="literal">literal</option>
             <option value="store">store</option>
             <option value="function">function</option>
@@ -652,10 +740,7 @@ export function LegacyEditorForm({
       {values[modeKey] === "store" && (
         <label className={styles.field}>
           <span>Store Path</span>
-          <select
-            value={values.sourcePath}
-            onChange={(event) => update("sourcePath", event.target.value)}
-          >
+          <select value={values.sourcePath} onChange={(event) => update("sourcePath", event.target.value)}>
             <option value="">Use typed value</option>
             {designSymbols.storeKeys.map((key) => (
               <option key={key} value={key}>
@@ -1117,6 +1202,15 @@ export default function FlowEditor() {
     return groups;
   }, [draftSteps]);
 
+  /** Pre-compute priorKeys for every draft step (used for variable flagging). */
+  const priorKeysMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const step of draftSteps) {
+      map.set(step.id, computePriorKeys(step, draftsByPosition, transitionSteps));
+    }
+    return map;
+  }, [draftSteps, draftsByPosition, transitionSteps]);
+
   const canvasPoint = useCallback(
     (event: MouseEvent<HTMLCanvasElement>) => {
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -1180,28 +1274,23 @@ export default function FlowEditor() {
   };
 
   const renderFlow = () => {
-    const items: JSX.Element[] = [];
-    transitionSteps.forEach((step) => {
+    return transitionSteps.map((step) => {
       const before: EditorPosition = { edge: "before", transitionId: step.transitionId };
       const after: EditorPosition = { edge: "after", transitionId: step.transitionId };
-      (draftsByPosition.get(positionKey(before)) ?? []).forEach((draft) => {
-        items.push(<FlowBlock key={draft.id} step={draft} onRemove={removeDraft} />);
-      });
-      items.push(
+      return (
         <TransitionItem
           key={step.transitionId}
           step={step}
           activeEdge={activePosition?.transitionId === step.transitionId ? activePosition.edge : null}
           replaying={positionLoading && activePosition?.transitionId === step.transitionId}
+          allDraftSteps={draftSteps}
+          priorKeysMap={priorKeysMap}
           onBefore={() => openPosition(before)}
           onAfter={() => openPosition(after)}
-        />,
+          onRemoveDraft={removeDraft}
+        />
       );
-      (draftsByPosition.get(positionKey(after)) ?? []).forEach((draft) => {
-        items.push(<FlowBlock key={draft.id} step={draft} onRemove={removeDraft} />);
-      });
     });
-    return items;
   };
 
   const selectedOverlayStyle = elementBoxStyle(selectedElement, viewport);
@@ -1268,7 +1357,9 @@ export default function FlowEditor() {
               onContextMenu={(event) => event.preventDefault()}
             />
             {(positionLoading || (error && hasFrame)) && (
-              <div className={`${styles.positionLoadingOverlay} ${error && hasFrame ? styles.positionErrorOverlay : ""}`}>
+              <div
+                className={`${styles.positionLoadingOverlay} ${error && hasFrame ? styles.positionErrorOverlay : ""}`}
+              >
                 {error && hasFrame ? (
                   <AlertCircle className={styles.emptyIcon} />
                 ) : (
