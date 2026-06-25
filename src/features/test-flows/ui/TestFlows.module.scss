@@ -171,6 +171,43 @@
   }
 }
 
+.copyTextButton,
+.copyCodeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+
+  svg {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    svg {
+      color: var(--text-secondary);
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
 .versionText {
   display: block;
   max-width: 9rem;

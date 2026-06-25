@@ -542,6 +542,7 @@ export const RegressionCodebaseConfigModal = ({
 
 interface CreateCrawlSessionModalProps {
   initialData?: CreateCrawlSessionInput;
+  initialMode?: SessionConfigMode;
   onConfirm: (data: CreateCrawlSessionInput) => void;
   onClose: () => void;
 }
@@ -611,6 +612,36 @@ function parseCoveragePercentage(value: unknown) {
   return numberValue;
 }
 
+function parseOptionalPositiveInteger(value: unknown, label: string) {
+  return value === undefined ? undefined : parsePositiveInteger(value, label);
+}
+
+function parseOptionalNonNegativeInteger(value: unknown, label: string) {
+  return value === undefined ? undefined : parseNonNegativeInteger(value, label);
+}
+
+function parseOptionalBoolean(value: unknown, label: string) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") throw new Error(`${label} must be true or false.`);
+  return value;
+}
+
+function parseOptionalString(value: unknown, label: string) {
+  if (value === undefined) return undefined;
+  const stringValue = String(value).trim();
+  if (!stringValue) throw new Error(`${label} must not be empty.`);
+  return stringValue;
+}
+
+function parseOptionalNumberRange(value: unknown, label: string, min: number, max: number) {
+  if (value === undefined) return undefined;
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue < min || numberValue > max) {
+    throw new Error(`${label} must be between ${min} and ${max}.`);
+  }
+  return numberValue;
+}
+
 function normalizeInputDefaults(value: unknown): CreateCrawlSessionInput["crawlConfig"]["inputDefaults"] {
   if (value === undefined) return undefined;
   if (!isObjectRecord(value)) throw new Error("inputDefaults must be an object.");
@@ -624,6 +655,51 @@ function normalizeInputDefaults(value: unknown): CreateCrawlSessionInput["crawlC
   return {
     fieldPatterns: Object.fromEntries(Object.entries(fieldPatterns).map(([key, item]) => [key, String(item)])),
     typeFallbacks: Object.fromEntries(Object.entries(typeFallbacks).map(([key, item]) => [key, String(item)])),
+  };
+}
+
+function normalizeCrawlerSettings(value: unknown): CreateCrawlSessionInput["crawlConfig"]["crawlerSettings"] {
+  const raw = isObjectRecord(value) ? value : {};
+
+  return {
+    headless: parseOptionalBoolean(raw.headless, "Headless"),
+    timeoutMs: parseOptionalPositiveInteger(raw.timeoutMs, "Timeout Milliseconds"),
+    maxStates: parseOptionalPositiveInteger(raw.maxStates, "Crawler Max States"),
+    maxTransitions: parseOptionalPositiveInteger(raw.maxTransitions ?? 5000, "Max Transitions"),
+    maxElementsPerState: parseOptionalPositiveInteger(raw.maxElementsPerState ?? 50, "Max Elements per State"),
+    maxSelectOptionsPerElement: parseOptionalPositiveInteger(
+      raw.maxSelectOptionsPerElement,
+      "Max Select Options per Element",
+    ),
+    maxActionRepeatsPerUrl: parseOptionalNonNegativeInteger(
+      raw.maxActionRepeatsPerUrl ?? 10,
+      "Action Repeats per URL",
+    ),
+    actionRetryCount: parseOptionalNonNegativeInteger(raw.actionRetryCount, "Action Retry Count"),
+    replayRetryCount: parseOptionalNonNegativeInteger(raw.replayRetryCount, "Replay Retry Count"),
+    popupTimeoutMs: parseOptionalPositiveInteger(raw.popupTimeoutMs, "Popup Timeout Milliseconds"),
+    domQuietMs: parseOptionalNonNegativeInteger(raw.domQuietMs, "DOM Quiet Milliseconds"),
+    domSettleTimeoutMs: parseOptionalPositiveInteger(raw.domSettleTimeoutMs, "DOM Settle Timeout Milliseconds"),
+    useDomQuiescence: parseOptionalBoolean(raw.useDomQuiescence, "Use DOM Quiescence"),
+    pageLoadState: parseOptionalString(raw.pageLoadState, "Page Load State"),
+    clickNonHttpLinks: parseOptionalBoolean(raw.clickNonHttpLinks, "Click Non-HTTP Links"),
+    deferDestructiveActions: parseOptionalBoolean(raw.deferDestructiveActions, "Defer Destructive Actions"),
+    destructiveKeywords: raw.destructiveKeywords === undefined ? undefined : String(raw.destructiveKeywords),
+    useSemanticDiversity: raw.useSemanticDiversity !== false,
+    semanticDiversityThreshold: parseOptionalNumberRange(
+      raw.semanticDiversityThreshold,
+      "Semantic Diversity Threshold",
+      0,
+      1,
+    ),
+    semanticUncertaintyMargin: parseOptionalNumberRange(
+      raw.semanticUncertaintyMargin,
+      "Semantic Uncertainty Margin",
+      0,
+      1,
+    ),
+    semanticMaxBankSize: parseOptionalPositiveInteger(raw.semanticMaxBankSize, "Semantic Max Bank Size"),
+    semanticArtifactDir: parseOptionalString(raw.semanticArtifactDir, "Semantic Artifact Directory"),
   };
 }
 
@@ -657,15 +733,7 @@ function normalizeCreateSessionInput(raw: unknown): CreateCrawlSessionInput {
           "Minimum States per Test Flow",
         ),
       },
-      crawlerSettings: {
-        maxTransitions: parsePositiveInteger(crawlerSettings.maxTransitions ?? 5000, "Max Transitions"),
-        maxElementsPerState: parsePositiveInteger(crawlerSettings.maxElementsPerState ?? 50, "Max Elements per State"),
-        maxActionRepeatsPerUrl: parseNonNegativeInteger(
-          crawlerSettings.maxActionRepeatsPerUrl ?? 10,
-          "Action Repeats per URL",
-        ),
-        useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
-      },
+      crawlerSettings: normalizeCrawlerSettings(crawlerSettings),
       inputDefaults: normalizeInputDefaults(crawlConfig.inputDefaults),
     },
   };
@@ -740,9 +808,9 @@ function hasDuplicateInputDefaultKeys(rows: InputDefaultRow[]) {
   return new Set(keys).size !== keys.length;
 }
 
-export const CreateCrawlSessionModal = ({ initialData, onConfirm, onClose }: CreateCrawlSessionModalProps) => {
+export const CreateCrawlSessionModal = ({ initialData, initialMode = "form", onConfirm, onClose }: CreateCrawlSessionModalProps) => {
   const sessionDefaults = initialData ?? DEFAULT_CREATE_SESSION_INPUT;
-  const [configMode, setConfigMode] = useState<SessionConfigMode>("form");
+  const [configMode, setConfigMode] = useState<SessionConfigMode>(initialMode);
   const [sessionJson, setSessionJson] = useState(() => JSON.stringify(sessionDefaults, null, 2));
   const [trigger, setTrigger] = useState<CrawlSessionTrigger>(initialData?.trigger ?? "on_demand");
   const [maxStates, setMaxStates] = useState(String(initialData?.crawlConfig.maxStates ?? 1000));

@@ -2,8 +2,8 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { PencilLine, RefreshCw } from "lucide-react";
-import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@shared/ui";
+import { Copy, PencilLine, RefreshCw } from "lucide-react";
+import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow, toast } from "@shared/ui";
 import type { TestFlow } from "../../model/types/test-flows.types";
 import styles from "../TestFlows.module.scss";
 
@@ -25,6 +25,43 @@ function formatStatus(status: TestFlow["status"]) {
 
 function shortId(value: string) {
   return value.slice(0, 8);
+}
+
+async function copyFullId(value: string, label: string) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard is unavailable.");
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} copied`);
+  } catch (error) {
+    toast.error(`Failed to copy ${label.toLowerCase()}`, error instanceof Error ? error.message : undefined);
+  }
+}
+
+function CopyableShortId({
+  value,
+  label,
+  prefix,
+  variant = "text",
+}: {
+  value: string;
+  label: string;
+  prefix?: string;
+  variant?: "text" | "code";
+}) {
+  const displayValue = `${prefix ?? ""}${shortId(value)}`;
+
+  return (
+    <button
+      type="button"
+      className={variant === "code" ? styles.copyCodeButton : styles.copyTextButton}
+      title={value}
+      aria-label={`Copy ${label}`}
+      onClick={() => void copyFullId(value, label)}
+    >
+      {variant === "code" ? <code>{displayValue}</code> : <span>{displayValue}</span>}
+      <Copy size={12} aria-hidden="true" />
+    </button>
+  );
 }
 
 export function TestFlowsTable({
@@ -84,9 +121,9 @@ export function TestFlowsTable({
               flows.map((flow) => (
                 <TableRow key={flow.id}>
                   <TableCell>
-                    <div className={styles.flowIdCell} title={flow.id}>
-                      <span>TestFlow #{shortId(flow.id)}</span>
-                      <code>{shortId(flow.checkpointStateHash)}</code>
+                    <div className={styles.flowIdCell}>
+                      <CopyableShortId value={flow.id} label="TestFlow ID" prefix="TestFlow #" />
+                      <CopyableShortId value={flow.checkpointStateHash} label="checkpoint hash" variant="code" />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -119,8 +156,8 @@ export function TestFlowsTable({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className={styles.sessionCell} title={flow.crawlSessionId}>
-                      <code>{shortId(flow.crawlSessionId)}</code>
+                    <div className={styles.sessionCell}>
+                      <CopyableShortId value={flow.crawlSessionId} label="crawl session ID" variant="code" />
                       <span>
                         {flow.crawlSession.triggerType} / {flow.crawlSession.status}
                       </span>

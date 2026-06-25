@@ -104,6 +104,7 @@ type ModalState =
   | { type: "deleteSession" };
 
 type ModalAction = { type: ModalState["type"] };
+type SessionConfigMode = "form" | "json";
 
 interface ApplicationVersionView {
   id: string;
@@ -191,6 +192,87 @@ function getStatusIcon(status: CrawlSessionStatus) {
 
 function isActiveSession(status: CrawlSessionStatus) {
   return status === "running" || status === "in_progress";
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function numberOrDefault(value: unknown, defaultValue: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isObjectRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, String(item)]));
+}
+
+function normalizeRerunInputDefaults(value: unknown): CreateCrawlSessionInput["crawlConfig"]["inputDefaults"] {
+  if (!isObjectRecord(value)) return undefined;
+
+  const fieldPatterns = stringRecord(value.fieldPatterns);
+  const typeFallbacks = stringRecord(value.typeFallbacks);
+  if (Object.keys(fieldPatterns).length === 0 && Object.keys(typeFallbacks).length === 0) return undefined;
+
+  return { fieldPatterns, typeFallbacks };
+}
+
+function buildRerunInitialData(session: CrawlSession): CreateCrawlSessionInput {
+  const crawlConfig = session.crawlConfig;
+  const testFlowGeneration = isObjectRecord(crawlConfig.testFlowGeneration) ? crawlConfig.testFlowGeneration : {};
+  const crawlerSettings = isObjectRecord(crawlConfig.crawlerSettings) ? crawlConfig.crawlerSettings : {};
+
+  return {
+    trigger: "on_demand",
+    crawlConfig: {
+      maxStates: numberOrDefault(crawlConfig.maxStates, 1000),
+      timeoutSeconds: numberOrDefault(crawlConfig.timeoutSeconds, 3600),
+      generateTestFlows: crawlConfig.generateTestFlows !== false,
+      generateTestCode: crawlConfig.generateTestCode === true,
+      testFlowGeneration: {
+        coveragePercentage: numberOrDefault(testFlowGeneration.coveragePercentage, 100),
+        numOfTf: numberOrDefault(testFlowGeneration.numOfTf, 1),
+        maxNumOfTf: numberOrDefault(testFlowGeneration.maxNumOfTf, 10000),
+        numOfStates: numberOrDefault(testFlowGeneration.numOfStates, 20),
+        minNumOfStatesPerTf: numberOrDefault(testFlowGeneration.minNumOfStatesPerTf, 3),
+      },
+      crawlerSettings: {
+        ...crawlerSettings,
+        maxTransitions: numberOrDefault(crawlerSettings.maxTransitions, 5000),
+        maxElementsPerState: numberOrDefault(crawlerSettings.maxElementsPerState, 50),
+        maxActionRepeatsPerUrl: numberOrDefault(crawlerSettings.maxActionRepeatsPerUrl, 10),
+        useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
+      },
+      inputDefaults: normalizeRerunInputDefaults(crawlConfig.inputDefaults),
+    },
+    codegenConfig: isObjectRecord(session.codegenConfig)
+      ? {
+          codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
+          prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
+          prTitle: String(session.codegenConfig.prTitle ?? ""),
+          prBody: String(session.codegenConfig.prBody ?? ""),
+          prDraft: session.codegenConfig.prDraft !== false,
+        }
+      : undefined,
+  };
+}
+
+function rerunNeedsJsonMode(session: CrawlSession) {
+  const crawlerSettings = isObjectRecord(session.crawlConfig.crawlerSettings) ? session.crawlConfig.crawlerSettings : {};
+  const inputDefaults = isObjectRecord(session.crawlConfig.inputDefaults) ? session.crawlConfig.inputDefaults : {};
+  const typeFallbacks = isObjectRecord(inputDefaults.typeFallbacks) ? inputDefaults.typeFallbacks : {};
+  const formCrawlerSettings = new Set([
+    "maxTransitions",
+    "maxElementsPerState",
+    "maxActionRepeatsPerUrl",
+    "useSemanticDiversity",
+  ]);
+
+  return (
+    Object.keys(crawlerSettings).some((key) => !formCrawlerSettings.has(key)) ||
+    Object.keys(typeFallbacks).length > 0
+  );
 }
 
 function manualSessionRoute(projectId: string, applicationId: string, versionId: string, sessionId: string) {
@@ -822,6 +904,7 @@ const Applications = () => {
   const [scheduleToDelete, setScheduleToDelete] = useState<CrawlSchedule | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<CrawlSession | null>(null);
   const [sessionFormInitialData, setSessionFormInitialData] = useState<CreateCrawlSessionInput | undefined>(undefined);
+  const [sessionFormInitialMode, setSessionFormInitialMode] = useState<SessionConfigMode>("form");
   const [savedRegressionApiKeys, setSavedRegressionApiKeys] = useState<Record<string, string>>({});
 
   const closeModal = () => dispatchModal({ type: "none" });
@@ -924,7 +1007,7 @@ const Applications = () => {
     isFetching: schedulesFetching,
     refetch: refetchSchedules,
   } = useCrawlSchedules(selectedProject?.id ?? null, selectedApplication?.id ?? null);
-  const { data: detailedSelectedSession } = useCrawlSession(
+  const { data: detailedSelectedSession, refetch: refetchSelectedSession } = useCrawlSession(
     selectedProject?.id ?? null,
     selectedApplication?.id ?? null,
     selectedVersion?.id ?? null,
@@ -1037,6 +1120,7 @@ const Applications = () => {
       refetchApplications(),
       refetchApplicationDetails(),
       refetchSessions(),
+      selectedSessionId ? refetchSelectedSession() : Promise.resolve(),
       refetchRegressionConfig(),
       refetchSchedules(),
     ]);
@@ -1221,8 +1305,9 @@ const Applications = () => {
     );
   };
 
-  const handleOpenCreateSession = (initialData?: CreateCrawlSessionInput) => {
+  const handleOpenCreateSession = (initialData?: CreateCrawlSessionInput, initialMode: SessionConfigMode = "form") => {
     setSessionFormInitialData(initialData);
+    setSessionFormInitialMode(initialMode);
     dispatchModal({ type: "createSession" });
   };
 
@@ -1240,6 +1325,7 @@ const Applications = () => {
       {
         onSuccess: () => {
           setSessionFormInitialData(undefined);
+          setSessionFormInitialMode("form");
           closeModal();
         },
       },
@@ -1352,52 +1438,7 @@ const Applications = () => {
   };
 
   const handleRerun = (session: CrawlSession) => {
-    const crawlerSettings =
-      session.crawlConfig.crawlerSettings && typeof session.crawlConfig.crawlerSettings === "object"
-        ? (session.crawlConfig.crawlerSettings as Record<string, unknown>)
-        : {};
-    const inputDefaults =
-      session.crawlConfig.inputDefaults && typeof session.crawlConfig.inputDefaults === "object"
-        ? (session.crawlConfig.inputDefaults as CreateCrawlSessionInput["crawlConfig"]["inputDefaults"])
-        : undefined;
-    const testFlowGeneration =
-      session.crawlConfig.testFlowGeneration && typeof session.crawlConfig.testFlowGeneration === "object"
-        ? (session.crawlConfig.testFlowGeneration as Record<string, unknown>)
-        : {};
-
-    handleOpenCreateSession({
-      trigger: "manual",
-      crawlConfig: {
-        maxStates: Number(session.crawlConfig.maxStates ?? 1000),
-        timeoutSeconds: Number(session.crawlConfig.timeoutSeconds ?? 3600),
-        generateTestFlows: session.crawlConfig.generateTestFlows !== false,
-        generateTestCode: session.crawlConfig.generateTestCode === true,
-        testFlowGeneration: {
-          coveragePercentage: Number(testFlowGeneration.coveragePercentage ?? 100),
-          numOfTf: Number(testFlowGeneration.numOfTf ?? 1),
-          maxNumOfTf: Number(testFlowGeneration.maxNumOfTf ?? 10000),
-          numOfStates: Number(testFlowGeneration.numOfStates ?? 20),
-          minNumOfStatesPerTf: Number(testFlowGeneration.minNumOfStatesPerTf ?? 3),
-        },
-        crawlerSettings: {
-          maxTransitions: Number(crawlerSettings.maxTransitions ?? 5000),
-          maxElementsPerState: Number(crawlerSettings.maxElementsPerState ?? 50),
-          maxActionRepeatsPerUrl: Number(crawlerSettings.maxActionRepeatsPerUrl ?? 10),
-          useSemanticDiversity: crawlerSettings.useSemanticDiversity !== false,
-        },
-        inputDefaults,
-      },
-      codegenConfig:
-        Object.keys(session.codegenConfig).length > 0
-          ? {
-              codegenBranch: String(session.codegenConfig.codegenBranch ?? "auto-tests"),
-              prTargetBranch: String(session.codegenConfig.prTargetBranch ?? "main"),
-              prTitle: String(session.codegenConfig.prTitle ?? ""),
-              prBody: String(session.codegenConfig.prBody ?? ""),
-              prDraft: Boolean(session.codegenConfig.prDraft ?? true),
-            }
-          : undefined,
-    });
+    handleOpenCreateSession(buildRerunInitialData(session), rerunNeedsJsonMode(session) ? "json" : "form");
     handleSelectSession(null);
   };
 
@@ -1828,9 +1869,11 @@ const Applications = () => {
       {modal.type === "createSession" && (
         <CreateCrawlSessionModal
           initialData={sessionFormInitialData}
+          initialMode={sessionFormInitialMode}
           onConfirm={handleCreateSession}
           onClose={() => {
             setSessionFormInitialData(undefined);
+            setSessionFormInitialMode("form");
             closeModal();
           }}
         />

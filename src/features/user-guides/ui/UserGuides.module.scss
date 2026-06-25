@@ -85,7 +85,7 @@
 .contextCard,
 .pathCard,
 .terminal {
-  width: min(100%, 52.5rem);
+  width: min(100%, 56rem);
 }
 
 .contextCard,
@@ -99,7 +99,7 @@
 }
 
 .pathCard {
-  min-height: 8.7rem;
+  min-height: 9.5rem;
 }
 
 .cardHeader {
@@ -179,7 +179,7 @@
 
 .pathGrid {
   display: grid;
-  grid-template-columns: minmax(12rem, 13.2rem) minmax(11rem, 1fr) minmax(12rem, 13.2rem);
+  grid-template-columns: minmax(14rem, 16rem) minmax(11rem, 1fr) minmax(14rem, 16rem);
   gap: $space-4;
   align-items: center;
 }
@@ -232,12 +232,12 @@
 }
 
 .stateMenu {
-  min-width: 17.5rem;
+  min-width: 20rem;
 }
 
 .stateOption {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(5rem, 10rem);
+  grid-template-columns: minmax(0, 1fr) minmax(5rem, 9rem);
   gap: $space-3;
   align-items: center;
   min-width: 0;
@@ -327,7 +327,7 @@
   flex-direction: column;
   justify-content: center;
   gap: $space-3;
-  width: min(100%, 52.5rem);
+  width: min(100%, 56rem);
   min-height: 18.5rem;
   padding: $space-6;
   text-align: center;
@@ -365,6 +365,8 @@
 
 .terminal {
   min-height: 26.2rem;
+  background: var(--terminal-bg);
+  border-color: var(--terminal-border);
 }
 
 .spinIcon {
@@ -378,7 +380,7 @@
 }
 
 .commandLine {
-  color: var(--text-secondary);
+  color: var(--terminal-muted, var(--text-secondary));
 
   span {
     color: var(--success);
@@ -388,7 +390,7 @@
 
 .typedOutput {
   min-height: 2rem;
-  color: var(--text-primary);
+  color: var(--terminal-text, var(--text-primary));
 }
 
 .cursor {
@@ -398,7 +400,7 @@
   margin-left: 0.15rem;
   transform: translateY(0.15rem);
   border-radius: 0.12rem;
-  background: var(--primary);
+  background: var(--terminal-cursor, var(--primary));
   animation: cursor-blink 1s steps(2, start) infinite;
 }
 

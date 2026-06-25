@@ -52,7 +52,7 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
   const jiraProjects: JiraIssueProject[] =
     jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.projects : [];
   const jiraIssueTypes: JiraIssueType[] =
-    jiraOptions.data?.options.case === "jira" ? jiraOptions.data.options.value.issueTypes : [];
+    jiraOptions.data?.options.case === "jira" ? (jiraOptions.data.options.value.issueTypes as JiraIssueType[]) : [];
   const jiraReportingConfig =
     jiraStatus.data?.reportingConfig?.case === "jiraReportingConfig"
       ? jiraStatus.data.reportingConfig.value
@@ -67,10 +67,21 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
     () => jiraProjects.map((project) => ({ value: project.id, label: `${project.key} - ${project.name}` })),
     [jiraProjects],
   );
-  const jiraIssueTypeOptions = useMemo(
-    () => jiraIssueTypes.map((issueType) => ({ value: issueType.id, label: issueType.name })),
-    [jiraIssueTypes],
+  const selectedJiraIssueTypes = useMemo(
+    () => jiraIssueTypes.filter((issueType) => issueType.projectId === jiraProjectId),
+    [jiraIssueTypes, jiraProjectId],
   );
+  const jiraIssueTypeOptions = useMemo(
+    () => selectedJiraIssueTypes.map((issueType) => ({ value: issueType.id, label: issueType.name })),
+    [selectedJiraIssueTypes],
+  );
+
+  useEffect(() => {
+    if (!jiraIssueTypeId || jiraOptions.isLoading || jiraOptions.data?.options.case !== "jira") return;
+    if (!selectedJiraIssueTypes.some((issueType) => issueType.id === jiraIssueTypeId)) {
+      setJiraIssueTypeId(null);
+    }
+  }, [jiraIssueTypeId, jiraOptions.data?.options.case, jiraOptions.isLoading, selectedJiraIssueTypes]);
 
   const handleConnect = (provider: IntegrationProvider) => {
     startOAuth.mutate({ projectId, provider });
@@ -82,7 +93,7 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
 
   const handleSaveJiraReporting = () => {
     const selectedProject = jiraProjects.find((project) => project.id === jiraProjectId);
-    const selectedIssueType = jiraIssueTypes.find((issueType) => issueType.id === jiraIssueTypeId);
+    const selectedIssueType = selectedJiraIssueTypes.find((issueType) => issueType.id === jiraIssueTypeId);
     if (!selectedProject || !selectedIssueType) return;
 
     updateReportingConfig.mutate({
@@ -177,15 +188,24 @@ export function AdministrationIntegrations({ projectId, canManage }: Administrat
                                   options={jiraProjectOptions}
                                   value={jiraProjectId}
                                   placeholder={jiraOptions.isLoading ? "Loading projects..." : "Jira project"}
-                                  onChange={setJiraProjectId}
+                                  onChange={(value) => {
+                                    setJiraProjectId(value);
+                                    setJiraIssueTypeId(null);
+                                  }}
                                   disabled={jiraOptions.isLoading || jiraOptions.isError}
                                 />
                                 <Select
                                   options={jiraIssueTypeOptions}
                                   value={jiraIssueTypeId}
-                                  placeholder={jiraOptions.isLoading ? "Loading issue types..." : "Issue type"}
+                                  placeholder={
+                                    jiraOptions.isLoading
+                                      ? "Loading issue types..."
+                                      : jiraProjectId
+                                        ? "Issue type"
+                                        : "Select a Jira project first"
+                                  }
                                   onChange={setJiraIssueTypeId}
-                                  disabled={jiraOptions.isLoading || jiraOptions.isError}
+                                  disabled={jiraOptions.isLoading || jiraOptions.isError || !jiraProjectId}
                                 />
                                 <Button
                                   size="sm"
