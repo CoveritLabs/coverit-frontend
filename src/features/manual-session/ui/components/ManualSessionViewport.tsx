@@ -17,7 +17,7 @@ type ManualSessionViewportProps = {
   error: string | null;
   hasLiveSession: boolean;
   status: string;
-  onMouseMove: (event: MouseEvent<HTMLCanvasElement>) => void;
+  onHover: (event: MouseEvent<HTMLCanvasElement>) => void;
   onMouseDown: (event: MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: (event: MouseEvent<HTMLCanvasElement>) => void;
   onWheel: (event: WheelEvent<HTMLCanvasElement>) => void;
@@ -31,7 +31,7 @@ export function ManualSessionViewport({
   error,
   hasLiveSession,
   status,
-  onMouseMove,
+  onHover,
   onMouseDown,
   onMouseUp,
   onWheel,
@@ -53,14 +53,18 @@ export function ManualSessionViewport({
           tabIndex={0}
           className={styles.browserCanvas}
           onContextMenu={(event) => event.preventDefault()}
-          onMouseMove={onMouseMove}
           onMouseDown={(event) => {
             event.preventDefault();
             canvasRef.current?.focus();
+            if (event.button === 2) {
+              onHover(event);
+              return;
+            }
             onMouseDown(event);
           }}
           onMouseUp={(event) => {
             event.preventDefault();
+            if (event.button === 2) return;
             onMouseUp(event);
           }}
           onWheel={onWheel}

@@ -140,7 +140,8 @@ function ManualSession() {
   const [steps, setSteps] = useState<RecordedStep[]>([]);
   const [pendingEvents, setPendingEvents] = useState<PendingRecordedEvent[]>([]);
   const [pendingEventClock, setPendingEventClock] = useState(() => Date.now());
-  const [bugSummary, setBugSummary] = useState("");
+  const [bugTitle, setBugTitle] = useState("");
+  const [bugDescription, setBugDescription] = useState("");
   const [bugSeverity, setBugSeverity] = useState("medium");
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [pendingAction, setPendingActionState] = useState<ManualAction | null>(null);
@@ -202,7 +203,7 @@ function ManualSession() {
     : jiraStatusQuery.isError
       ? "Jira reporting status could not be loaded."
       : "Enable Jira reporting in project integrations to queue bug flows.";
-  const canReportBug = Boolean(jiraReportingEnabled && bugSummary.trim() && canFinishFlow && !hasPendingAction);
+  const canReportBug = Boolean(jiraReportingEnabled && bugTitle.trim() && canFinishFlow && !hasPendingAction);
   const visibleSteps = useMemo<VisibleStepItem[]>(
     () => [
       ...steps.flatMap((step, index) => {
@@ -736,7 +737,7 @@ function ManualSession() {
   );
 
   const sendMouse = useCallback(
-    (event: MouseEvent<HTMLCanvasElement>, action: "move" | "down" | "up") => {
+    (event: MouseEvent<HTMLCanvasElement>, action: "down" | "up") => {
       if (!canSend) return;
       const point = canvasPoint(event);
       send({
@@ -744,6 +745,24 @@ function ManualSession() {
         input: {
           kind: "mouse",
           action,
+          x: point.x,
+          y: point.y,
+          button: event.button,
+        },
+      });
+    },
+    [canSend, canvasPoint, send],
+  );
+
+  const sendHover = useCallback(
+    (event: MouseEvent<HTMLCanvasElement>) => {
+      if (!canSend) return;
+      const point = canvasPoint(event);
+      send({
+        type: "browser.input",
+        input: {
+          kind: "mouse",
+          action: "hover",
           x: point.x,
           y: point.y,
           button: event.button,
@@ -851,13 +870,14 @@ function ManualSession() {
   };
 
   const handleReportBug = () => {
-    if (!jiraReportingEnabled || !bugSummary.trim() || !canFinishFlow || hasPendingAction || hasStalePendingEvents) return;
+    if (!jiraReportingEnabled || !bugTitle.trim() || !canFinishFlow || hasPendingAction || hasStalePendingEvents) return;
     startAction("bug", "Queueing bug flow...");
     setPendingEvents([]);
+    const summary = [bugTitle.trim(), bugDescription.trim()].filter(Boolean).join("\n\n");
     const sent = send({
       type: "bug.report",
       bug: {
-        summary: bugSummary.trim(),
+        summary,
         severity: bugSeverity,
         includeScreenshot: false,
         includeSteps: true,
@@ -1007,7 +1027,7 @@ function ManualSession() {
           error={error}
           hasLiveSession={hasLiveSession}
           status={status}
-          onMouseMove={(event) => sendMouse(event, "move")}
+          onHover={sendHover}
           onMouseDown={(event) => sendMouse(event, "down")}
           onMouseUp={(event) => sendMouse(event, "up")}
           onWheel={handleWheel}
@@ -1040,7 +1060,8 @@ function ManualSession() {
           visibleSteps={visibleSteps}
           jiraReportingEnabled={jiraReportingEnabled}
           jiraReportingMessage={jiraReportingMessage}
-          bugSummary={bugSummary}
+          bugTitle={bugTitle}
+          bugDescription={bugDescription}
           bugSeverity={bugSeverity}
           canReportBug={canReportBug}
           onApplicationChange={handleApplicationChange}
@@ -1051,7 +1072,8 @@ function ManualSession() {
           onStartFlow={handleStartFlow}
           onFinishFlow={openFinishConfirmation}
           onContinueFromStep={handleContinueFromStep}
-          onBugSummaryChange={setBugSummary}
+          onBugTitleChange={setBugTitle}
+          onBugDescriptionChange={setBugDescription}
           onBugSeverityChange={setBugSeverity}
           onReportBug={openBugConfirmation}
           onBack={handleBack}

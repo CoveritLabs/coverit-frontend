@@ -52,7 +52,8 @@ type ManualSessionPanelProps = {
   visibleSteps: VisibleStepItem[];
   jiraReportingEnabled: boolean;
   jiraReportingMessage: string;
-  bugSummary: string;
+  bugTitle: string;
+  bugDescription: string;
   bugSeverity: string;
   canReportBug: boolean;
   onApplicationChange: (applicationId: string | null) => void;
@@ -63,7 +64,8 @@ type ManualSessionPanelProps = {
   onStartFlow: () => void;
   onFinishFlow: () => void;
   onContinueFromStep: (step: RecordedStep) => void;
-  onBugSummaryChange: (summary: string) => void;
+  onBugTitleChange: (title: string) => void;
+  onBugDescriptionChange: (description: string) => void;
   onBugSeverityChange: (severity: string) => void;
   onReportBug: () => void;
   onBack: () => void;
@@ -95,7 +97,8 @@ export function ManualSessionPanel({
   visibleSteps,
   jiraReportingEnabled,
   jiraReportingMessage,
-  bugSummary,
+  bugTitle,
+  bugDescription,
   bugSeverity,
   canReportBug,
   onApplicationChange,
@@ -106,7 +109,8 @@ export function ManualSessionPanel({
   onStartFlow,
   onFinishFlow,
   onContinueFromStep,
-  onBugSummaryChange,
+  onBugTitleChange,
+  onBugDescriptionChange,
   onBugSeverityChange,
   onReportBug,
   onBack,
@@ -345,10 +349,21 @@ export function ManualSessionPanel({
             </div>
           )}
 
-          <label className={styles.field}>
-            <span>Summary</span>
-            <textarea value={bugSummary} onChange={(event) => onBugSummaryChange(event.target.value)} rows={5} />
-          </label>
+          <div className={styles.fieldGroup}>
+            <input
+              value={bugTitle}
+              onChange={(event) => onBugTitleChange(event.target.value)}
+              placeholder="Title"
+              aria-label="Bug title"
+            />
+            <textarea
+              value={bugDescription}
+              onChange={(event) => onBugDescriptionChange(event.target.value)}
+              placeholder="Description"
+              aria-label="Bug description"
+              rows={5}
+            />
+          </div>
 
           <label className={styles.field}>
             <span>Severity</span>
