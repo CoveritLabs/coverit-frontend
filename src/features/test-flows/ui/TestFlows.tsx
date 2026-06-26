@@ -19,7 +19,12 @@ import { ContentErrorPanel } from "@shared/feedback/ContentErrorPanel";
 import { ErrorBanner } from "@shared/feedback/ErrorBanner";
 import { PageLoader } from "@shared/feedback/PageLoader/PageLoader";
 import { Button, Card, Input, Label, Select } from "@shared/ui";
-import { useGenerateTestFlow, useRegressionCodebases, useTestFlows } from "../model/queries/useTestFlows";
+import {
+  useFlowEditor,
+  useGenerateTestFlow,
+  useRegressionCodebases,
+  useTestFlows,
+} from "../model/queries/useTestFlows";
 import type {
   GenerateTestFlowRequest,
   ListTestFlowsRequest,
@@ -29,6 +34,7 @@ import type {
 } from "../model/types/test-flows.types";
 import { TestFlowsFilters } from "./components/TestFlowsFilters";
 import { TestFlowsHeader } from "./components/TestFlowsHeader";
+import { TestFlowStepsDrawer } from "./components/TestFlowStepsDrawer";
 import { TestFlowsTable } from "./components/TestFlowsTable";
 import styles from "./TestFlows.module.scss";
 
@@ -218,6 +224,7 @@ function TestFlows() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [cursorStack, setCursorStack] = useState<Array<string | null>>([]);
   const [generatingFlow, setGeneratingFlow] = useState<TestFlow | null>(null);
+  const [showingFlow, setShowingFlow] = useState<TestFlow | null>(null);
 
   const requestedApplicationId = searchParams.get("appId");
   const requestedVersionId = searchParams.get("versionId");
@@ -315,6 +322,7 @@ function TestFlows() {
 
   const flowsQuery = useTestFlows(selectedProject?.id ?? null, activeApplication?.id ?? null, filters);
   const regressionCodebasesQuery = useRegressionCodebases(selectedProject?.id ?? null, activeApplication?.id ?? null);
+  const stepsDrawerQuery = useFlowEditor(projectId, activeApplication?.id ?? null, showingFlow?.id ?? null);
   const generateFlowMutation = useGenerateTestFlow();
   const flows = useMemo(() => flowsQuery.data?.flows ?? [], [flowsQuery.data?.flows]);
   const filteredFlows = useMemo(() => {
@@ -503,6 +511,7 @@ function TestFlows() {
           isFetching={flowsQuery.isFetching}
           generatingFlowId={generateFlowMutation.isPending ? generatingFlow?.id : null}
           onGenerate={(flow) => setGeneratingFlow(flow)}
+          onShow={(flow) => setShowingFlow(flow)}
           onEdit={(flow) => {
             if (!activeApplication) return;
             navigate(
@@ -522,6 +531,17 @@ function TestFlows() {
           }}
         />
       )}
+
+      {showingFlow ? (
+        <TestFlowStepsDrawer
+          flow={showingFlow}
+          detail={stepsDrawerQuery.data}
+          loading={stepsDrawerQuery.isLoading || stepsDrawerQuery.isFetching}
+          error={stepsDrawerQuery.error}
+          onClose={() => setShowingFlow(null)}
+          onRetry={() => void stepsDrawerQuery.refetch()}
+        />
+      ) : null}
 
       {generatingFlow ? (
         <GenerateFlowModal

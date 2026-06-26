@@ -29,12 +29,15 @@ import type { RichSelectOption } from "@shared/ui";
 import {
   useGenerateUserGuide,
   useUserGuideApplications,
+  useUserGuideManualSessions,
   useUserGuideStates,
   useUserGuideVersions,
 } from "../model/queries/useUserGuides";
 import { cn } from "@shared/utils/cn";
 import type {
   GenerateGuideParams,
+  UserGuideManualSession,
+  UserGuideMode,
   UserGuideState,
   UserGuideStateKind,
 } from "../model/types/user-guides.types";
@@ -48,8 +51,19 @@ type StateOption = RichSelectOption & {
   kind?: UserGuideStateKind;
 };
 
+type ManualSessionOption = RichSelectOption & {
+  createdAt: string;
+  versionName: string;
+  status: string;
+};
+
 const GUIDE_DESCRIPTION =
   "Coverit will generate a step-by-step navigation guide for the selected path, automatically typed in real time.";
+
+const MODE_OPTIONS: RichSelectOption[] = [
+  { value: "automatic", label: "Automatic" },
+  { value: "manual", label: "Manual" },
+];
 
 function slugify(value: string) {
   return value
@@ -61,30 +75,38 @@ function slugify(value: string) {
 
 function getProgressValue({
   applicationId,
-  versionId,
+  sourceId,
   startStateId,
   endStateId,
 }: {
   applicationId: string | null;
-  versionId: string | null;
+  sourceId: string | null;
   startStateId: string | null;
   endStateId: string | null;
 }) {
-  return [applicationId, versionId, startStateId, endStateId].filter(Boolean).length;
+  return [applicationId, sourceId, startStateId, endStateId].filter(Boolean).length;
 }
 
 function getEmptyStateMessage({
   applicationId,
-  versionId,
+  sourceId,
   startStateId,
+  mode,
 }: {
   applicationId: string | null;
-  versionId: string | null;
+  sourceId: string | null;
   startStateId: string | null;
+  mode: UserGuideMode;
 }) {
-  if (!applicationId || !versionId) return "Select an application to get started";
+  if (!applicationId || !sourceId) {
+    return mode === "manual" ? "Select an application and manual session" : "Select an application to get started";
+  }
   if (!startStateId) return "Pick a start state from the left";
   return "Pick an end state from the right";
+}
+
+function getGuideMode(value: string | null): UserGuideMode {
+  return value === "manual" ? "manual" : "automatic";
 }
 
 function FieldBlock({
@@ -138,6 +160,17 @@ function StateOptionRow({ option }: { option: StateOption }) {
         <strong title={option.label}>{option.displayLabel}</strong>
       </span>
       <code title={option.path}>{option.displayPath}</code>
+    </span>
+  );
+}
+
+function ManualSessionOptionRow({ option }: { option: ManualSessionOption }) {
+  return (
+    <span className={styles.manualSessionOption}>
+      <strong>{option.label}</strong>
+      <span>
+        {option.versionName} / {option.status}
+      </span>
     </span>
   );
 }
@@ -204,6 +237,10 @@ function findStateByHash(items: UserGuideState[], stateHash: string | null) {
   return stateHash ? (items.find((item) => item.stateHash === stateHash) ?? null) : null;
 }
 
+function findManualSessionById(items: UserGuideManualSession[], sessionId: string | null) {
+  return sessionId ? (items.find((item) => item.id === sessionId) ?? null) : null;
+}
+
 function updateSearchParams(
   searchParams: URLSearchParams,
   setSearchParams: ReturnType<typeof useSearchParams>[1],
@@ -228,8 +265,11 @@ function UserGuides() {
   const [guideResult, setGuideResult] = useState<{ lines: string[] } | null>(null);
   const requestedApplicationId = searchParams.get("appId");
   const requestedVersionId = searchParams.get("versionId");
+  const requestedMode = searchParams.get("mode");
+  const requestedSessionId = searchParams.get("sessionId");
   const requestedStartStateId = searchParams.get("startState");
   const requestedEndStateId = searchParams.get("endState");
+  const guideMode = getGuideMode(requestedMode);
 
   const applicationsQuery = useUserGuideApplications(projectId);
   const applications = useMemo(() => applicationsQuery.data ?? [], [applicationsQuery.data]);
@@ -251,7 +291,19 @@ function UserGuides() {
     requireVersion: true,
   });
   const selectedVersionId = selectedVersion?.id ?? null;
-  const statesQuery = useUserGuideStates(projectId, selectedApplicationId, selectedVersionId);
+  const manualSessionsQuery = useUserGuideManualSessions(projectId, selectedApplication);
+  const manualSessions = useMemo(() => manualSessionsQuery.data ?? [], [manualSessionsQuery.data]);
+  const selectedManualSession =
+    guideMode === "manual" ? (findManualSessionById(manualSessions, requestedSessionId) ?? manualSessions[0] ?? null) : null;
+  const selectedManualSessionId = selectedManualSession?.id ?? null;
+  const guideSourceId = guideMode === "manual" ? selectedManualSessionId : selectedVersionId;
+  const guideSourceLabel =
+    guideMode === "manual"
+      ? selectedManualSessionId
+        ? `Session#${manualSessions.findIndex((session) => session.id === selectedManualSessionId) + 1}`
+        : null
+      : selectedVersion?.name ?? null;
+  const statesQuery = useUserGuideStates(projectId, selectedApplicationId, guideSourceId, guideMode);
   const {
     mutate: generateGuide,
     reset: resetGenerateGuide,
@@ -259,10 +311,19 @@ function UserGuides() {
   } = useGenerateUserGuide();
 
   const states = useMemo(() => statesQuery.data ?? [], [statesQuery.data]);
-  const isRefreshing = applicationsQuery.isFetching || versionsQuery.isFetching || statesQuery.isFetching;
+  const isRefreshing =
+    applicationsQuery.isFetching ||
+    versionsQuery.isFetching ||
+    manualSessionsQuery.isFetching ||
+    statesQuery.isFetching;
 
   const handleRefresh = () => {
-    void Promise.all([applicationsQuery.refetch(), versionsQuery.refetch(), statesQuery.refetch()]);
+    void Promise.all([
+      applicationsQuery.refetch(),
+      versionsQuery.refetch(),
+      manualSessionsQuery.refetch(),
+      statesQuery.refetch(),
+    ]);
   };
 
   const selectedStartStateId = states.some((state) => state.stateHash === requestedStartStateId)
@@ -276,13 +337,13 @@ function UserGuides() {
       : null;
   const selectedStartState = findStateByHash(states, selectedStartStateId);
   const selectedEndState = findStateByHash(states, selectedEndStateId);
-  const contextComplete = Boolean(selectedApplication && selectedVersion);
+  const contextComplete = Boolean(selectedApplication && guideSourceId);
   const pathComplete = Boolean(
     selectedStartState && selectedEndState && selectedStartState.stateHash !== selectedEndState.stateHash,
   );
   const progressValue = getProgressValue({
     applicationId: selectedApplicationId,
-    versionId: selectedVersionId,
+    sourceId: guideSourceId,
     startStateId: selectedStartStateId,
     endStateId: selectedEndStateId,
   });
@@ -295,7 +356,7 @@ function UserGuides() {
 
   useEffect(() => {
     resetGuideOutput();
-  }, [projectId, resetGuideOutput, selectedApplicationId, selectedEndStateId, selectedStartStateId, selectedVersionId]);
+  }, [guideMode, guideSourceId, projectId, resetGuideOutput, selectedApplicationId, selectedEndStateId, selectedStartStateId]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -304,10 +365,19 @@ function UserGuides() {
       if (selectedApplicationContext?.projectId === projectId) {
         setSelectedApplicationContext(null);
       }
-      if (requestedApplicationId || requestedVersionId || requestedStartStateId || requestedEndStateId) {
+      if (
+        requestedApplicationId ||
+        requestedVersionId ||
+        requestedSessionId ||
+        requestedMode ||
+        requestedStartStateId ||
+        requestedEndStateId
+      ) {
         updateSearchParams(searchParams, setSearchParams, {
           appId: null,
           versionId: null,
+          sessionId: null,
+          mode: null,
           startState: null,
           endState: null,
         });
@@ -319,8 +389,20 @@ function UserGuides() {
 
     const updates: Record<string, string | null> = {};
     if (requestedApplicationId !== selectedApplication.id) updates.appId = selectedApplication.id;
-    if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
-    if (!selectedVersionId && requestedVersionId && !versionsQuery.isFetching) updates.versionId = null;
+    if (guideMode === "automatic") {
+      if (requestedMode) updates.mode = null;
+      if (requestedSessionId) updates.sessionId = null;
+      if (selectedVersionId && requestedVersionId !== selectedVersionId) updates.versionId = selectedVersionId;
+      if (!selectedVersionId && requestedVersionId && !versionsQuery.isFetching) updates.versionId = null;
+    } else {
+      if (requestedVersionId) updates.versionId = null;
+      if (selectedManualSessionId && requestedSessionId !== selectedManualSessionId) {
+        updates.sessionId = selectedManualSessionId;
+      }
+      if (!selectedManualSessionId && requestedSessionId && !manualSessionsQuery.isFetching) {
+        updates.sessionId = null;
+      }
+    }
 
     if (requestedStartStateId && !selectedStartStateId && !statesQuery.isFetching) {
       updates.startState = null;
@@ -329,7 +411,11 @@ function UserGuides() {
       updates.endState = null;
     }
 
-    const nextContext = buildApplicationContext(projectId, selectedApplication, selectedVersion);
+    const nextContext = buildApplicationContext(
+      projectId,
+      selectedApplication,
+      guideMode === "automatic" ? selectedVersion : null,
+    );
     if (!applicationContextEquals(selectedApplicationContext, nextContext)) {
       setSelectedApplicationContext(nextContext);
     }
@@ -341,15 +427,20 @@ function UserGuides() {
     applications.length,
     applicationsQuery.isLoading,
     applicationsQuery.isPlaceholderData,
+    guideMode,
+    manualSessionsQuery.isFetching,
     projectId,
     requestedApplicationId,
     requestedEndStateId,
+    requestedMode,
+    requestedSessionId,
     requestedStartStateId,
     requestedVersionId,
     searchParams,
     selectedApplication,
     selectedApplicationContext,
     selectedEndStateId,
+    selectedManualSessionId,
     selectedStartStateId,
     selectedVersion,
     selectedVersionId,
@@ -367,6 +458,18 @@ function UserGuides() {
   const versionOptions = useMemo<RichSelectOption[]>(
     () => versions.map((version) => ({ value: version.id, label: version.name })),
     [versions],
+  );
+
+  const manualSessionOptions = useMemo<ManualSessionOption[]>(
+    () =>
+      manualSessions.map((session, index) => ({
+        value: session.id,
+        label: `Session#${index + 1}`,
+        createdAt: session.createdAt,
+        versionName: session.versionName,
+        status: session.status,
+      })),
+    [manualSessions],
   );
 
   const startStateOptions = useMemo<StateOption[]>(
@@ -398,22 +501,25 @@ function UserGuides() {
   );
 
   const guideRequest = useMemo<GenerateGuideParams | null>(() => {
-    if (!projectId || !selectedApplicationId || !selectedVersionId || !pathComplete) return null;
+    if (!projectId || !selectedApplicationId || !guideSourceId || !pathComplete) return null;
 
     return {
       projectId,
       applicationId: selectedApplicationId,
-      versionId: selectedVersionId,
+      mode: guideMode,
+      versionId: guideMode === "automatic" ? guideSourceId : undefined,
+      sessionId: guideMode === "manual" ? guideSourceId : undefined,
       startStateHash: selectedStartStateId ?? "",
       endStateHash: selectedEndStateId ?? "",
     };
   }, [
+    guideMode,
+    guideSourceId,
     pathComplete,
     projectId,
     selectedApplicationId,
     selectedEndStateId,
     selectedStartStateId,
-    selectedVersionId,
   ]);
 
   const guideRequestKey = useMemo(() => {
@@ -421,7 +527,8 @@ function UserGuides() {
     return [
       guideRequest.projectId,
       guideRequest.applicationId,
-      guideRequest.versionId,
+      guideRequest.mode,
+      guideRequest.versionId ?? guideRequest.sessionId,
       guideRequest.startStateHash,
       guideRequest.endStateHash,
     ].join(":");
@@ -448,13 +555,26 @@ function UserGuides() {
   const terminalGenerating = isGuideGenerating || isTyping;
   const terminalCommand = useMemo(() => {
     if (!selectedApplication || !selectedStartState || !selectedEndState) return "";
-    return `coverit generate-guide --app ${slugify(selectedApplication.name)} --from "${selectedStartState.label}" --to "${selectedEndState.label}"`;
-  }, [selectedApplication, selectedEndState, selectedStartState]);
+    const sourceFlag =
+      guideMode === "manual"
+        ? `--session "${guideSourceLabel ?? selectedManualSessionId ?? "manual"}"`
+        : `--version "${guideSourceLabel ?? selectedVersionId ?? "version"}"`;
+    return `coverit generate-guide --app ${slugify(selectedApplication.name)} ${sourceFlag} --from "${selectedStartState.label}" --to "${selectedEndState.label}"`;
+  }, [
+    guideMode,
+    guideSourceLabel,
+    selectedApplication,
+    selectedEndState,
+    selectedManualSessionId,
+    selectedStartState,
+    selectedVersionId,
+  ]);
 
   const emptyStateMessage = getEmptyStateMessage({
     applicationId: selectedApplicationId,
-    versionId: selectedVersionId,
+    sourceId: guideSourceId,
     startStateId: selectedStartStateId,
+    mode: guideMode,
   });
 
   return (
@@ -483,6 +603,7 @@ function UserGuides() {
                         {
                           appId: value,
                           versionId: null,
+                          sessionId: null,
                           startState: null,
                           endState: null,
                         },
@@ -494,29 +615,81 @@ function UserGuides() {
                   />
                 </FieldBlock>
 
-                <FieldBlock label="VERSION / BRANCH">
+                <FieldBlock label="MODE">
                   <RichSelect
-                    options={versionOptions}
-                    value={selectedVersionId}
-                    placeholder={versionsQuery.isFetching ? "Loading versions..." : "Choose version..."}
-                    leadingIcon={<Tag />}
+                    options={MODE_OPTIONS}
+                    value={guideMode}
+                    placeholder="Choose mode..."
+                    leadingIcon={<Sparkles />}
                     onChange={(value) => {
+                      const nextMode = getGuideMode(value);
                       updateSearchParams(
                         searchParams,
                         setSearchParams,
                         {
-                          versionId: value,
+                          mode: nextMode === "manual" ? "manual" : null,
+                          versionId: null,
+                          sessionId: null,
                           startState: null,
                           endState: null,
                         },
                         false,
                       );
                     }}
-                    disabled={!selectedApplicationId || versionsQuery.isFetching || versionsQuery.isError}
-                    emptyLabel="No versions found"
+                    clearable={false}
                   />
                 </FieldBlock>
 
+                {guideMode === "automatic" ? (
+                  <FieldBlock label="VERSION / BRANCH">
+                    <RichSelect
+                      options={versionOptions}
+                      value={selectedVersionId}
+                      placeholder={versionsQuery.isFetching ? "Loading versions..." : "Choose version..."}
+                      leadingIcon={<Tag />}
+                      onChange={(value) => {
+                        updateSearchParams(
+                          searchParams,
+                          setSearchParams,
+                          {
+                            versionId: value,
+                            sessionId: null,
+                            startState: null,
+                            endState: null,
+                          },
+                          false,
+                        );
+                      }}
+                      disabled={!selectedApplicationId || versionsQuery.isFetching || versionsQuery.isError}
+                      emptyLabel="No versions found"
+                    />
+                  </FieldBlock>
+                ) : (
+                  <FieldBlock label="MANUAL SESSION">
+                    <RichSelect
+                      options={manualSessionOptions}
+                      value={selectedManualSessionId}
+                      placeholder={manualSessionsQuery.isFetching ? "Loading sessions..." : "Choose session..."}
+                      leadingIcon={<Navigation />}
+                      renderOption={(option) => <ManualSessionOptionRow option={option} />}
+                      onChange={(value) => {
+                        updateSearchParams(
+                          searchParams,
+                          setSearchParams,
+                          {
+                            sessionId: value,
+                            versionId: null,
+                            startState: null,
+                            endState: null,
+                          },
+                          false,
+                        );
+                      }}
+                      disabled={!selectedApplicationId || manualSessionsQuery.isFetching || manualSessionsQuery.isError}
+                      emptyLabel="No manual sessions found"
+                    />
+                  </FieldBlock>
+                )}
               </div>
 
               <SegmentedProgress className={styles.progress} value={progressValue} total={4} />
@@ -524,7 +697,12 @@ function UserGuides() {
 
             {contextComplete ? (
               <Card className={styles.pathCard}>
-                <SectionHeading title="DEFINE PATH" helper={`${states.length} states discovered for this version`} />
+                <SectionHeading
+                  title="DEFINE PATH"
+                  helper={`${states.length} states discovered for this ${
+                    guideMode === "manual" ? "session" : "version"
+                  }`}
+                />
 
                 <div className={styles.pathGrid}>
                   <FieldBlock label="START STATE" meta={<StatePath state={selectedStartState} />}>
@@ -597,7 +775,7 @@ function UserGuides() {
                 className={styles.terminal}
                 title={
                   <span>
-                    coverit guide · {selectedApplication?.name} · {selectedVersion?.name} · {selectedStartState?.label}{" "}
+                    coverit guide · {selectedApplication?.name} · {guideSourceLabel} · {selectedStartState?.label}{" "}
                     → {selectedEndState?.label}
                   </span>
                 }
@@ -621,7 +799,7 @@ function UserGuides() {
                   )
                 }
                 footerLeft={`${currentLine}/${totalLines} lines`}
-                footerRight={`${selectedApplication?.name} · ${selectedVersion?.name}`}
+                footerRight={`${selectedApplication?.name} · ${guideSourceLabel}`}
               >
                 <div className={styles.commandLine}>
                   <span>&gt;</span> {terminalCommand}
