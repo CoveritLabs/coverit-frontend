@@ -25,6 +25,7 @@ import {
 } from "./LazyRouter";
 import { RouterErrorFallback } from "@shared/feedback/ErrorBoundary/ErrorFallback";
 import { PrivateRoute } from "./guards/PrivateRoute";
+import { DocumentTitle } from "./DocumentTitle";
 
 const LoginPage = withSuspense(LazyLoginPage);
 const SignupPage = withSuspense(LazySignupPage);
@@ -79,12 +80,22 @@ const router = createBrowserRouter([
   },
   {
     path: ROUTES.OAUTH_CALLBACK,
-    element: <OAuthCallbackPage />,
+    element: (
+      <>
+        <DocumentTitle />
+        <OAuthCallbackPage />
+      </>
+    ),
     errorElement: <RouterErrorFallback />,
   },
   {
     path: ROUTES.NOT_FOUND,
-    element: <NotFound />,
+    element: (
+      <>
+        <DocumentTitle />
+        <NotFound />
+      </>
+    ),
     errorElement: <RouterErrorFallback />,
   },
 ]);

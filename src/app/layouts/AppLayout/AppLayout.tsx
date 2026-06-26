@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { preloadRoute } from "@app/router/LazyRouter";
+import { DocumentTitle } from "@app/router/DocumentTitle";
 import styles from "./AppLayout.module.scss";
 
 interface AppLayoutProps {
@@ -28,6 +29,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className={styles.shell}>
+      <DocumentTitle />
       <Sidebar />
       <main className={styles.main}>{children ?? <Outlet />}</main>
     </div>
