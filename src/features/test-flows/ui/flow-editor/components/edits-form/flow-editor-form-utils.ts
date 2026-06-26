@@ -77,13 +77,13 @@ export function variableValueSpec(option: VariableTokenOption): FlowEditorValueS
 }
 
 export function buildFunctionCode(name: string, body: string) {
-  return `function ${safeFunctionIdentifier(name)} (designClass, html): Boolean {
+  return `function ${safeFunctionIdentifier(name)} (store, page, extracts, args): boolean | AssertionFunctionResult {
 ${body.trimEnd()}
 }`;
 }
 
 export function buildDesignFunctionCode(name: string, body: string) {
-  return `function ${safeFunctionIdentifier(name)} (store, html): void {
+  return `function ${safeFunctionIdentifier(name)} (store, page, extracts, args): unknown {
 ${body.trimEnd()}
 }`;
 }

@@ -120,6 +120,8 @@ export const REGRESSION_EVENT_CATEGORY_ORDER: RegressionEventCategory[] = [
   "scenario",
   "state",
   "transition",
+  "hook",
+  "designClass",
   "assertion",
   "basic",
 ];
