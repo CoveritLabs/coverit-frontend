@@ -95,8 +95,10 @@ export function DesignClassEditPanel({
         <FunctionSignatureEditor
           name={designFunctionName}
           body={designFunctionBody}
-          parameters={["store", "html"]}
-          returnType="void"
+          functionKind="design"
+          parameters={["store", "page", "extracts", "args"]}
+          returnType="unknown"
+          availableStoreKeys={designClassOptions.map((option) => option.name)}
           onNameChange={onDesignFunctionNameChange}
           onBodyChange={onDesignFunctionBodyChange}
         />

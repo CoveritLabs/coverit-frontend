@@ -581,6 +581,27 @@ function ManualSession() {
         }
       }
 
+      if (payload.type === "flow.rewind_progress") {
+        const action = pendingActionRef.current;
+        if (action === "continue" || action === "reset") {
+          setActionFeedback({
+            kind: "pending",
+            message:
+              payload.message ??
+              (action === "continue"
+                ? "Continuing from selected step..."
+                : "Resetting to checkpoint..."),
+          });
+          startActionTimeout(
+            action,
+            action === "continue"
+              ? "Continue timed out. The session is still connected."
+              : "Reset timed out. The session is still connected.",
+            REWIND_ACTION_TIMEOUT_MS,
+          );
+        }
+      }
+
       if (payload.type === "flow.rewound") {
         const revision = numericRevision(payload.flowRevision) ?? flowRevisionRef.current + 1;
         if (revision < flowRevisionRef.current) return;
@@ -602,7 +623,17 @@ function ManualSession() {
             ? `Continued from earlier step; removed ${removedCount} ${removedCount === 1 ? "step" : "steps"}.`
             : "Returned to the selected step.",
         );
-        completeAction(pendingActionRef.current === "continue" ? "Continued from selected step." : "Returned to checkpoint.");
+        const action = pendingActionRef.current;
+        const stateChanged = payload.stateMatched === false;
+        completeAction(
+          action === "continue"
+            ? stateChanged
+              ? "Continued from selected step. Page state changed during replay."
+              : "Continued from selected step."
+            : stateChanged
+              ? "Returned to checkpoint. Page state changed during replay."
+              : "Returned to checkpoint.",
+        );
       }
 
       if (payload.type === "flow.completed") {
@@ -635,7 +666,15 @@ function ManualSession() {
         failAction(message);
       }
     },
-    [closeSessionAfterCompletion, completeAction, drawFrame, failAction, finishDisconnect, updateViewport],
+    [
+      closeSessionAfterCompletion,
+      completeAction,
+      drawFrame,
+      failAction,
+      finishDisconnect,
+      startActionTimeout,
+      updateViewport,
+    ],
   );
 
   useEffect(() => {

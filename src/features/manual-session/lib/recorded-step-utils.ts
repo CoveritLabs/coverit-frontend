@@ -60,8 +60,12 @@ function isInputEvent(event: RecordedEvent) {
   return ["input", "change"].includes(eventAction(event));
 }
 
+function isEnterKeypressEvent(event: RecordedEvent) {
+  return eventAction(event) === "keypress" && event.key === "Enter";
+}
+
 export function isPublishablePendingEvent(event: RecordedEvent) {
-  return isInputEvent(event);
+  return isInputEvent(event) || isEnterKeypressEvent(event);
 }
 
 function selectorSetsIntersect(left: Set<string>, right: Set<string>) {
@@ -80,14 +84,14 @@ function stepSelectors(step: RecordedStep) {
 }
 
 export function isGroupedPendingEvent(event: RecordedEvent, step: RecordedStep) {
-  if (!["type", "select"].includes(step.action ?? step.actions?.[0]?.type ?? "")) return false;
+  if (!["type", "select", "press"].includes(step.action ?? step.actions?.[0]?.type ?? "")) return false;
 
   const selectors = eventSelectors(event);
   const finalizedSelectors = stepSelectors(step);
   if (!selectors.size || !finalizedSelectors.size) return false;
   if (!selectorSetsIntersect(selectors, finalizedSelectors)) return false;
 
-  return isInputEvent(event) || eventAction(event) === "click";
+  return isInputEvent(event) || isEnterKeypressEvent(event) || eventAction(event) === "click";
 }
 
 export function mergePendingEvent<T extends RecordedEvent>(current: T[], nextEvent: T): T[] {
