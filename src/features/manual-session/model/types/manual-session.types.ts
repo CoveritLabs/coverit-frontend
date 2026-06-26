@@ -118,11 +118,16 @@ export type WsPayload = {
   testFlowType?: string;
   stepCount?: number;
   flowRevision?: number;
+  phase?: string;
+  actionCount?: number;
   steps?: RecordedStep[];
   step?: RecordedStep;
   keptStepIds?: string[];
   removedStepIds?: string[];
   stateHash?: string;
+  actualStateHash?: string;
+  expectedStateHash?: string;
+  stateMatched?: boolean;
   viewport?: {
     width?: number;
     height?: number;

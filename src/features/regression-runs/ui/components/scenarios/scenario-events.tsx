@@ -46,6 +46,8 @@ function primitiveString(value: unknown): string | undefined {
 
 function normalizeCategory(value: unknown): RegressionEventCategory | undefined {
   const normalized = stringValue(value)?.toLowerCase();
+  if (normalized === "designclass" || normalized === "design-class" || normalized === "design_class") return "designClass";
+  if (normalized === "hook" || normalized === "actionhook" || normalized === "action-hook" || normalized === "action_hook") return "hook";
   if (normalized === "scenario" || normalized === "state" || normalized === "transition" || normalized === "assertion" || normalized === "basic") {
     return normalized;
   }
@@ -65,6 +67,8 @@ function deriveCategory(event: RegressionEventResponse, payload: Record<string, 
 
   const stepType = (event.stepType ?? stringValue(payload.stepType) ?? stringValue(asRecord(payload.report).stepType) ?? "").toUpperCase();
   if (event.type === "scenario.status") return "scenario";
+  if (stepType === "ACTION_HOOK") return "hook";
+  if (stepType === "DESIGN_CLASS") return "designClass";
   if (event.type === "assertion.result" || stepType === "ASSERTION") return "assertion";
   if (stepType === "STATE") return "state";
   if (stepType === "TRANSITION") return "transition";
@@ -100,6 +104,8 @@ function titleFor(event: RegressionEventResponse, payload: Record<string, unknow
   if (explicit) return explicit;
   if (category === "scenario") return event.status ? `Scenario ${event.status}` : "Scenario event";
   if (category === "assertion") return assertionResult === "fail" ? "Assertion failed" : assertionResult === "warn" ? "Assertion warning" : "Assertion passed";
+  if (category === "hook") return assertionResult === "fail" ? "Hook failed" : assertionResult === "warn" ? "Hook warning" : "Hook passed";
+  if (category === "designClass") return assertionResult === "fail" ? "Design class failed" : assertionResult === "warn" ? "Design class warning" : "Design class passed";
   if (category === "state") return event.status === "running" ? "State started" : "State updated";
   if (category === "transition") return event.status === "running" ? "Transition started" : "Transition updated";
   if (event.type === "failure") return "Failure captured";
