@@ -5,7 +5,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@shared/config/queryKeys";
 import { userGuidesApi } from "../../api/userGuidesApi";
-import type { GenerateGuideParams, GenerateGuideResult } from "../types/user-guides.types";
+import type {
+  GenerateGuideParams,
+  GenerateGuideResult,
+  UserGuideApplication,
+  UserGuideMode,
+} from "../types/user-guides.types";
 
 export function useUserGuideApplications(projectId: string | null) {
   const safeProjectId = projectId ?? "__missing__";
@@ -33,16 +38,33 @@ export function useUserGuideVersions(projectId: string | null, applicationId: st
 export function useUserGuideStates(
   projectId: string | null,
   applicationId: string | null,
-  versionId: string | null,
+  sourceId: string | null,
+  mode: UserGuideMode = "automatic",
 ) {
   const safeProjectId = projectId ?? "__missing__";
   const safeApplicationId = applicationId ?? "__missing__";
-  const safeVersionId = versionId ?? "__missing__";
+  const safeSourceId = sourceId ?? "__missing__";
 
   return useQuery({
-    queryKey: queryKeys.userGuides.states(safeProjectId, safeApplicationId, safeVersionId),
-    queryFn: () => userGuidesApi.getStates(safeProjectId, safeApplicationId, safeVersionId),
-    enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(versionId),
+    queryKey: queryKeys.userGuides.states(safeProjectId, safeApplicationId, mode, safeSourceId),
+    queryFn: () => userGuidesApi.getStates(safeProjectId, safeApplicationId, safeSourceId),
+    enabled: Boolean(projectId) && Boolean(applicationId) && Boolean(sourceId),
+    placeholderData: [],
+  });
+}
+
+export function useUserGuideManualSessions(
+  projectId: string | null,
+  application: UserGuideApplication | null,
+) {
+  const safeProjectId = projectId ?? "__missing__";
+  const safeApplicationId = application?.id ?? "__missing__";
+  const versionIds = application?.versions?.map((version) => version.id) ?? [];
+
+  return useQuery({
+    queryKey: queryKeys.userGuides.manualSessions(safeProjectId, safeApplicationId, versionIds),
+    queryFn: () => (application ? userGuidesApi.getManualSessions(safeProjectId, application) : Promise.resolve([])),
+    enabled: Boolean(projectId) && Boolean(application),
     placeholderData: [],
   });
 }

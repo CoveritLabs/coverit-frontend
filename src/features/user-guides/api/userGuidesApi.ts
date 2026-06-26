@@ -3,11 +3,14 @@
 // See LICENSE file in the project root for full license information.
 
 import { apiClient } from "@shared/api/client";
+import { applicationDetailsService } from "@features/target-applications/api/applicationDetailsService";
 import { targetApplicationService } from "@features/target-applications/api/targetApplicationService";
+import { dedupeUserGuideStates } from "../lib/userGuideStates";
 import type {
   GenerateGuideParams,
   GenerateGuideResult,
   UserGuideApplication,
+  UserGuideManualSession,
   UserGuideState,
   UserGuideStateKind,
   UserGuideVersion,
@@ -86,12 +89,22 @@ function splitGuideLines(userGuide: string): string[] {
   return lines.some((line) => line.length > 0) ? lines : ["Guide generation completed with no content."];
 }
 
+function getTime(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 export const userGuidesApi = {
   async getApplications(projectId: string): Promise<UserGuideApplication[]> {
     const applications = await targetApplicationService.getTargetApplications(projectId);
     return applications.map((application) => ({
       id: application.id,
       name: application.name,
+      baseUrl: application.baseUrl,
+      versions: ((application.versions ?? []) as TargetApplicationVersion[]).map((version) => ({
+        id: version.id,
+        name: version.version,
+      })),
     }));
   },
 
@@ -103,17 +116,57 @@ export const userGuidesApi = {
     }));
   },
 
-  async getStates(projectId: string, applicationId: string, versionId: string): Promise<UserGuideState[]> {
+  async getStates(
+    projectId: string,
+    applicationId: string,
+    sourceId: string,
+  ): Promise<UserGuideState[]> {
     const response = await apiClient.get<ApiUserGuideStatesResponse>(
-      `projects/${projectId}/target-applications/${applicationId}/versions/${versionId}/user-guide-states`,
+      `projects/${projectId}/target-applications/${applicationId}/versions/${sourceId}/user-guide-states`,
     );
 
-    return response.data.states.map(mapState);
+    return dedupeUserGuideStates(response.data.states.map(mapState));
+  },
+
+  async getManualSessions(
+    projectId: string,
+    application: UserGuideApplication,
+  ): Promise<UserGuideManualSession[]> {
+    const versions = application.versions ?? [];
+    if (versions.length === 0) return [];
+
+    const sessionGroups = await Promise.all(
+      versions.map((version) =>
+        applicationDetailsService.getCrawlSessions({
+          projectId,
+          applicationId: application.id,
+          versionId: version.id,
+          applicationName: application.name,
+          applicationBaseUrl: application.baseUrl ?? "",
+          versionName: version.name,
+        }),
+      ),
+    );
+
+    return sessionGroups
+      .flat()
+      .filter((session) => session.trigger === "manual")
+      .sort((left, right) => getTime(left.startedAt) - getTime(right.startedAt))
+      .map((session) => ({
+        id: session.id,
+        versionId: session.versionId,
+        versionName: session.versionName,
+        createdAt: session.startedAt,
+        status: session.status,
+      }));
   },
 
   async generateGuide(params: GenerateGuideParams): Promise<GenerateGuideResult> {
+    const sourceId = params.mode === "manual" ? params.sessionId : params.versionId;
+    if (!sourceId) throw new Error("A version or manual session must be selected.");
+
     const response = await apiClient.post<ApiGenerateUserGuideResponse>(
-      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${params.versionId}/generate-user-guide`,
+      `projects/${params.projectId}/target-applications/${params.applicationId}/versions/${sourceId}/generate-user-guide`,
       {
         startStateHash: params.startStateHash,
         endStateHash: params.endStateHash,
