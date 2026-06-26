@@ -2,7 +2,7 @@
 // Proprietary and confidential. Unauthorized use is strictly prohibited.
 // See LICENSE file in the project root for full license information.
 
-import { Copy, PencilLine, RefreshCw } from "lucide-react";
+import { Copy, Eye, PencilLine, RefreshCw } from "lucide-react";
 import { Badge, Button, Card, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow, toast } from "@shared/ui";
 import type { TestFlow } from "../../model/types/test-flows.types";
 import styles from "../TestFlows.module.scss";
@@ -75,6 +75,7 @@ export function TestFlowsTable({
   onNextPage,
   onGenerate,
   onEdit,
+  onShow,
   generatingFlowId,
 }: {
   flows: TestFlow[];
@@ -87,6 +88,7 @@ export function TestFlowsTable({
   onNextPage: () => void;
   onGenerate: (flow: TestFlow) => void;
   onEdit: (flow: TestFlow) => void;
+  onShow: (flow: TestFlow) => void;
   generatingFlowId?: string | null;
 }) {
   const showEmptyState = flows.length === 0 && !hasPreviousPage && !hasNextPage;
@@ -168,6 +170,16 @@ export function TestFlowsTable({
                   </TableCell>
                   <TableCell>
                     <div className={styles.rowActions}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={styles.generateButton}
+                        onClick={() => onShow(flow)}
+                        title="Show flow steps"
+                      >
+                        <Eye size={14} />
+                        Show
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
