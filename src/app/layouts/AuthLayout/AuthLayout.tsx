@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import styles from "./AuthLayout.module.scss";
 import { tokenService } from "@features/auth";
 import { ROUTES } from "@shared/config/routes";
+import { DocumentTitle } from "@app/router/DocumentTitle";
 
 interface AuthLayoutProps {
   children?: ReactNode;
@@ -24,6 +25,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
   return (
     <div className={styles.shell}>
+      <DocumentTitle />
       <div className={styles.card}>{children ?? <Outlet />}</div>
     </div>
   );
