@@ -146,10 +146,9 @@
 
 .contextGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $space-4;
   align-items: start;
-  padding-right: 14rem;
 }
 
 .fieldBlock {
@@ -273,6 +272,33 @@
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.manualSessionOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  min-width: 0;
+
+  strong {
+    min-width: 0;
+    overflow: hidden;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .connector {

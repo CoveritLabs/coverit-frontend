@@ -5,11 +5,23 @@
 export interface UserGuideApplication {
   id: string;
   name: string;
+  baseUrl?: string | null;
+  versions?: UserGuideVersion[];
 }
 
 export interface UserGuideVersion {
   id: string;
   name: string;
+}
+
+export type UserGuideMode = "automatic" | "manual";
+
+export interface UserGuideManualSession {
+  id: string;
+  versionId: string;
+  versionName: string;
+  createdAt: string;
+  status: string;
 }
 
 export type UserGuideStateKind = "PAGE" | "DRAWER" | "FLOW";
@@ -29,7 +41,9 @@ export interface UserGuideState {
 export interface GenerateGuideParams {
   projectId: string;
   applicationId: string;
-  versionId: string;
+  mode: UserGuideMode;
+  versionId?: string;
+  sessionId?: string;
   startStateHash: string;
   endStateHash: string;
 }

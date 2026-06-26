@@ -87,8 +87,10 @@ export function AssertionEditPanel({
         <FunctionSignatureEditor
           name={functionName}
           body={functionBody}
-          parameters={["designClass", "html"]}
-          returnType="Boolean"
+          functionKind="assertion"
+          parameters={["store", "page", "extracts", "args"]}
+          returnType="boolean | AssertionFunctionResult"
+          availableStoreKeys={designClassOptions.map((option) => option.name)}
           onNameChange={onFunctionNameChange}
           onBodyChange={onFunctionBodyChange}
         />

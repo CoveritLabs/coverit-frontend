@@ -74,8 +74,10 @@ const userGuideKeys = {
   applications: (projectId: string) => [...userGuideKeys.all, "applications", projectId] as const,
   versions: (projectId: string, applicationId: string) =>
     [...userGuideKeys.all, "versions", projectId, applicationId] as const,
-  states: (projectId: string, applicationId: string, versionId: string) =>
-    [...userGuideKeys.all, "states", projectId, applicationId, versionId] as const,
+  manualSessions: (projectId: string, applicationId: string, versionIds: readonly string[]) =>
+    [...userGuideKeys.all, "manual-sessions", projectId, applicationId, versionIds] as const,
+  states: (projectId: string, applicationId: string, mode: string, sourceId: string) =>
+    [...userGuideKeys.all, "states", projectId, applicationId, mode, sourceId] as const,
 };
 
 const integrationKeys = {
